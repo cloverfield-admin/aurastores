@@ -1,0 +1,10 @@
+ALTER TABLE "users" ALTER COLUMN "password_hash" DROP NOT NULL;
+ALTER TABLE "organizations" ALTER COLUMN "legal_name" DROP NOT NULL;
+ALTER TABLE "organizations" ALTER COLUMN "tax_id" DROP NOT NULL;
+ALTER TABLE "organizations" ALTER COLUMN "hq_address_line_1" DROP NOT NULL;
+ALTER TABLE "organizations" ALTER COLUMN "hq_city" DROP NOT NULL;
+ALTER TABLE "organizations" ALTER COLUMN "hq_state" DROP NOT NULL;
+ALTER TABLE "organizations" ALTER COLUMN "hq_postal_code" DROP NOT NULL;
+ALTER TABLE "branches" ALTER COLUMN "city" DROP NOT NULL;
+ALTER TABLE "branches" ALTER COLUMN "state" DROP NOT NULL;
+ALTER TABLE "branches" ALTER COLUMN "postal_code" DROP NOT NULL;
