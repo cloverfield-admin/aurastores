@@ -6,6 +6,41 @@ import { fetchJson } from "@/lib/api/client";
 export const stockDashboardQueryKey = ["stock", "dashboard"] as const;
 export const stockCatalogQueryKey = ["stock", "catalog"] as const;
 export const stockBranchesQueryKey = ["stock", "branches"] as const;
+export const stockBatchDetailQueryKey = ["stock", "batch"] as const;
+
+export type StockBatchDetailResponse = {
+  id: string;
+  batchNumber: string;
+  purchaseOrderNumber: string | null;
+  productName: string;
+  sku: string;
+  categoryName: string;
+  supplierName: string | null;
+  branchId: string;
+  branchName: string;
+  receivedAt: string;
+  manufacturedAt: string | null;
+  expiresAt: string;
+  quantityReceived: number;
+  quantityAvailable: number;
+  unitCostCents: number;
+  unitSalePriceCents: number | null;
+  status: string;
+  notes: string | null;
+  daysToExpiry: number;
+  stockProgressPercent: number;
+  canDispose: boolean;
+  transactions: Array<{
+    id: string;
+    occurredAt: string;
+    transactionType: string;
+    quantityDelta: number;
+    performedByName: string | null;
+    referenceType: string | null;
+    referenceId: string | null;
+    note: string | null;
+  }>;
+};
 
 type StockBranch = {
   id: string;
@@ -150,6 +185,9 @@ export function useStockDashboardQuery({
         { method: "GET" },
       ),
     placeholderData: (previousData) => previousData,
+    meta: {
+      suppressGlobalLoading: true,
+    },
   });
 }
 
@@ -171,6 +209,17 @@ export function useStockBranchesQuery(branchId?: string, enabled = true) {
         method: "GET",
       }),
     enabled,
+  });
+}
+
+export function useBatchDetailQuery(batchId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: [...stockBatchDetailQueryKey, batchId],
+    queryFn: () =>
+      fetchJson<StockBatchDetailResponse>(`/api/stock/batches/${batchId}`, {
+        method: "GET",
+      }),
+    enabled: Boolean(batchId) && enabled,
   });
 }
 
@@ -224,6 +273,41 @@ export function useDisposeStockBatchMutation() {
         queryClient.invalidateQueries({ queryKey: stockDashboardQueryKey }),
         queryClient.invalidateQueries({ queryKey: stockCatalogQueryKey }),
         queryClient.invalidateQueries({ queryKey: stockBranchesQueryKey }),
+        queryClient.invalidateQueries({ queryKey: stockBatchDetailQueryKey }),
+      ]);
+    },
+  });
+}
+
+export function useRestoreStockBatchMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      batchId,
+      branchId,
+      note,
+    }: {
+      batchId: string;
+      branchId?: string;
+      note?: string;
+    }) =>
+      fetchJson<{ id: string; batchNumber: string; productName: string; restoredQuantity: number }>(
+        `/api/stock/batches/${batchId}/restore`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ branchId, note }),
+        },
+      ),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: stockDashboardQueryKey }),
+        queryClient.invalidateQueries({ queryKey: stockCatalogQueryKey }),
+        queryClient.invalidateQueries({ queryKey: stockBranchesQueryKey }),
+        queryClient.invalidateQueries({ queryKey: stockBatchDetailQueryKey }),
       ]);
     },
   });
@@ -234,7 +318,16 @@ export function useAdjustStockMutation() {
 
   return useMutation({
     mutationFn: (payload: StockAdjustmentPayload) =>
-      fetchJson<{ adjustedCount: number; batchIds: string[]; productNames: string[] }>(
+      fetchJson<{
+        adjustedCount: number;
+        batchIds: string[];
+        productNames: string[];
+        updatedBatches: Array<{
+          id: string;
+          quantityAvailable: number;
+          status: "active" | "expiring_soon" | "expired" | "disposed" | "depleted";
+        }>;
+      }>(
         "/api/stock/adjustments",
         {
           method: "POST",
@@ -249,6 +342,7 @@ export function useAdjustStockMutation() {
         queryClient.invalidateQueries({ queryKey: stockDashboardQueryKey }),
         queryClient.invalidateQueries({ queryKey: stockCatalogQueryKey }),
         queryClient.invalidateQueries({ queryKey: stockBranchesQueryKey }),
+        queryClient.invalidateQueries({ queryKey: stockBatchDetailQueryKey }),
       ]);
     },
   });

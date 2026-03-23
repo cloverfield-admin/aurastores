@@ -119,7 +119,7 @@ export function AuraFeedbackProvider({ children }: { children: ReactNode }) {
     setToasts((current) => [...current.slice(-3), toast]);
   }, []);
 
-  const setLoadingState = useCallback((key: string, active: boolean, message = "Loading secure workspace...") => {
+  const setLoadingState = useCallback((key: string, active: boolean, message = "Loading...") => {
     setLoadingStates((current) => {
       if (active) {
         if (current[key] === message) {

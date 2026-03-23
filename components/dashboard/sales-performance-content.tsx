@@ -3,75 +3,96 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { useSalesDashboardQuery } from "@/lib/queries/sales";
 import { ROUTES } from "@/lib/routes";
 
-const SALES_KPIS = [
-  {
-    label: "Total Revenue",
-    value: "ZMW 142,850.40",
-    sub: "Vs. ZMW 127,100 last month",
-    badge: "+12.4%",
-    badgeClass: "bg-[#f0fdfa] text-[#0d9488]",
-    icon: "payments",
-  },
-  {
-    label: "Total Prescriptions",
-    value: "3,142",
-    sub: "Avg. 101 per day",
-    badge: "+4.2%",
-    badgeClass: "bg-[#f0fdfa] text-[#0d9488]",
-    icon: "medication",
-  },
-  {
-    label: "Stock Turnover",
-    value: "18.5x",
-    sub: "Slower than Q3 average",
-    badge: "-2.1%",
-    badgeClass: "bg-[#fff1f2] text-[#e11d48]",
-    icon: "autorenew",
-  },
-  {
-    label: "Patient Loyalty",
-    value: "84%",
-    sub: "Returning patients (30d)",
-    badge: "+8.9%",
-    badgeClass: "bg-[#eff6ff] text-[#2563eb]",
-    icon: "groups",
-  },
-] as const;
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "ZMW",
+  minimumFractionDigits: 2,
+});
 
-const CHART_DAYS = [
-  { day: "Oct 01", value: 4.2 },
-  { day: "Oct 07", value: 5.1 },
-  { day: "Oct 14", value: 4.8 },
-  { day: "Oct 21", value: 5.8 },
-  { day: "Oct 28", value: 5.2 },
-];
+function formatRelativeTime(isoString: string) {
+  const diffMs = Date.now() - new Date(isoString).getTime();
+  const diffMinutes = Math.max(1, Math.round(diffMs / 60_000));
 
-const TOP_DRUGS = [
-  { name: "Lipitor", amount: "ZMW 24,150", pct: 17 },
-  { name: "Humira", amount: "ZMW 18,900", pct: 13 },
-  { name: "Eliquis", amount: "ZMW 16,200", pct: 11 },
-  { name: "Synthroid", amount: "ZMW 14,850", pct: 10 },
-] as const;
+  if (diffMinutes < 60) {
+    return `${diffMinutes} min${diffMinutes === 1 ? "" : "s"} ago`;
+  }
 
-const RECENT_TXS = [
-  { drug: "Amoxicillin", date: "2 hours ago", case: "CASE-99231", price: "ZMW 28.50" },
-  { drug: "Lisinopril", date: "3 hours ago", case: "CASE-44102", price: "ZMW 14.20" },
-  { drug: "Atorvastatin", date: "4 hours ago", case: "CASE-77290", price: "ZMW 22.00" },
-] as const;
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) {
+    return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`;
+  }
 
-const BRANCH_DIST = [
-  { name: "Main Branch", amount: "ZMW 59.9k", pct: 42, color: "#14b8a6" },
-  { name: "East Side", amount: "ZMW 54.3k", pct: 38, color: "#3b82f6" },
-  { name: "Warehouse", amount: "ZMW 28.6k", pct: 20, color: "#f59e0b" },
-] as const;
+  const diffDays = Math.round(diffHours / 24);
+  return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
+}
 
 export function SalesPerformanceContent() {
   const searchParams = useSearchParams();
   const [chartMode, setChartMode] = useState<"revenue" | "volume">("revenue");
   const branch = searchParams.get("branch") ?? undefined;
   const addSaleHref = branch ? `${ROUTES.dashboard.salesAdd}?branch=${branch}` : ROUTES.dashboard.salesAdd;
+  const salesDashboardQuery = useSalesDashboardQuery(branch);
+
+  const metrics = salesDashboardQuery.data?.metrics;
+  const revenueDeltaPct =
+    metrics && metrics.previousRevenueCents > 0
+      ? (((metrics.totalRevenueCents - metrics.previousRevenueCents) / metrics.previousRevenueCents) * 100).toFixed(1)
+      : "0.0";
+
+  const SALES_KPIS = [
+    {
+      label: "Total Revenue",
+      value: currencyFormatter.format((metrics?.totalRevenueCents ?? 0) / 100),
+      sub: `Vs. ${currencyFormatter.format((metrics?.previousRevenueCents ?? 0) / 100)} previous period`,
+      badge: `${revenueDeltaPct.startsWith("-") ? "" : "+"}${revenueDeltaPct}%`,
+      badgeClass: revenueDeltaPct.startsWith("-") ? "bg-[#fff1f2] text-[#e11d48]" : "bg-[#f0fdfa] text-[#0d9488]",
+      icon: "payments",
+    },
+    {
+      label: "Total Orders",
+      value: (metrics?.totalSalesCount ?? 0).toLocaleString(),
+      sub: `Avg. order ${currencyFormatter.format((metrics?.averageOrderValueCents ?? 0) / 100)}`,
+      badge: "Live",
+      badgeClass: "bg-[#f0fdfa] text-[#0d9488]",
+      icon: "receipt_long",
+    },
+    {
+      label: "Units Sold",
+      value: (metrics?.unitsSoldLast30Days ?? 0).toLocaleString(),
+      sub: "Total dispensed in the last 30 days",
+      badge: "Rolling 30d",
+      badgeClass: "bg-[#eff6ff] text-[#2563eb]",
+      icon: "inventory_2",
+    },
+    {
+      label: "Branch",
+      value: salesDashboardQuery.data?.branch.name ?? "Loading...",
+      sub: "Current sales context",
+      badge: "Scoped",
+      badgeClass: "bg-[#eff6ff] text-[#2563eb]",
+      icon: "storefront",
+    },
+  ] as const;
+
+  const TOP_DRUGS = salesDashboardQuery.data?.topProducts ?? [];
+  const RECENT_TXS = salesDashboardQuery.data?.recentSales ?? [];
+  const BRANCH_DIST = salesDashboardQuery.data?.branchDistribution ?? [];
+  const trend = salesDashboardQuery.data?.trend ?? [];
+  const maxRevenue = Math.max(1, ...trend.map((point) => point.revenueCents));
+  const maxUnits = Math.max(1, ...trend.map((point) => point.unitsSold));
+  const chartPoints =
+    trend.length > 0
+      ? trend.map((point) => ({
+          day: point.label,
+          value:
+            chartMode === "revenue"
+              ? (point.revenueCents / maxRevenue) * 6
+              : (point.unitsSold / maxUnits) * 6,
+        }))
+      : [];
 
   return (
     <div className="relative px-4 pb-24 sm:px-6 lg:px-8">
@@ -175,7 +196,7 @@ export function SalesPerformanceContent() {
                 </div>
               </div>
               <div className="flex h-48 items-end justify-between gap-2">
-                {CHART_DAYS.map((d, i) => (
+                {chartPoints.map((d, i) => (
                   <div key={d.day} className="flex flex-1 flex-col items-center gap-2">
                     <div className="flex h-36 w-full flex-col justify-end gap-1">
                       <div
@@ -183,7 +204,9 @@ export function SalesPerformanceContent() {
                         style={{
                           height: `${d.value * 16}%`,
                           background:
-                            "linear-gradient(135deg, rgb(15, 185, 177) 0%, rgb(99, 102, 241) 100%)",
+                            chartMode === "revenue"
+                              ? "linear-gradient(135deg, rgb(15, 185, 177) 0%, rgb(99, 102, 241) 100%)"
+                              : "linear-gradient(135deg, rgb(59, 130, 246) 0%, rgb(16, 185, 129) 100%)",
                         }}
                       />
                       <div
@@ -194,6 +217,11 @@ export function SalesPerformanceContent() {
                     <span className="text-[10px] font-medium text-[#94a3b8]">{d.day}</span>
                   </div>
                 ))}
+                {chartPoints.length === 0 && (
+                  <div className="flex w-full items-center justify-center text-sm text-[#94a3b8]">
+                    No trend data yet.
+                  </div>
+                )}
               </div>
             </section>
 
@@ -243,7 +271,7 @@ export function SalesPerformanceContent() {
                 <ul className="space-y-3">
                   {RECENT_TXS.map((tx) => (
                     <li
-                      key={tx.case}
+                      key={tx.id}
                       className="flex items-center justify-between rounded-lg bg-[#f8fafc] px-4 py-3"
                     >
                       <div className="flex items-center gap-3">
@@ -253,13 +281,17 @@ export function SalesPerformanceContent() {
                           </span>
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-[#191c1e]">{tx.drug}</p>
+                          <p className="text-sm font-semibold text-[#191c1e]">
+                            {tx.patientName ?? "Walk-in Customer"}
+                          </p>
                           <p className="text-[10px] text-[#94a3b8]">
-                            {tx.date} · {tx.case}
+                            {formatRelativeTime(tx.createdAt)} · {tx.saleNumber}
                           </p>
                         </div>
                       </div>
-                      <p className="text-sm font-bold text-[#191c1e]">{tx.price}</p>
+                      <p className="text-sm font-bold text-[#191c1e]">
+                        {currencyFormatter.format(tx.totalCents / 100)}
+                      </p>
                     </li>
                   ))}
                 </ul>
@@ -279,7 +311,9 @@ export function SalesPerformanceContent() {
                   <li key={d.name}>
                     <div className="mb-1.5 flex justify-between text-xs">
                       <span className="font-semibold text-[#191c1e]">{d.name}</span>
-                      <span className="font-bold text-[#0d9488]">{d.amount}</span>
+                      <span className="font-bold text-[#0d9488]">
+                        {currencyFormatter.format(d.amountCents / 100)}
+                      </span>
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-[#f1f5f9]">
                       <div
@@ -310,13 +344,13 @@ export function SalesPerformanceContent() {
               <ul className="space-y-3">
                 {BRANCH_DIST.map((b) => (
                   <li
-                    key={b.name}
+                    key={b.branchId}
                     className="flex items-center justify-between rounded-lg border-l-4 py-2 pl-4"
-                    style={{ borderLeftColor: b.color }}
+                    style={{ borderLeftColor: "#14b8a6" }}
                   >
                     <span className="text-sm font-semibold text-[#191c1e]">{b.name}</span>
                     <span className="text-sm font-bold text-[#64748b]">
-                      {b.amount} ({b.pct}%)
+                      {currencyFormatter.format(b.amountCents / 100)} ({b.pct}%)
                     </span>
                   </li>
                 ))}

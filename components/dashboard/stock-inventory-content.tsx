@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { ROUTES } from "@/lib/routes";
 import {
   useAdjustStockMutation,
   useDisposeStockBatchMutation,
+  useRestoreStockBatchMutation,
   useStockDashboardQuery,
 } from "@/lib/queries/stock";
 import type { StockDashboardResponse } from "@/lib/queries/stock";
@@ -48,37 +49,254 @@ function formatExpiryLabel(daysToExpiry: number, expiresAt: string) {
   return `Safe (${dateFormatter.format(new Date(expiresAt))})`;
 }
 
-function promptForQuantityDelta() {
-  const value = window.prompt("Enter a quantity adjustment. Use negative numbers to reduce stock.");
-  if (value === null) {
+const EMPTY_ROWS: StockDashboardResponse["inventory"] = [];
+
+const STOCK_SEARCH_DEBOUNCE_MS = 400;
+
+/** Local state + debounce live here so the heavy parent page does not re-render on every keystroke. */
+const StockSearchField = memo(function StockSearchField({
+  urlQ,
+  onDebouncedChange,
+}: {
+  urlQ: string;
+  onDebouncedChange: (q: string) => void;
+}) {
+  const [value, setValue] = useState(urlQ);
+
+  useEffect(() => {
+    setValue(urlQ);
+  }, [urlQ]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      if (value === urlQ) {
+        return;
+      }
+      onDebouncedChange(value);
+    }, STOCK_SEARCH_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, [value, urlQ, onDebouncedChange]);
+
+  return (
+    <label className="relative block w-full sm:w-72">
+      <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
+        search
+      </span>
+      <input
+        type="search"
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        placeholder="Search by product, SKU, batch, or supplier"
+        className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
+        autoComplete="off"
+        spellCheck={false}
+      />
+    </label>
+  );
+});
+
+type StockAdjustDialogProps = {
+  open: boolean;
+  label: string;
+  batchCount: number;
+  selectedBatchLabels: string[];
+  isSubmitting: boolean;
+  onClose: () => void;
+  onSubmit: (quantityDelta: number, note?: string) => Promise<{ adjustedCount: number }>;
+};
+
+const StockAdjustDialog = memo(function StockAdjustDialog({
+  open,
+  label,
+  batchCount,
+  selectedBatchLabels,
+  isSubmitting,
+  onClose,
+  onSubmit,
+}: StockAdjustDialogProps) {
+  const [quantityInput, setQuantityInput] = useState("1");
+  const [note, setNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setQuantityInput("1");
+    } else {
+      setQuantityInput("1");
+      setNote("");
+      setError(null);
+      setSuccessMessage(null);
+    }
+  }, [open]);
+
+  if (!open) {
     return null;
   }
 
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed === 0) {
-    throw new Error("Enter a non-zero whole number for the stock adjustment.");
-  }
+  return (
+    <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/35 p-4">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="mb-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#006a65]">Adjust Stock</p>
+          <h3 className="mt-1 font-[family-name:var(--font-manrope)] text-2xl font-bold text-[#191c1e]">
+            {label}
+          </h3>
+          <p className="mt-1 text-sm text-[#64748b]">
+            Apply one adjustment to {batchCount} batch{batchCount === 1 ? "" : "es"}.
+          </p>
+        </div>
 
-  return parsed;
-}
+        <div className="space-y-4">
+          {batchCount > 1 ? (
+            <div className="rounded-xl bg-[#f8fafc] p-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">
+                Selected Batches
+              </p>
+              <div className="max-h-24 space-y-1 overflow-y-auto text-xs text-[#475569]">
+                {selectedBatchLabels.map((batchLabel) => (
+                  <p key={batchLabel} className="truncate">
+                    {batchLabel}
+                  </p>
+                ))}
+              </div>
+              <p className="mt-2 text-[11px] text-[#b45309]">
+                This adjustment applies the same quantity change to all selected batches.
+              </p>
+            </div>
+          ) : null}
 
-const EMPTY_ROWS: StockDashboardResponse["inventory"] = [];
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">
+              Quantity Delta
+            </span>
+            <input
+              type="number"
+              value={quantityInput}
+              onChange={(event) => setQuantityInput(event.target.value)}
+              placeholder="Use negative numbers to reduce stock"
+              className="w-full rounded-xl border-0 bg-[#f2f4f6] px-4 py-3 text-sm text-[#191c1e] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">
+              Note (Optional)
+            </span>
+            <textarea
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              rows={3}
+              className="w-full resize-none rounded-xl border-0 bg-[#f2f4f6] px-4 py-3 text-sm text-[#191c1e] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
+              placeholder="Reason for this adjustment"
+            />
+          </label>
+
+          {error ? <p className="text-sm font-medium text-[#b42318]">{error}</p> : null}
+          {successMessage ? <p className="text-sm font-medium text-[#0d9488]">{successMessage}</p> : null}
+        </div>
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="rounded-xl bg-[#f2f4f6] px-4 py-2 text-sm font-semibold text-[#191c1e] transition hover:bg-[#e8eaed] disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={isSubmitting || successMessage !== null}
+            onClick={async () => {
+              const quantityDelta = Number.parseInt(quantityInput, 10);
+
+              if (!Number.isFinite(quantityDelta) || quantityDelta === 0) {
+                setError("Enter a non-zero whole number for the stock adjustment.");
+                return;
+              }
+
+              setError(null);
+              try {
+                const result = await onSubmit(quantityDelta, note.trim() || undefined);
+                setSuccessMessage(
+                  `Adjustment applied successfully to ${result.adjustedCount} batch${result.adjustedCount === 1 ? "" : "es"}.`,
+                );
+                window.setTimeout(() => onClose(), 900);
+              } catch (submitError) {
+                setError(
+                  submitError instanceof Error
+                    ? submitError.message
+                    : "Unable to apply stock adjustment.",
+                );
+              }
+            }}
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {isSubmitting ? (
+              <span className="material-symbols-outlined notranslate animate-spin text-base">progress_activity</span>
+            ) : (
+              <span className="material-symbols-outlined notranslate text-base">check</span>
+            )}
+            {successMessage ? "Done" : "Confirm Adjustment"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 export function StockInventoryContent() {
-  const pathname = usePathname();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { withLoading, notify } = useAuraFeedback();
   const [selectedBatchIds, setSelectedBatchIds] = useState<string[]>([]);
-  const filter = searchParams.get("view") === "expiring" ? "expiring" : "all";
-  const search = searchParams.get("q") ?? "";
+  const [optimisticAdjustments, setOptimisticAdjustments] = useState<
+    Record<string, { quantityAvailable: number; status: StockDashboardResponse["inventory"][number]["status"] }>
+  >({});
+  const [recentlyAdjustedBatchIds, setRecentlyAdjustedBatchIds] = useState<string[]>([]);
   const branchId = searchParams.get("branch") ?? undefined;
-  const page = Math.max(1, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1);
+  const [filter, setFilter] = useState<"all" | "expiring">(
+    searchParams.get("view") === "expiring" ? "expiring" : "all",
+  );
+  const [search, setSearch] = useState(searchParams.get("q") ?? "");
+  const [page, setPage] = useState(Math.max(1, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1));
+  const [adjustDialog, setAdjustDialog] = useState<{
+    open: boolean;
+    batchIds: string[];
+    label: string;
+  }>({
+    open: false,
+    batchIds: [],
+    label: "",
+  });
   const stockQuery = useStockDashboardQuery({ branchId, search, view: filter, page, pageSize: 10 });
   const adjustStockMutation = useAdjustStockMutation();
   const disposeBatchMutation = useDisposeStockBatchMutation();
+  const restoreBatchMutation = useRestoreStockBatchMutation();
 
-  const rows = stockQuery.data?.inventory ?? EMPTY_ROWS;
+  const rows = useMemo(
+    () =>
+      (stockQuery.data?.inventory ?? EMPTY_ROWS).map((row) => {
+        const optimistic = optimisticAdjustments[row.id];
+        if (!optimistic) {
+          return row;
+        }
+
+        return {
+          ...row,
+          quantityAvailable: optimistic.quantityAvailable,
+          status: optimistic.status,
+          stockProgressPercent:
+            row.quantityReceived > 0
+              ? Math.max(0, Math.min(100, Math.round((optimistic.quantityAvailable / row.quantityReceived) * 100)))
+              : 0,
+        };
+      }),
+    [optimisticAdjustments, stockQuery.data?.inventory],
+  );
+  const isTableRefreshing = stockQuery.isFetching && !stockQuery.isLoading;
+  const isPageLoading = isTableRefreshing;
   const pagination = stockQuery.data?.pagination ?? {
     page: 1,
     pageSize: 10,
@@ -89,39 +307,37 @@ export function StockInventoryContent() {
     () => rows.filter((row) => row.status !== "disposed").map((row) => row.id),
     [rows],
   );
+  const rowById = useMemo(() => new Map(rows.map((row) => [row.id, row] as const)), [rows]);
   const allRowsSelected =
     selectableRowIds.length > 0 && selectableRowIds.every((rowId) => selectedBatchIds.includes(rowId));
 
-  function updateStockUrl(nextValues: Partial<{ q: string; view: "all" | "expiring"; page: number }>) {
-    const params = new URLSearchParams(searchParams.toString());
+  useEffect(() => {
+    setSelectedBatchIds((current) => current.filter((batchId) => rowById.has(batchId)));
+  }, [rowById]);
 
-    if (nextValues.q !== undefined) {
-      if (nextValues.q.trim()) {
-        params.set("q", nextValues.q);
-      } else {
-        params.delete("q");
-      }
+  useEffect(() => {
+    setOptimisticAdjustments({});
+  }, [stockQuery.data?.lastSyncedAt]);
+
+  useEffect(() => {
+    if (recentlyAdjustedBatchIds.length === 0) {
+      return;
     }
 
-    if (nextValues.view !== undefined) {
-      if (nextValues.view === "all") {
-        params.delete("view");
-      } else {
-        params.set("view", nextValues.view);
-      }
-    }
+    const timeout = window.setTimeout(() => {
+      setRecentlyAdjustedBatchIds([]);
+    }, 2200);
 
-    if (nextValues.page !== undefined) {
-      if (nextValues.page <= 1) {
-        params.delete("page");
-      } else {
-        params.set("page", String(nextValues.page));
-      }
-    }
+    return () => window.clearTimeout(timeout);
+  }, [recentlyAdjustedBatchIds]);
 
-    const next = params.toString();
-    router.replace(next ? `${pathname}?${next}` : pathname);
-  }
+  const handleSearchDebounced = useCallback(
+    (q: string) => {
+      setSearch(q);
+      setPage(1);
+    },
+    [],
+  );
 
   const metrics = stockQuery.data?.metrics ?? {
     totalStockValueCents: 0,
@@ -181,27 +397,17 @@ export function StockInventoryContent() {
     },
   ];
 
-  async function runAdjustment(batchIds: string[], label: string) {
-    let quantityDelta: number | null;
-
-    try {
-      quantityDelta = promptForQuantityDelta();
-    } catch (error) {
-      notify({
-        variant: "error",
-        title: "Invalid adjustment",
-        description: error instanceof Error ? error.message : "Unable to parse stock adjustment.",
-      });
-      return;
+  async function runAdjustment(
+    batchIds: string[],
+    label: string,
+    quantityDelta: number,
+    note?: string,
+  ): Promise<{ adjustedCount: number }> {
+    if (batchIds.length === 0) {
+      throw new Error("Select at least one batch to adjust.");
     }
 
-    if (quantityDelta === null) {
-      return;
-    }
-
-    const note = window.prompt("Optional note for the stock adjustment:")?.trim() || undefined;
-
-    await withLoading("dashboard-adjust-stock", "Applying stock adjustment...", async () => {
+    return withLoading("dashboard-adjust-stock", "Applying stock adjustment...", async () => {
       const result = await adjustStockMutation.mutateAsync({
         branchId,
         batchIds,
@@ -215,6 +421,22 @@ export function StockInventoryContent() {
         title: "Adjustment recorded",
         description: `${result.adjustedCount} batch${result.adjustedCount === 1 ? "" : "es"} updated for ${label}.`,
       });
+
+      setOptimisticAdjustments((current) => ({
+        ...current,
+        ...Object.fromEntries(
+          result.updatedBatches.map((batch) => [
+            batch.id,
+            {
+              quantityAvailable: batch.quantityAvailable,
+              status: batch.status,
+            },
+          ]),
+        ),
+      }));
+      setRecentlyAdjustedBatchIds(result.updatedBatches.map((batch) => batch.id));
+
+      return { adjustedCount: result.adjustedCount };
     });
   }
 
@@ -243,11 +465,25 @@ export function StockInventoryContent() {
               type="button"
               disabled={selectedBatchIds.length === 0}
               onClick={async () => {
-                if (selectedBatchIds.length === 0) {
+                const validBatchIds = selectedBatchIds.filter((batchId) => {
+                  const row = rowById.get(batchId);
+                  return row ? row.status !== "disposed" : false;
+                });
+
+                if (validBatchIds.length === 0) {
+                  notify({
+                    variant: "warning",
+                    title: "No adjustable batches selected",
+                    description: "Select at least one active or expiring batch to run bulk adjustment.",
+                  });
                   return;
                 }
 
-                await runAdjustment(selectedBatchIds, "the selected stock set");
+                setAdjustDialog({
+                  open: true,
+                  batchIds: validBatchIds,
+                  label: "the selected stock set",
+                });
               }}
               className="inline-flex items-center gap-2 rounded-xl bg-[#f2f4f6] px-5 py-2.5 text-base font-semibold text-[#191c1e] transition hover:bg-[#e8eaed] disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -350,25 +586,13 @@ export function StockInventoryContent() {
                 Product Inventory
               </h2>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <label className="relative block w-full sm:w-72">
-                  <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
-                    search
-                  </span>
-                  <input
-                    type="search"
-                    value={search}
-                    onChange={(event) => {
-                      updateStockUrl({ q: event.target.value, page: 1 });
-                    }}
-                    placeholder="Search by product, SKU, batch, or supplier"
-                    className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
-                  />
-                </label>
+                <StockSearchField urlQ={search} onDebouncedChange={handleSearchDebounced} />
                 <div className="flex rounded-lg bg-[#f2f4f6] p-1">
                   <button
                     type="button"
                     onClick={() => {
-                      updateStockUrl({ view: "all", page: 1 });
+                      setFilter("all");
+                      setPage(1);
                     }}
                     className={`rounded-md px-4 py-1.5 text-xs font-semibold transition ${
                       filter === "all"
@@ -381,7 +605,8 @@ export function StockInventoryContent() {
                   <button
                     type="button"
                     onClick={() => {
-                      updateStockUrl({ view: "expiring", page: 1 });
+                      setFilter("expiring");
+                      setPage(1);
                     }}
                     className={`rounded-md px-4 py-1.5 text-xs transition ${
                       filter === "expiring"
@@ -432,8 +657,15 @@ export function StockInventoryContent() {
                 ) : null}
               </div>
             ) : (
-              <table className="w-full min-w-[860px]">
-                <thead>
+              <div>
+                {isTableRefreshing ? (
+                  <div className="flex items-center gap-2 border-b border-[#f1f5f9] bg-[#f8fafc] px-6 py-2 text-xs font-medium text-[#64748b]">
+                    <span className="material-symbols-outlined notranslate animate-spin text-sm">progress_activity</span>
+                    Updating table results...
+                  </div>
+                ) : null}
+                <table className="w-full min-w-[860px]">
+                  <thead>
                   <tr className="bg-[rgba(242,244,246,0.5)]">
                     <th className="px-6 py-4 text-left">
                       <input
@@ -469,9 +701,9 @@ export function StockInventoryContent() {
                       Actions
                     </th>
                   </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => {
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => {
                     const expiryVariant =
                       row.status === "expired" || row.status === "disposed"
                         ? "critical"
@@ -480,14 +712,17 @@ export function StockInventoryContent() {
                           : "safe";
                     const isSelected = selectedBatchIds.includes(row.id);
                     const canAdjust = row.status !== "disposed";
+                    const isRecentlyAdjusted = recentlyAdjustedBatchIds.includes(row.id);
 
                     return (
                       <tr
                         key={row.id}
                         className={
-                          expiryVariant === "critical"
-                            ? "border-t border-[#f1f5f9] bg-[rgba(255,241,242,0.05)]"
-                            : "border-t border-[#f1f5f9]"
+                          isRecentlyAdjusted
+                            ? "border-t border-[#bbf7d0] bg-[rgba(240,253,244,0.9)] transition-colors"
+                            : expiryVariant === "critical"
+                              ? "border-t border-[#f1f5f9] bg-[rgba(255,241,242,0.05)]"
+                              : "border-t border-[#f1f5f9]"
                         }
                       >
                         <td className="px-6 py-4">
@@ -507,14 +742,26 @@ export function StockInventoryContent() {
                           />
                         </td>
                         <td className="px-6 py-4">
-                          <p className="text-sm font-semibold text-[#191c1e]">{row.productName}</p>
-                          <p className="font-mono text-[10px] uppercase tracking-tight text-[#94a3b8]">
-                            SKU: {row.sku}
-                          </p>
+                          <Link
+                            href={ROUTES.dashboard.stockBatch(row.id)}
+                            className="block group"
+                          >
+                            <p className="text-sm font-semibold text-[#191c1e] group-hover:text-[#006a65] transition">
+                              {row.productName}
+                            </p>
+                            <p className="font-mono text-[10px] uppercase tracking-tight text-[#94a3b8] group-hover:text-[#00504c] transition">
+                              SKU: {row.sku}
+                            </p>
+                          </Link>
                         </td>
                         <td className="px-6 py-4 text-sm text-[#475569]">{row.categoryName}</td>
                         <td className="px-6 py-4">
-                          <p className="font-mono text-sm text-[#64748b]">#{row.batchNumber}</p>
+                          <Link
+                            href={ROUTES.dashboard.stockBatch(row.id)}
+                            className="font-mono text-sm text-[#64748b] hover:text-[#006a65] transition"
+                          >
+                            #{row.batchNumber}
+                          </Link>
                           {row.supplierName ? (
                             <p className="mt-1 text-[10px] text-[#94a3b8]">{row.supplierName}</p>
                           ) : null}
@@ -577,7 +824,11 @@ export function StockInventoryContent() {
                               <button
                                 type="button"
                                 onClick={async () => {
-                                  await runAdjustment([row.id], row.productName);
+                                  setAdjustDialog({
+                                    open: true,
+                                    batchIds: [row.id],
+                                    label: row.productName,
+                                  });
                                 }}
                                 className="rounded-md bg-[#eff6ff] px-3 py-1 text-[10px] font-semibold text-[#2563eb] hover:bg-[#dbeafe]"
                               >
@@ -616,6 +867,32 @@ export function StockInventoryContent() {
                               >
                                 Dispose
                               </button>
+                            ) : row.status === "disposed" ? (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await withLoading(
+                                    "dashboard-restore-batch",
+                                    "Restoring disposed batch...",
+                                    async () => {
+                                      const result = await restoreBatchMutation.mutateAsync({
+                                        batchId: row.id,
+                                        branchId,
+                                        note: "Batch restored from stock dashboard.",
+                                      });
+
+                                      notify({
+                                        variant: "success",
+                                        title: "Batch restored",
+                                        description: `${result.productName} (${result.batchNumber}) restored with ${result.restoredQuantity.toLocaleString()} units.`,
+                                      });
+                                    },
+                                  );
+                                }}
+                                className="rounded-md bg-[#0d9488] px-3 py-1 text-[10px] font-semibold text-white shadow-sm hover:bg-[#0f766e]"
+                              >
+                                Restore
+                              </button>
                             ) : (
                               <span className="inline-flex rounded-full bg-[#f8fafc] px-2.5 py-1 text-[10px] font-semibold uppercase text-[#64748b]">
                                 {row.status.replace("_", " ")}
@@ -625,9 +902,10 @@ export function StockInventoryContent() {
                         </td>
                       </tr>
                     );
-                  })}
-                </tbody>
-              </table>
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
 
@@ -639,21 +917,22 @@ export function StockInventoryContent() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                disabled={pagination.page <= 1}
-                onClick={() => updateStockUrl({ page: Math.max(1, pagination.page - 1) })}
+                disabled={pagination.page <= 1 || isPageLoading}
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
                 className="flex size-8 items-center justify-center rounded border border-[#e2e8f0] text-[#64748b] hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <span className="material-symbols-outlined notranslate text-lg">chevron_left</span>
               </button>
-              <span className="rounded border border-[#006a65] bg-white px-3 py-1 text-xs font-semibold text-[#006a65]">
+              <span className="inline-flex min-w-14 items-center justify-center gap-1 rounded border border-[#006a65] bg-white px-3 py-1 text-xs font-semibold text-[#006a65]">
+                {isPageLoading ? (
+                  <span className="material-symbols-outlined notranslate animate-spin text-sm">progress_activity</span>
+                ) : null}
                 {pagination.page}
               </span>
               <button
                 type="button"
-                disabled={pagination.page >= pagination.totalPages}
-                onClick={() =>
-                  updateStockUrl({ page: Math.min(pagination.totalPages, pagination.page + 1) })
-                }
+                disabled={pagination.page >= pagination.totalPages || isPageLoading}
+                onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
                 className="flex size-8 items-center justify-center rounded border border-[#e2e8f0] text-[#64748b] hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <span className="material-symbols-outlined notranslate text-lg">chevron_right</span>
@@ -773,6 +1052,35 @@ export function StockInventoryContent() {
           history
         </span>
       </button>
+
+      <StockAdjustDialog
+        open={adjustDialog.open}
+        label={adjustDialog.label}
+        batchCount={adjustDialog.batchIds.length}
+        selectedBatchLabels={adjustDialog.batchIds.map((batchId) => {
+          const row = rowById.get(batchId);
+          return row ? `${row.productName} (#${row.batchNumber})` : `Batch ${batchId}`;
+        })}
+        isSubmitting={adjustStockMutation.isPending}
+        onClose={() => {
+          setAdjustDialog({
+            open: false,
+            batchIds: [],
+            label: "",
+          });
+        }}
+        onSubmit={async (quantityDelta, note) => {
+          return runAdjustment(
+            adjustDialog.batchIds.filter((batchId) => {
+              const row = rowById.get(batchId);
+              return row ? row.status !== "disposed" : false;
+            }),
+            adjustDialog.label,
+            quantityDelta,
+            note,
+          );
+        }}
+      />
     </div>
   );
 }

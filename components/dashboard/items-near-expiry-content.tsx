@@ -454,17 +454,25 @@ export function ItemsNearExpiryContent() {
                             return (
                               <tr key={row.id} className="border-b border-[#f1f4f6] last:border-b-0">
                                 <td className="px-5 py-5">
-                                  <div>
-                                    <p className="font-[family-name:var(--font-manrope)] text-[18px] font-extrabold leading-6 text-[#171d23]">
+                                  <Link
+                                    href={ROUTES.dashboard.stockBatch(row.id)}
+                                    className="block group"
+                                  >
+                                    <p className="font-[family-name:var(--font-manrope)] text-[18px] font-extrabold leading-6 text-[#171d23] group-hover:text-[#006a65] transition">
                                       {row.productName}
                                     </p>
                                     <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#98a2ad]">
                                       {row.categoryName}
                                     </p>
-                                  </div>
+                                  </Link>
                                 </td>
                                 <td className="px-5 py-5">
-                                  <p className="font-mono text-sm text-[#5d6873]">#{row.batchNumber}</p>
+                                  <Link
+                                    href={ROUTES.dashboard.stockBatch(row.id)}
+                                    className="font-mono text-sm text-[#5d6873] hover:text-[#006a65] transition"
+                                  >
+                                    #{row.batchNumber}
+                                  </Link>
                                   <p className="mt-1 text-[11px] text-[#9ca5ae]">{row.sku}</p>
                                 </td>
                                 <td className="px-5 py-5">

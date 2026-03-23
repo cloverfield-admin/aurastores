@@ -6,8 +6,12 @@ export const ROUTES = {
   },
   dashboard: {
     main: "/dashboard",
+    staff: "/dashboard/staff",
+    staffAdd: "/dashboard/staff/add",
+    staffAddReview: "/dashboard/staff/add/review",
     stock: "/dashboard/stock",
     stockAdd: "/dashboard/stock/add",
+    stockBatch: (batchId: string) => `/dashboard/stock/batches/${batchId}`,
     stockExpiring: "/dashboard/stock/expiring",
     sales: "/dashboard/sales",
     salesAdd: "/dashboard/sales/add",

@@ -29,6 +29,13 @@
       "when": 1774245600000,
       "tag": "0003_create_compliance_documents_bucket",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1774285200000,
+      "tag": "0004_add_stock_search_trgm_indexes",
+      "breakpoints": true
     }
   ]
 }

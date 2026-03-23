@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { useAuraFeedback } from "./aura-feedback-provider";
 
 const REACT_QUERY_LOADING_KEY = "react-query-global";
-const DEFAULT_MESSAGE = "Loading secure workspace...";
+const DEFAULT_MESSAGE = "Loading...";
 
 /**
  * Syncs React Query's global fetching/mutating state to the overlay loader.
@@ -15,7 +15,9 @@ const DEFAULT_MESSAGE = "Loading secure workspace...";
 export function GlobalLoadingSync() {
   const { setLoadingState } = useAuraFeedback();
   const isInitialFetching = useIsFetching({
-    predicate: (query) => query.state.data === undefined,
+    predicate: (query) =>
+      query.state.data === undefined &&
+      !((query.meta as { suppressGlobalLoading?: boolean } | undefined)?.suppressGlobalLoading),
   });
   const isMutating = useIsMutating();
   const activeRef = useRef(false);
