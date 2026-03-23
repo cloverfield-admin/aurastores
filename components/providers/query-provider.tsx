@@ -14,6 +14,8 @@ export function AppQueryProvider({ children }: { children: ReactNode }) {
           queries: {
             retry: false,
             refetchOnWindowFocus: false,
+            staleTime: 60 * 1000, // 1 min - data stays fresh, no refetch on revisit
+            gcTime: 5 * 60 * 1000, // 5 min - keep unused cache for quick back-navigation
           },
         },
       }),

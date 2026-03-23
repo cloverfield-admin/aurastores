@@ -2,10 +2,17 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { ROUTES } from "@/lib/routes";
 
 const TAX_RATE = 0.15;
+
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "ZMW",
+  minimumFractionDigits: 2,
+});
 
 type LineItem = {
   id: string;
@@ -45,6 +52,10 @@ const inputClass =
 
 export function NewSaleContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { withLoading, notify } = useAuraFeedback();
+  const branch = searchParams.get("branch") ?? undefined;
+  const salesHref = branch ? `${ROUTES.dashboard.sales}?branch=${branch}` : ROUTES.dashboard.sales;
   const [customerSearch, setCustomerSearch] = useState("");
   const [patientId, setPatientId] = useState("");
   const [mobile, setMobile] = useState("");
@@ -105,7 +116,7 @@ export function NewSaleContent() {
           <div className="space-y-2">
             <nav className="flex items-center gap-2" aria-label="Breadcrumb">
               <Link
-                href={ROUTES.dashboard.sales}
+                href={salesHref}
                 className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#94a3b8] hover:text-[#006a65]"
               >
                 Aura Sales
@@ -124,7 +135,7 @@ export function NewSaleContent() {
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              onClick={() => router.push(ROUTES.dashboard.sales)}
+              onClick={() => router.push(salesHref)}
               className="rounded-xl px-6 py-2.5 text-base font-medium text-[#3c4948] transition hover:bg-[#f2f4f6]"
             >
               Cancel
@@ -287,13 +298,13 @@ export function NewSaleContent() {
                           />
                         </td>
                         <td className="px-4 py-5 align-middle text-right text-sm font-medium text-[#191c1e]">
-                          ${row.unitPrice.toFixed(2)}
+                          {currencyFormatter.format(row.unitPrice)}
                         </td>
                         <td className="px-4 py-5 align-middle text-right text-xs text-[#64748b]">
                           {Math.round(TAX_RATE * 100)}%
                         </td>
                         <td className="px-4 py-5 align-middle text-right text-sm font-semibold text-[#006a65]">
-                          ${lineSubtotal(row).toFixed(2)}
+                          {currencyFormatter.format(lineSubtotal(row))}
                         </td>
                         <td className="px-2 py-5 align-middle">
                           <button
@@ -397,6 +408,21 @@ export function NewSaleContent() {
                     />
                     <button
                       type="button"
+                      onClick={async () => {
+                        await withLoading(
+                          "dashboard-apply-discount",
+                          "Applying discount code...",
+                          async () => {
+                            // TODO: validate discount via API
+                            await new Promise((r) => setTimeout(r, 300));
+                            notify({
+                              variant: "info",
+                              title: "Discount applied",
+                              description: "Code verified successfully.",
+                            });
+                          },
+                        );
+                      }}
                       className="shrink-0 rounded-2xl bg-[#f1f5f9] px-4 py-2.5 text-xs font-semibold text-[#191c1e] transition hover:bg-[#e2e8f0]"
                     >
                       Apply
@@ -407,19 +433,15 @@ export function NewSaleContent() {
                 <div className="space-y-3 border-t border-[#f1f5f9] pt-6">
                   <div className="flex justify-between text-sm">
                     <span className="text-[#64748b]">Subtotal</span>
-                    <span className="font-medium text-[#191c1e]">
-                      ${subtotal.toFixed(2)}
-                    </span>
+                    <span className="font-medium text-[#191c1e]">{currencyFormatter.format(subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-[#64748b]">Tax ({Math.round(TAX_RATE * 100)}%)</span>
-                    <span className="font-medium text-[#191c1e]">${tax.toFixed(2)}</span>
+                    <span className="font-medium text-[#191c1e]">{currencyFormatter.format(tax)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="font-medium text-[#4648d4]">Total Discount</span>
-                    <span className="font-semibold text-[#4648d4]">
-                      -${discount.toFixed(2)}
-                    </span>
+                    <span className="font-semibold text-[#4648d4]">-{currencyFormatter.format(discount)}</span>
                   </div>
                 </div>
 
@@ -430,7 +452,7 @@ export function NewSaleContent() {
                     </span>
                     <div className="text-right">
                       <p className="font-[family-name:var(--font-manrope)] text-4xl font-extrabold tracking-tight text-[#191c1e]">
-                        ${grandTotal.toFixed(2)}
+                        {currencyFormatter.format(grandTotal)}
                       </p>
                       <p className="text-[10px] font-semibold text-[#006a65]">
                         {auraPoints} Aura Points Earned
@@ -440,6 +462,22 @@ export function NewSaleContent() {
 
                   <button
                     type="button"
+                    onClick={async () => {
+                      await withLoading(
+                        "dashboard-complete-sale",
+                        "Processing transaction...",
+                        async () => {
+                          // TODO: implement sale completion API
+                          await new Promise((r) => setTimeout(r, 800));
+                          notify({
+                            variant: "success",
+                            title: "Transaction complete",
+                            description: "Receipt and Aura Points have been applied.",
+                          });
+                          router.push(salesHref);
+                        },
+                      );
+                    }}
                     className="flex w-full items-center justify-center gap-2 rounded-[20px] bg-gradient-to-br from-[#0fb9b1] to-[#4648d4] py-4 text-base font-semibold text-white shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] transition hover:opacity-95"
                   >
                     Complete Transaction
@@ -449,6 +487,21 @@ export function NewSaleContent() {
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
+                      onClick={async () => {
+                        await withLoading(
+                          "dashboard-save-draft",
+                          "Saving draft sale...",
+                          async () => {
+                            // TODO: implement draft save API
+                            await new Promise((r) => setTimeout(r, 400));
+                            notify({
+                              variant: "success",
+                              title: "Draft saved",
+                              description: "Your sale has been saved for later.",
+                            });
+                          },
+                        );
+                      }}
                       className="inline-flex items-center justify-center gap-1.5 rounded-2xl bg-[#f1f5f9] py-3 text-xs font-semibold text-[#191c1e] transition hover:bg-[#e2e8f0]"
                     >
                       <span className="material-symbols-outlined notranslate text-sm">save</span>

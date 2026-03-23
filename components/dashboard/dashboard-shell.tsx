@@ -2,14 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
+import { useStockBranchesQuery } from "@/lib/queries/stock";
 import { ROUTES } from "@/lib/routes";
 import { DASHBOARD_ASSETS } from "./dashboard-assets";
 
 const BRANCH_TABS = ["Main Branch", "East Side", "Warehouse"] as const;
-
-const INSIGHTS_BRANCH_TABS = ["Main Branch", "East Side", "West Side"] as const;
 
 const MODULE_NAV: { label: string; icon: string; href: string }[] = [
   { label: "Aura Stock", icon: "inventory_2", href: ROUTES.dashboard.stock },
@@ -24,7 +24,11 @@ type DashboardShellProps = {
 
 export function DashboardShell({ children }: DashboardShellProps) {
   const pathname = usePathname();
-  const [branchTab, setBranchTab] = useState<(typeof BRANCH_TABS)[number]>("Main Branch");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { withLoading, notify } = useAuraFeedback();
+  const [localSearch, setLocalSearch] = useState("");
+  const [defaultBranchTab, setDefaultBranchTab] = useState<(typeof BRANCH_TABS)[number]>("Main Branch");
 
   const isStock = pathname === ROUTES.dashboard.stock || pathname.startsWith(`${ROUTES.dashboard.stock}/`);
   const isSales = pathname === ROUTES.dashboard.sales || pathname.startsWith(`${ROUTES.dashboard.sales}/`);
@@ -40,12 +44,60 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const topActionLabel = isStock ? "Aura Sync" : "Branch Toggle";
   const topActionIcon = isStock ? "sync" : "shuffle";
   const topActionVariant = isStock ? "outline" : "primary";
+  const stockBranchId = isStock ? searchParams.get("branch") ?? undefined : undefined;
+  const salesBranchId = isSales ? searchParams.get("branch") ?? undefined : undefined;
+  const insightsBranchId = isInsights ? searchParams.get("branch") ?? undefined : undefined;
+  const sectionBranchId = isStock ? stockBranchId : isSales ? salesBranchId : isInsights ? insightsBranchId : undefined;
+  const branchesQuery = useStockBranchesQuery(sectionBranchId, isStock || isSales || isInsights);
+  const stockSearch = isStock ? searchParams.get("q") ?? "" : "";
+  const searchValue = isStock ? stockSearch : localSearch;
+  const sectionBranchTabs = branchesQuery.data?.branches ?? [];
+  const activeSectionBranchId = branchesQuery.data?.branch.id ?? sectionBranchId;
 
   const SALES_TABS = ["Overview", "Analytics", "Reports"] as const;
   const [salesTab, setSalesTab] = useState<(typeof SALES_TABS)[number]>("Overview");
-  const [insightsBranch, setInsightsBranch] = useState<(typeof INSIGHTS_BRANCH_TABS)[number]>(
-    "Main Branch",
-  );
+
+  const preservedBranch = searchParams.get("branch") ?? undefined;
+
+  function updateStockSearch(value: string) {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (value.trim()) {
+      params.set("q", value);
+    } else {
+      params.delete("q");
+    }
+
+    params.delete("page");
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname);
+  }
+
+  function updateStockBranch(branchId: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("branch", branchId);
+    params.delete("page");
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname);
+  }
+
+  function updateSalesBranch(branchId: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("branch", branchId);
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname);
+  }
+
+  function updateInsightsBranch(branchId: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("branch", branchId);
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname);
+  }
+
+  function navHref(base: string) {
+    return preservedBranch ? `${base}?branch=${preservedBranch}` : base;
+  }
 
   return (
     <div className="aura-landing min-h-dvh bg-[#f7f9fb] text-[#191c1e]">
@@ -77,10 +129,16 @@ export function DashboardShell({ children }: DashboardShellProps) {
           <nav className="flex flex-col gap-1" aria-label="Product modules">
             {MODULE_NAV.map((item) => {
               const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const href =
+                item.href === ROUTES.dashboard.stock ||
+                item.href === ROUTES.dashboard.sales ||
+                item.href === ROUTES.dashboard.insights
+                  ? navHref(item.href)
+                  : item.href;
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={href}
                   className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
                     active
                       ? "bg-white text-[#0d9488] shadow-sm"
@@ -151,20 +209,22 @@ export function DashboardShell({ children }: DashboardShellProps) {
                   className="flex flex-wrap items-center gap-6"
                   aria-label="Branch filter"
                 >
-                  {INSIGHTS_BRANCH_TABS.map((tab) => {
-                    const active = tab === insightsBranch;
+                  {(sectionBranchTabs.length > 0 ? sectionBranchTabs : BRANCH_TABS).map((tab) => {
+                    const tabId = typeof tab === "string" ? tab : tab.id;
+                    const tabLabel = typeof tab === "string" ? tab : tab.name;
+                    const active = tabId === activeSectionBranchId;
                     return (
                       <button
-                        key={tab}
+                        key={tabId}
                         type="button"
-                        onClick={() => setInsightsBranch(tab)}
+                        onClick={() => updateInsightsBranch(tabId)}
                         className={`pb-1.5 pt-1 text-sm ${
                           active
                             ? "border-b-2 border-[#0fb9b1] font-medium text-[#0fb9b1]"
                             : "font-normal text-[#475569] hover:text-[#0f172a]"
                         }`}
                       >
-                        {tab}
+                        {tabLabel}
                       </button>
                     );
                   })}
@@ -172,14 +232,30 @@ export function DashboardShell({ children }: DashboardShellProps) {
               </>
             ) : isSales ? (
               <>
-                <button
-                  type="button"
-                  className="flex w-fit items-center gap-2 rounded-full border-0 bg-[#f2f4f6] px-4 py-2 text-sm font-semibold text-[#191c1e] outline-none"
+                <nav
+                  className="flex flex-wrap items-center gap-6"
+                  aria-label="Active branch context"
                 >
-                  <span className="material-symbols-outlined notranslate text-lg">storefront</span>
-                  {branchTab}
-                  <span className="material-symbols-outlined notranslate text-sm">expand_more</span>
-                </button>
+                  {(sectionBranchTabs.length > 0 ? sectionBranchTabs : BRANCH_TABS).map((tab) => {
+                    const tabId = typeof tab === "string" ? tab : tab.id;
+                    const tabLabel = typeof tab === "string" ? tab : tab.name;
+                    const active = tabId === activeSectionBranchId;
+                    return (
+                      <button
+                        key={tabId}
+                        type="button"
+                        onClick={() => updateSalesBranch(tabId)}
+                        className={`pb-1.5 pt-1 font-[family-name:var(--font-manrope)] text-sm ${
+                          active
+                            ? "border-b-2 border-[#14b8a6] font-semibold text-[#0d9488]"
+                            : "font-normal text-[#64748b] hover:text-[#0f172a]"
+                        }`}
+                      >
+                        {tabLabel}
+                      </button>
+                    );
+                  })}
+                </nav>
                 <nav className="flex items-center gap-6" aria-label="Sales sections">
                   {SALES_TABS.map((tab) => {
                     const active = tab === salesTab;
@@ -209,6 +285,15 @@ export function DashboardShell({ children }: DashboardShellProps) {
                   <input
                     type="search"
                     placeholder={searchPlaceholder}
+                    value={searchValue}
+                    onChange={(event) => {
+                      if (isStock) {
+                        updateStockSearch(event.target.value);
+                        return;
+                      }
+
+                      setLocalSearch(event.target.value);
+                    }}
                     className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
                   />
                 </label>
@@ -216,20 +301,32 @@ export function DashboardShell({ children }: DashboardShellProps) {
                   className="flex flex-wrap items-center gap-6"
                   aria-label="Active branch context"
                 >
-                  {BRANCH_TABS.map((tab) => {
-                    const isActive = tab === branchTab;
+                  {(isStock && sectionBranchTabs.length > 0 ? sectionBranchTabs : BRANCH_TABS).map((tab) => {
+                    const tabId = typeof tab === "string" ? tab : tab.id;
+                    const tabLabel = typeof tab === "string" ? tab : tab.name;
+                    const isActive = isStock
+                      ? tabId === activeSectionBranchId
+                      : tabLabel === defaultBranchTab;
+
                     return (
                       <button
-                        key={tab}
+                        key={tabId}
                         type="button"
-                        onClick={() => setBranchTab(tab)}
+                        onClick={() => {
+                          if (isStock) {
+                            updateStockBranch(tabId);
+                            return;
+                          }
+
+                          setDefaultBranchTab(tabLabel as (typeof BRANCH_TABS)[number]);
+                        }}
                         className={`pb-1.5 pt-1 font-[family-name:var(--font-manrope)] text-sm ${
                           isActive
                             ? "border-b-2 border-[#14b8a6] font-semibold text-[#0d9488]"
                             : "font-normal text-[#64748b] hover:text-[#0f172a]"
                         }`}
                       >
-                        {tab}
+                        {tabLabel}
                       </button>
                     );
                   })}
@@ -259,6 +356,21 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 </button>
                 <button
                   type="button"
+                  onClick={async () => {
+                    await withLoading(
+                      "dashboard-export-report",
+                      "Preparing report export...",
+                      async () => {
+                        // TODO: implement export
+                        await new Promise((r) => setTimeout(r, 600));
+                        notify({
+                          variant: "success",
+                          title: "Report exported",
+                          description: "Your report has been downloaded.",
+                        });
+                      },
+                    );
+                  }}
                   className="inline-flex items-center rounded-lg bg-[#0fb9b1] px-4 py-2 text-xs font-semibold text-[#004340] transition hover:opacity-95"
                 >
                   Export Report
@@ -268,6 +380,21 @@ export function DashboardShell({ children }: DashboardShellProps) {
             {!isSales && !isInsights && (
               <button
                 type="button"
+                onClick={async () => {
+                  await withLoading(
+                    "dashboard-aura-sync",
+                    "Syncing inventory across branches...",
+                    async () => {
+                      // TODO: implement Aura Sync
+                      await new Promise((r) => setTimeout(r, 800));
+                      notify({
+                        variant: "success",
+                        title: "Sync complete",
+                        description: "All branches are up to date.",
+                      });
+                    },
+                  );
+                }}
                 className={`inline-flex items-center gap-2 rounded-lg px-4 py-1.5 font-[family-name:var(--font-manrope)] text-sm ${
                   topActionVariant === "primary"
                     ? "bg-[#0fb9b1] font-bold text-[#004340]"

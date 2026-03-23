@@ -206,7 +206,7 @@ export const payments = pgTable(
     status: paymentStatusEnum("status").notNull().default("pending"),
     reference: varchar("reference", { length: 128 }),
     amountCents: integer("amount_cents").notNull(),
-    currency: varchar("currency", { length: 3 }).notNull().default("USD"),
+    currency: varchar("currency", { length: 3 }).notNull().default("ZMW"),
     paidAt: timestamp("paid_at", { withTimezone: true }),
     metadata: jsonb("metadata"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

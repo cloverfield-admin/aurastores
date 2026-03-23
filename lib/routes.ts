@@ -8,6 +8,7 @@ export const ROUTES = {
     main: "/dashboard",
     stock: "/dashboard/stock",
     stockAdd: "/dashboard/stock/add",
+    stockExpiring: "/dashboard/stock/expiring",
     sales: "/dashboard/sales",
     salesAdd: "/dashboard/sales/add",
     insights: "/dashboard/insights",

@@ -2,41 +2,71 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
+import {
+  useCreateStockBatchMutation,
+  useStockCatalogQuery,
+} from "@/lib/queries/stock";
 import { ROUTES } from "@/lib/routes";
-
-const SUPPLIERS = [
-  "MedSupply Global",
-  "PharmaLink Distribution",
-  "Regional Health Co-op",
-  "Aura Direct Fulfillment",
-];
 
 const fieldLabel =
   "mb-2 block text-xs font-normal uppercase tracking-[0.1em] text-[#6c7a78]";
 const inputClass =
   "w-full rounded-lg border-0 bg-[#f2f4f6] px-4 py-4 text-base text-[#191c1e] outline-none placeholder:text-[#6c7a78]/60 focus:ring-2 focus:ring-[#006a65]/20";
 
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "ZMW",
+  minimumFractionDigits: 2,
+});
+
+function formatRelativeEntry(isoString: string) {
+  const diffMinutes = Math.round((Date.now() - new Date(isoString).getTime()) / 60_000);
+
+  if (diffMinutes < 60) {
+    return `${Math.max(1, diffMinutes)}m ago`;
+  }
+
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) {
+    return `${diffHours}h ago`;
+  }
+
+  return `${Math.round(diffHours / 24)}d ago`;
+}
+
 export function AddNewBatchContent() {
   const router = useRouter();
-  const [medication, setMedication] = useState("");
+  const searchParams = useSearchParams();
+  const { withLoading, notify } = useAuraFeedback();
+  const branchId = searchParams.get("branch") ?? undefined;
+  const stockCatalogQuery = useStockCatalogQuery({ branchId });
+  const createBatchMutation = useCreateStockBatchMutation();
+  const [productName, setProductName] = useState("");
   const [batchNumber, setBatchNumber] = useState("B-2024-XP9");
+  const [category, setCategory] = useState("");
   const [expiry, setExpiry] = useState("");
   const [quantity, setQuantity] = useState("");
   const [unitPrice, setUnitPrice] = useState("");
   const [supplier, setSupplier] = useState("");
+  const [purchaseOrderNumber, setPurchaseOrderNumber] = useState("");
+  const [notes, setNotes] = useState("");
 
   const q = Number.parseFloat(quantity) || 0;
   const p = Number.parseFloat(unitPrice) || 0;
   const totalValue = q * p;
 
   const completion = useMemo(() => {
-    const fields = [medication, batchNumber, expiry, quantity, unitPrice, supplier];
+    const fields = [productName, batchNumber, expiry, quantity, unitPrice];
     const filled = fields.filter((f) => String(f).trim().length > 0).length;
     return Math.round((filled / fields.length) * 100);
-  }, [medication, batchNumber, expiry, quantity, unitPrice, supplier]);
+  }, [productName, batchNumber, expiry, quantity, unitPrice]);
 
-  const previewMedication = medication.trim() || "Amoxicillin 500mg Capsules";
+  const previewMedication = productName.trim() || "Amoxicillin 500mg Capsules";
+  const recentEntries = stockCatalogQuery.data?.recentEntries ?? [];
+  const isSaveDisabled =
+    !productName.trim() || !batchNumber.trim() || !expiry || q <= 0 || p <= 0;
 
   return (
     <div className="px-4 pb-16 pt-2 sm:px-6 lg:px-8">
@@ -46,7 +76,11 @@ export function AddNewBatchContent() {
           <div className="space-y-2">
             <nav className="flex items-center gap-2" aria-label="Breadcrumb">
               <Link
-                href={ROUTES.dashboard.stock}
+                href={
+                  branchId
+                    ? `${ROUTES.dashboard.stock}?branch=${encodeURIComponent(branchId)}`
+                    : ROUTES.dashboard.stock
+                }
                 className="text-xs font-normal uppercase tracking-[0.1em] text-[#6c7a78] hover:text-[#006a65]"
               >
                 Aura Stock
@@ -65,13 +99,67 @@ export function AddNewBatchContent() {
           <div className="flex flex-wrap items-center gap-4">
             <button
               type="button"
-              onClick={() => router.push(ROUTES.dashboard.stock)}
+              onClick={() =>
+                router.push(
+                  branchId
+                    ? `${ROUTES.dashboard.stock}?branch=${encodeURIComponent(branchId)}`
+                    : ROUTES.dashboard.stock,
+                )
+              }
               className="rounded-xl px-6 py-2.5 text-base font-medium text-[#3c4948] transition hover:bg-[#f2f4f6]"
             >
               Cancel
             </button>
             <button
               type="button"
+              onClick={async () => {
+                if (isSaveDisabled) {
+                  notify({
+                    variant: "error",
+                    title: "Complete the required fields",
+                    description: "Add the product, batch, expiry date, quantity, and purchase price.",
+                  });
+                  return;
+                }
+
+                try {
+                  await withLoading(
+                    "dashboard-add-batch",
+                    "Saving batch to inventory...",
+                    async () => {
+                      const result = await createBatchMutation.mutateAsync({
+                        branchId,
+                        productName: productName.trim(),
+                        batchNumber: batchNumber.trim(),
+                        categoryName: category.trim() || undefined,
+                        expiresAt: expiry,
+                        quantityReceived: q,
+                        unitCost: p,
+                        supplierName: supplier.trim() || undefined,
+                        purchaseOrderNumber: purchaseOrderNumber.trim() || undefined,
+                        notes: notes.trim() || undefined,
+                      });
+
+                      notify({
+                        variant: "success",
+                        title: "Batch saved",
+                        description: `${result.productName} (${result.batchNumber}) was added to inventory.`,
+                      });
+                      router.push(
+                        branchId
+                          ? `${ROUTES.dashboard.stock}?branch=${encodeURIComponent(branchId)}`
+                          : ROUTES.dashboard.stock,
+                      );
+                    },
+                  );
+                } catch (err) {
+                  notify({
+                    variant: "error",
+                    title: "Failed to save batch",
+                    description: err instanceof Error ? err.message : "Please try again.",
+                  });
+                }
+              }}
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-8 py-2.5 text-base font-semibold text-white shadow-[0_10px_15px_-3px_rgba(0,106,101,0.2),0_4px_6px_-4px_rgba(0,106,101,0.2)] transition hover:opacity-95"
             >
               Review &amp; Save
@@ -105,12 +193,18 @@ export function AddNewBatchContent() {
                     <input
                       id="medication"
                       type="text"
-                      value={medication}
-                      onChange={(e) => setMedication(e.target.value)}
+                      list="stock-product-suggestions"
+                      value={productName}
+                      onChange={(e) => setProductName(e.target.value)}
                       placeholder="e.g. Amoxicillin 500mg Capsules"
                       className={`${inputClass} pr-36`}
                       autoComplete="off"
                     />
+                    <datalist id="stock-product-suggestions">
+                      {stockCatalogQuery.data?.products.map((product) => (
+                        <option key={product.id} value={product.name} />
+                      ))}
+                    </datalist>
                     <button
                       type="button"
                       className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1.5 rounded-md bg-[rgba(15,185,177,0.2)] px-3 py-1 text-xs font-semibold text-[#004340] transition hover:bg-[rgba(15,185,177,0.3)]"
@@ -121,6 +215,10 @@ export function AddNewBatchContent() {
                       Scan Barcode
                     </button>
                   </div>
+                  <p className="mt-2 text-[11px] text-[#6c7a78]">
+                    Existing products appear as suggestions. New names create a product record
+                    automatically for your branch.
+                  </p>
                 </div>
 
                 <div className="grid gap-6 sm:grid-cols-2">
@@ -144,10 +242,9 @@ export function AddNewBatchContent() {
                     <div className="relative">
                       <input
                         id="expiry"
-                        type="text"
+                        type="date"
                         value={expiry}
                         onChange={(e) => setExpiry(e.target.value)}
-                        placeholder="MM/DD/YYYY"
                         className={inputClass}
                         autoComplete="off"
                       />
@@ -156,6 +253,20 @@ export function AddNewBatchContent() {
                       </span>
                     </div>
                   </div>
+                </div>
+
+                <div>
+                  <label className={fieldLabel} htmlFor="category">
+                    Category
+                  </label>
+                  <input
+                    id="category"
+                    type="text"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    placeholder="e.g. Antibiotics"
+                    className={inputClass}
+                  />
                 </div>
               </div>
             </section>
@@ -194,8 +305,8 @@ export function AddNewBatchContent() {
                       Purchase Price (Per Unit)
                     </label>
                     <div className="relative">
-                      <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#6c7a78]">
-                        $
+                      <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-[#6c7a78]">
+                        ZMW
                       </span>
                       <input
                         id="unitPrice"
@@ -205,7 +316,7 @@ export function AddNewBatchContent() {
                         value={unitPrice}
                         onChange={(e) => setUnitPrice(e.target.value)}
                         placeholder="0.00"
-                        className={`${inputClass} pl-8`}
+                        className={`${inputClass} pl-14`}
                       />
                     </div>
                   </div>
@@ -216,23 +327,65 @@ export function AddNewBatchContent() {
                     Supplier
                   </label>
                   <div className="relative">
-                    <select
+                    <input
                       id="supplier"
+                      list="stock-supplier-suggestions"
                       value={supplier}
                       onChange={(e) => setSupplier(e.target.value)}
-                      className={`${inputClass} appearance-none pr-10 ${supplier ? "text-[#191c1e]" : "text-[#6b7280]"}`}
-                    >
-                      <option value="">Search or select supplier</option>
-                      {SUPPLIERS.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
+                      className={`${inputClass} pr-10 ${supplier ? "text-[#191c1e]" : "text-[#6b7280]"}`}
+                      placeholder="Search or enter supplier"
+                    />
+                    <datalist id="stock-supplier-suggestions">
+                      {stockCatalogQuery.data?.suppliers.map((s) => (
+                        <option key={s.id} value={s.name} />
                       ))}
-                    </select>
+                    </datalist>
                     <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#64748b]">
                       expand_more
                     </span>
                   </div>
+                </div>
+
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <div>
+                    <label className={fieldLabel} htmlFor="purchaseOrderNumber">
+                      Purchase Order
+                    </label>
+                    <input
+                      id="purchaseOrderNumber"
+                      type="text"
+                      value={purchaseOrderNumber}
+                      onChange={(e) => setPurchaseOrderNumber(e.target.value)}
+                      placeholder="Optional PO number"
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className={fieldLabel} htmlFor="branchContext">
+                      Branch Context
+                    </label>
+                    <input
+                      id="branchContext"
+                      type="text"
+                      value={stockCatalogQuery.data?.branch.name ?? "Loading branch..."}
+                      readOnly
+                      className={`${inputClass} cursor-not-allowed text-[#6c7a78]`}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className={fieldLabel} htmlFor="notes">
+                    Notes
+                  </label>
+                  <textarea
+                    id="notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={4}
+                    placeholder="Optional receiving notes"
+                    className={`${inputClass} resize-none`}
+                  />
                 </div>
               </div>
             </section>
@@ -256,8 +409,8 @@ export function AddNewBatchContent() {
                   </h3>
                 </div>
                 <p className="text-sm leading-relaxed text-[#4ddbd2]">
-                  Use the barcode scanner to automatically fetch medication details from the Aura
-                  Pharma Global Database. This reduces data entry errors by 98%.
+                  Use suggested product and supplier names to keep inventory records normalized.
+                  New values are safely created only when they do not already exist.
                 </p>
               </div>
             </div>
@@ -280,6 +433,9 @@ export function AddNewBatchContent() {
                 <p className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#191c1e]">
                   {previewMedication}
                 </p>
+                {category.trim() ? (
+                  <p className="text-xs text-[#6c7a78]">Category: {category.trim()}</p>
+                ) : null}
               </div>
 
               <div className="mt-6 grid grid-cols-2 gap-4">
@@ -288,9 +444,7 @@ export function AddNewBatchContent() {
                     Total Value
                   </p>
                   <p className="mt-1 font-[family-name:var(--font-manrope)] text-xl font-extrabold tracking-tight text-[#006a65]">
-                    {totalValue > 0
-                      ? `$${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                      : "$2,450.00"}
+                    {totalValue > 0 ? currencyFormatter.format(totalValue) : currencyFormatter.format(2450)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-[rgba(187,201,199,0.1)] bg-white/50 p-3 shadow-sm">
@@ -322,7 +476,7 @@ export function AddNewBatchContent() {
                   />
                 </div>
                 <p className="pt-1 text-center text-[10px] text-[#6c7a78]">
-                  Complete logistics details to finalize entry
+                  Complete the core batch details to finalize entry
                 </p>
               </div>
             </div>
@@ -337,29 +491,36 @@ export function AddNewBatchContent() {
                   className="absolute bottom-2 left-[7px] top-2 w-0.5 rounded-full bg-gradient-to-b from-[#006a65] via-[#4648d4] to-[#cbd5e1] opacity-40"
                   aria-hidden
                 />
-                <ul className="space-y-8">
-                  <RecentEntry
-                    title="Lisinopril 10mg"
-                    meta="Added 500 units • 2h ago"
-                    batch="Batch #LH-902"
-                    batchClass="bg-[rgba(0,106,101,0.05)] text-[#191c1e]"
-                    dotClass="bg-[#006a65]"
-                  />
-                  <RecentEntry
-                    title="Metformin HCl"
-                    meta="Added 1,200 units • 5h ago"
-                    batch="Batch #MF-441"
-                    batchClass="bg-[rgba(70,72,212,0.05)] text-[#2f2ebe]"
-                    dotClass="bg-[#4648d4]"
-                  />
-                  <RecentEntry
-                    title="Atorvastatin"
-                    meta="Added 250 units • Yesterday"
-                    batch="Batch #AT-221"
-                    batchClass="bg-[#e0e3e5] text-[#6c7a78]"
-                    dotClass="bg-[#bbc9c7]"
-                  />
-                </ul>
+                {recentEntries.length > 0 ? (
+                  <ul className="space-y-8">
+                    {recentEntries.map((entry, index) => (
+                      <RecentEntry
+                        key={entry.id}
+                        title={entry.productName}
+                        meta={`Added ${entry.quantityReceived.toLocaleString()} units • ${formatRelativeEntry(entry.createdAt)}`}
+                        batch={`Batch #${entry.batchNumber}`}
+                        batchClass={
+                          index === 0
+                            ? "bg-[rgba(0,106,101,0.05)] text-[#191c1e]"
+                            : index === 1
+                              ? "bg-[rgba(70,72,212,0.05)] text-[#2f2ebe]"
+                              : "bg-[#e0e3e5] text-[#6c7a78]"
+                        }
+                        dotClass={
+                          index === 0
+                            ? "bg-[#006a65]"
+                            : index === 1
+                              ? "bg-[#4648d4]"
+                              : "bg-[#bbc9c7]"
+                        }
+                      />
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-[#6c7a78]">
+                    Recent batch entries will appear here once inventory starts moving.
+                  </p>
+                )}
               </div>
             </div>
           </div>

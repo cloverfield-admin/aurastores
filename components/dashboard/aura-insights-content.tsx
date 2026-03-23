@@ -62,7 +62,7 @@ const TOP_MEDS = [
     nameLines: null as string[] | null,
     category: "Cardiovascular",
     volume: "12,450",
-    value: "$45,210.00",
+    value: "ZMW 45,210.00",
     icon: "pill" as const,
   },
   {
@@ -70,7 +70,7 @@ const TOP_MEDS = [
     nameLines: ["500mg"],
     category: "Anti-diabetic",
     volume: "10,120",
-    value: "$18,450.00",
+    value: "ZMW 18,450.00",
     icon: "pill" as const,
   },
   {
@@ -78,7 +78,7 @@ const TOP_MEDS = [
     nameLines: ["Quadrivalent"],
     category: "Immunization",
     volume: "8,500",
-    value: "$84,000.00",
+    value: "ZMW 84,000.00",
     icon: "vaccines" as const,
   },
 ] as const;
@@ -254,7 +254,7 @@ export function AuraInsightsContent() {
                   <div>
                     <div className="mb-1 flex items-end justify-between">
                       <span className="text-base text-[#6c7a78]">NET REVENUE</span>
-                      <span className="text-lg font-semibold text-[#191c1e]">$1.24M</span>
+                      <span className="text-lg font-semibold text-[#191c1e]">ZMW 1.24M</span>
                     </div>
                     <div className="h-1.5 overflow-hidden rounded-full bg-[#eceef0]">
                       <div className="h-full w-[78%] rounded-full bg-[#0fb9b1]" />
@@ -314,7 +314,7 @@ export function AuraInsightsContent() {
                       <th className="px-6 py-4 text-right text-base font-semibold uppercase tracking-[0.1em] text-[#6c7a78]">
                         Value
                         <span className="block font-normal normal-case tracking-normal text-[#94a3b8]">
-                          ($)
+                          (ZMW)
                         </span>
                       </th>
                     </tr>

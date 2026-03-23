@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { ROUTES } from "@/lib/routes";
 
 const SALES_KPIS = [
   {
     label: "Total Revenue",
-    value: "$142,850.40",
-    sub: "Vs. $127,100 last month",
+    value: "ZMW 142,850.40",
+    sub: "Vs. ZMW 127,100 last month",
     badge: "+12.4%",
     badgeClass: "bg-[#f0fdfa] text-[#0d9488]",
     icon: "payments",
@@ -48,26 +49,29 @@ const CHART_DAYS = [
 ];
 
 const TOP_DRUGS = [
-  { name: "Lipitor", amount: "$24,150", pct: 17 },
-  { name: "Humira", amount: "$18,900", pct: 13 },
-  { name: "Eliquis", amount: "$16,200", pct: 11 },
-  { name: "Synthroid", amount: "$14,850", pct: 10 },
+  { name: "Lipitor", amount: "ZMW 24,150", pct: 17 },
+  { name: "Humira", amount: "ZMW 18,900", pct: 13 },
+  { name: "Eliquis", amount: "ZMW 16,200", pct: 11 },
+  { name: "Synthroid", amount: "ZMW 14,850", pct: 10 },
 ] as const;
 
 const RECENT_TXS = [
-  { drug: "Amoxicillin", date: "2 hours ago", case: "CASE-99231", price: "$28.50" },
-  { drug: "Lisinopril", date: "3 hours ago", case: "CASE-44102", price: "$14.20" },
-  { drug: "Atorvastatin", date: "4 hours ago", case: "CASE-77290", price: "$22.00" },
+  { drug: "Amoxicillin", date: "2 hours ago", case: "CASE-99231", price: "ZMW 28.50" },
+  { drug: "Lisinopril", date: "3 hours ago", case: "CASE-44102", price: "ZMW 14.20" },
+  { drug: "Atorvastatin", date: "4 hours ago", case: "CASE-77290", price: "ZMW 22.00" },
 ] as const;
 
 const BRANCH_DIST = [
-  { name: "Main Branch", amount: "$59.9k", pct: 42, color: "#14b8a6" },
-  { name: "East Side", amount: "$54.3k", pct: 38, color: "#3b82f6" },
-  { name: "Warehouse", amount: "$28.6k", pct: 20, color: "#f59e0b" },
+  { name: "Main Branch", amount: "ZMW 59.9k", pct: 42, color: "#14b8a6" },
+  { name: "East Side", amount: "ZMW 54.3k", pct: 38, color: "#3b82f6" },
+  { name: "Warehouse", amount: "ZMW 28.6k", pct: 20, color: "#f59e0b" },
 ] as const;
 
 export function SalesPerformanceContent() {
+  const searchParams = useSearchParams();
   const [chartMode, setChartMode] = useState<"revenue" | "volume">("revenue");
+  const branch = searchParams.get("branch") ?? undefined;
+  const addSaleHref = branch ? `${ROUTES.dashboard.salesAdd}?branch=${branch}` : ROUTES.dashboard.salesAdd;
 
   return (
     <div className="relative px-4 pb-24 sm:px-6 lg:px-8">
@@ -84,7 +88,7 @@ export function SalesPerformanceContent() {
           </div>
           <div className="flex flex-wrap gap-3">
             <Link
-              href={ROUTES.dashboard.salesAdd}
+              href={addSaleHref}
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-5 py-2.5 text-base font-semibold text-white shadow-sm transition hover:opacity-95"
             >
               <span className="material-symbols-outlined notranslate text-lg">add_shopping_cart</span>

@@ -1,9 +1,14 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { ROUTES } from "@/lib/routes";
 import { DASHBOARD_ASSETS } from "./dashboard-assets";
 
 export function NetworkOverviewContent() {
+  const { withLoading, notify } = useAuraFeedback();
+
   return (
     <div className="px-4 pb-16 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1280px] space-y-10">
@@ -43,7 +48,7 @@ export function NetworkOverviewContent() {
               Network Revenue
             </p>
             <p className="mt-1 font-[family-name:var(--font-manrope)] text-3xl font-bold text-[#191c1e]">
-              $142,850.40
+              ZMW 142,850.40
             </p>
             <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#e6e8ea]">
               <div
@@ -124,6 +129,8 @@ export function NetworkOverviewContent() {
             name="Main Branch"
             mapSrc={DASHBOARD_ASSETS.mapMain}
             status="online"
+            onManageLogistics={withLoading}
+            notify={notify}
             rows={[
               { label: "Daily Rx Volume", value: "412 Units" },
               { label: "Current Lead Pharmacist", valueLines: ["Dr. Sarah", "Chen"] },
@@ -134,6 +141,8 @@ export function NetworkOverviewContent() {
             name="East Side"
             mapSrc={DASHBOARD_ASSETS.mapEast}
             status="online"
+            onManageLogistics={withLoading}
+            notify={notify}
             rows={[
               { label: "Daily Rx Volume", value: "285 Units" },
               { label: "Current Lead Pharmacist", valueLines: ["Dr. James", "Miller"] },
@@ -144,6 +153,8 @@ export function NetworkOverviewContent() {
             name="Warehouse"
             mapSrc={DASHBOARD_ASSETS.mapWarehouse}
             status="offline"
+            onManageLogistics={withLoading}
+            notify={notify}
             rows={[
               { labelLines: ["Inventory", "Throughput"], valueLines: ["1,200", "Units"] },
               { label: "Floor Supervisor", value: "Marcus Reid" },
@@ -243,11 +254,19 @@ function BranchLocationCard({
   name,
   mapSrc,
   status,
+  onManageLogistics,
+  notify,
   rows,
 }: {
   name: string;
   mapSrc: string;
   status: "online" | "offline";
+  onManageLogistics: (key: string, message: string, task: () => Promise<unknown>) => Promise<unknown>;
+  notify: (input: {
+    variant?: "success" | "error" | "info" | "warning";
+    title: string;
+    description?: string;
+  }) => void;
   rows: BranchRow[];
 }) {
   const online = status === "online";
@@ -331,6 +350,21 @@ function BranchLocationCard({
         </dl>
         <button
           type="button"
+          onClick={async () => {
+            await onManageLogistics(
+              `dashboard-manage-logistics-${name.toLowerCase().replace(/\s/g, "-")}`,
+              `Loading logistics for ${name}...`,
+              async () => {
+                // TODO: implement logistics management
+                await new Promise((r) => setTimeout(r, 500));
+                notify({
+                  variant: "info",
+                  title: "Manage Logistics",
+                  description: `Logistics view for ${name} coming soon.`,
+                });
+              },
+            );
+          }}
           className="mt-auto w-full rounded-lg bg-[#f2f4f6] py-2 text-center text-base font-semibold text-[#006a65] transition hover:bg-[#e8eaed]"
         >
           Manage Logistics
