@@ -6,6 +6,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/api/client";
+import { apiUrl } from "@/lib/api/version";
 import type { OnboardingDraft } from "@/components/onboarding/types";
 
 export const onboardingQueryKey = ["onboarding"] as const;
@@ -35,7 +36,7 @@ type CompleteOnboardingResponse = {
 export function useOnboardingQuery() {
   return useQuery({
     queryKey: onboardingQueryKey,
-    queryFn: () => fetchJson<OnboardingDraft>("/api/onboarding", { method: "GET" }),
+    queryFn: () => fetchJson<OnboardingDraft>(apiUrl("/onboarding"), { method: "GET" }),
   });
 }
 
@@ -54,7 +55,7 @@ export function useRefreshOnboarding() {
     await queryClient.invalidateQueries({ queryKey: onboardingQueryKey });
     return queryClient.ensureQueryData({
       queryKey: onboardingQueryKey,
-      queryFn: () => fetchJson<OnboardingDraft>("/api/onboarding", { method: "GET" }),
+      queryFn: () => fetchJson<OnboardingDraft>(apiUrl("/onboarding"), { method: "GET" }),
     });
   };
 }
@@ -64,7 +65,7 @@ export function useSaveIdentityMutation() {
 
   return useMutation({
     mutationFn: (payload: IdentityPayload) =>
-      fetchJson<OnboardingDraft>("/api/onboarding/identity", {
+      fetchJson<OnboardingDraft>(apiUrl("/onboarding/identity"), {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -82,7 +83,7 @@ export function useSavePharmacyDetailsMutation() {
 
   return useMutation({
     mutationFn: (payload: PharmacyDetailsPayload) =>
-      fetchJson<OnboardingDraft>("/api/onboarding/pharmacy-details", {
+      fetchJson<OnboardingDraft>(apiUrl("/onboarding/pharmacy-details"), {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -100,7 +101,7 @@ export function useUploadLicenseMutation() {
 
   return useMutation({
     mutationFn: (formData: FormData) =>
-      fetchJson<OnboardingDraft>("/api/onboarding/license", {
+      fetchJson<OnboardingDraft>(apiUrl("/onboarding/license"), {
         method: "POST",
         body: formData,
       }),
@@ -115,7 +116,7 @@ export function useCompleteOnboardingMutation() {
 
   return useMutation({
     mutationFn: () =>
-      fetchJson<CompleteOnboardingResponse>("/api/onboarding/complete", {
+      fetchJson<CompleteOnboardingResponse>(apiUrl("/onboarding/complete"), {
         method: "POST",
       }),
     onSuccess: (payload) => {

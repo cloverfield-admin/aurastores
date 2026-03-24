@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/api/client";
+import { apiUrl } from "@/lib/api/version";
 
 export const stockDashboardQueryKey = ["stock", "dashboard"] as const;
 export const stockCatalogQueryKey = ["stock", "catalog"] as const;
@@ -181,7 +182,7 @@ export function useStockDashboardQuery({
     queryKey: [...stockDashboardQueryKey, { branchId, search, view, page, pageSize }],
     queryFn: () =>
       fetchJson<StockDashboardResponse>(
-        `/api/stock?branch=${encodeURIComponent(branchId ?? "")}&search=${encodeURIComponent(search)}&view=${encodeURIComponent(view)}&page=${page}&pageSize=${pageSize}`,
+        `${apiUrl("/stock")}?branch=${encodeURIComponent(branchId ?? "")}&search=${encodeURIComponent(search)}&view=${encodeURIComponent(view)}&page=${page}&pageSize=${pageSize}`,
         { method: "GET" },
       ),
     placeholderData: (previousData) => previousData,
@@ -195,7 +196,7 @@ export function useStockCatalogQuery({ branchId }: StockCatalogQueryOptions = {}
   return useQuery({
     queryKey: [...stockCatalogQueryKey, { branchId }],
     queryFn: () =>
-      fetchJson<StockCatalogResponse>(`/api/stock/catalog?branch=${encodeURIComponent(branchId ?? "")}`, {
+      fetchJson<StockCatalogResponse>(`${apiUrl("/stock/catalog")}?branch=${encodeURIComponent(branchId ?? "")}`, {
         method: "GET",
       }),
   });
@@ -205,7 +206,7 @@ export function useStockBranchesQuery(branchId?: string, enabled = true) {
   return useQuery({
     queryKey: [...stockBranchesQueryKey, { branchId }],
     queryFn: () =>
-      fetchJson<StockBranchesResponse>(`/api/stock/branches?branch=${encodeURIComponent(branchId ?? "")}`, {
+      fetchJson<StockBranchesResponse>(`${apiUrl("/stock/branches")}?branch=${encodeURIComponent(branchId ?? "")}`, {
         method: "GET",
       }),
     enabled,
@@ -216,7 +217,7 @@ export function useBatchDetailQuery(batchId: string | null, enabled = true) {
   return useQuery({
     queryKey: [...stockBatchDetailQueryKey, batchId],
     queryFn: () =>
-      fetchJson<StockBatchDetailResponse>(`/api/stock/batches/${batchId}`, {
+      fetchJson<StockBatchDetailResponse>(`${apiUrl("/stock/batches")}/${batchId}`, {
         method: "GET",
       }),
     enabled: Boolean(batchId) && enabled,
@@ -228,7 +229,7 @@ export function useCreateStockBatchMutation() {
 
   return useMutation({
     mutationFn: (payload: CreateStockBatchPayload) =>
-      fetchJson<{ id: string; batchNumber: string; productName: string }>("/api/stock/batches", {
+      fetchJson<{ id: string; batchNumber: string; productName: string }>(apiUrl("/stock/batches"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -259,7 +260,7 @@ export function useDisposeStockBatchMutation() {
       note?: string;
     }) =>
       fetchJson<{ id: string; batchNumber: string; productName: string }>(
-        `/api/stock/batches/${batchId}/dispose`,
+        `${apiUrl("/stock/batches")}/${batchId}/dispose`,
         {
           method: "POST",
           headers: {
@@ -293,7 +294,7 @@ export function useRestoreStockBatchMutation() {
       note?: string;
     }) =>
       fetchJson<{ id: string; batchNumber: string; productName: string; restoredQuantity: number }>(
-        `/api/stock/batches/${batchId}/restore`,
+        `${apiUrl("/stock/batches")}/${batchId}/restore`,
         {
           method: "POST",
           headers: {
@@ -328,7 +329,7 @@ export function useAdjustStockMutation() {
           status: "active" | "expiring_soon" | "expired" | "disposed" | "depleted";
         }>;
       }>(
-        "/api/stock/adjustments",
+        apiUrl("/stock/adjustments"),
         {
           method: "POST",
           headers: {

@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/api/client";
+import { apiUrl } from "@/lib/api/version";
 
 export const salesDashboardQueryKey = ["sales", "dashboard"] as const;
 export const salesCatalogQueryKey = ["sales", "catalog"] as const;
@@ -95,7 +96,7 @@ export function useSalesDashboardQuery(branchId?: string, enabled = true) {
   return useQuery({
     queryKey: [...salesDashboardQueryKey, { branchId }],
     queryFn: () =>
-      fetchJson<SalesDashboardResponse>(`/api/sales?branch=${encodeURIComponent(branchId ?? "")}`, {
+      fetchJson<SalesDashboardResponse>(`${apiUrl("/sales")}?branch=${encodeURIComponent(branchId ?? "")}`, {
         method: "GET",
       }),
     enabled,
@@ -107,7 +108,7 @@ export function useSalesCatalogQuery(branchId?: string, enabled = true) {
     queryKey: [...salesCatalogQueryKey, { branchId }],
     queryFn: () =>
       fetchJson<SalesCatalogResponse>(
-        `/api/sales/catalog?branch=${encodeURIComponent(branchId ?? "")}`,
+        `${apiUrl("/sales/catalog")}?branch=${encodeURIComponent(branchId ?? "")}`,
         {
           method: "GET",
         },
@@ -121,7 +122,7 @@ export function useCreateSaleMutation() {
 
   return useMutation({
     mutationFn: (payload: CreateSalePayload) =>
-      fetchJson<{ id: string; saleNumber: string; status: string; totalCents: number }>("/api/sales", {
+      fetchJson<{ id: string; saleNumber: string; status: string; totalCents: number }>(apiUrl("/sales"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

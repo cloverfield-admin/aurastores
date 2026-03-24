@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { apiUrl } from "@/lib/api/version";
 import { ROUTES } from "@/lib/routes";
 import { DASHBOARD_ASSETS } from "./dashboard-assets";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
@@ -414,7 +415,7 @@ export function UserProfileSettingsContent({ context }: UserProfileSettingsConte
         {/* Sign out — at bottom, Figma has it in sidebar but we use dashboard sidebar */}
         <div className="border-t border-[#f1f5f9] pt-6">
           <Link
-            href="/api/auth/sign-out"
+            href={apiUrl("/auth/sign-out")}
             className="inline-flex items-center gap-2 text-sm font-medium text-[#64748b] transition hover:text-[#dc2626]"
           >
             <span className="material-symbols-outlined notranslate text-xl">logout</span>

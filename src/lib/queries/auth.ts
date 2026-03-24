@@ -2,6 +2,7 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/api/client";
+import { apiUrl } from "@/lib/api/version";
 
 type SignInPayload = {
   email: string;
@@ -37,7 +38,7 @@ type SignUpResponse = {
 export function useSignInMutation() {
   return useMutation({
     mutationFn: (payload: SignInPayload) =>
-      fetchJson<SignInResponse>("/api/auth/sign-in", {
+      fetchJson<SignInResponse>(apiUrl("/auth/sign-in"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -50,7 +51,7 @@ export function useSignInMutation() {
 export function useSignUpMutation() {
   return useMutation({
     mutationFn: (payload: SignUpPayload) =>
-      fetchJson<SignUpResponse>("/api/auth/sign-up", {
+      fetchJson<SignUpResponse>(apiUrl("/auth/sign-up"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
