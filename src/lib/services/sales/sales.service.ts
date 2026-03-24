@@ -1,0 +1,23 @@
+import type { SalesRepository } from "@/lib/repositories/sales/sales.repository";
+
+export class SalesService {
+  constructor(private readonly repos: { sales: SalesRepository }) {}
+
+  getDashboard(
+    ...args: Parameters<SalesRepository["getDashboard"]>
+  ): ReturnType<SalesRepository["getDashboard"]> {
+    return this.repos.sales.getDashboard(...args);
+  }
+
+  getCatalog(
+    ...args: Parameters<SalesRepository["getCatalog"]>
+  ): ReturnType<SalesRepository["getCatalog"]> {
+    return this.repos.sales.getCatalog(...args);
+  }
+
+  createSale(
+    ...args: Parameters<SalesRepository["createSale"]>
+  ): ReturnType<SalesRepository["createSale"]> {
+    return this.repos.sales.createSale(...args);
+  }
+}
