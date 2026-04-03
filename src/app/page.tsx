@@ -154,7 +154,7 @@ export default function HomePage() {
                   <h3 className="text-2xl font-bold">Aura Stock</h3>
                   <p className="max-w-xl text-base leading-relaxed text-[#3c4948]">
                     Precision-engineered inventory management with real-time tracking,
-                    batch-level precision, and automated reordering logic.
+                    batch-level precision, and automated reordering logic
                   </p>
                 </div>
                 <a
