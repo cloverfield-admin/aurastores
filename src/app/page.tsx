@@ -2,11 +2,25 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ROUTES } from "@/lib/routes";
+import { getSiteUrl } from "@/lib/site-url";
+
+const homeTitle = "AuraPharma — Clarity around every prescription";
+const homeDescription =
+  "A cloud-based pharmacy management platform for inventory, pricing, payments, and every branch.";
 
 export const metadata: Metadata = {
-  title: "AuraPharma — Clarity around every prescription",
-  description:
-    "A cloud-based pharmacy management platform for inventory, pricing, payments, and every branch.",
+  title: { absolute: homeTitle },
+  description: homeDescription,
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: homeTitle,
+    description: homeDescription,
+    url: "/",
+  },
+  twitter: {
+    title: homeTitle,
+    description: homeDescription,
+  },
 };
 
 const IMG_DASHBOARD =
@@ -22,11 +36,38 @@ const gradientBtn =
 const gradientBtnSm =
   "relative rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-6 py-2.5 text-center text-sm font-semibold text-white shadow-[0_10px_15px_-3px_rgba(15,185,177,0.2),0_4px_6px_-4px_rgba(15,185,177,0.2)] transition hover:opacity-95";
 
+function HomeJsonLd() {
+  const siteUrl = getSiteUrl();
+  const payload = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        name: "AuraPharma",
+        url: siteUrl,
+      },
+      {
+        "@type": "WebSite",
+        name: "AuraPharma",
+        url: siteUrl,
+        description: homeDescription,
+      },
+    ],
+  };
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(payload) }}
+    />
+  );
+}
+
 export default function HomePage() {
   const year = new Date().getFullYear();
 
   return (
     <div className="aura-landing min-h-screen bg-[#f7f9fb] text-[#191c1e]">
+      <HomeJsonLd />
       {/* Header */}
       <header className="fixed left-0 right-0 top-0 z-50 border-b border-black/5 bg-white/80 shadow-sm backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-8">

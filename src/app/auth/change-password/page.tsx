@@ -9,8 +9,9 @@ import {
 import { ROUTES } from "@/lib/routes";
 
 export const metadata: Metadata = {
-  title: "Forgot password — AuraPharma",
-  description: "Reset your AuraPharma account password.",
+  title: "Reset password",
+  description:
+    "Reset your AuraPharma account password. Contact your workspace administrator if you need help.",
 };
 
 export default function ChangePasswordPage() {

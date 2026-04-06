@@ -3,7 +3,7 @@ import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
 import { LicenseUploadStepForm } from "@/components/onboarding/steps/license-upload-step-form";
 
 export const metadata: Metadata = {
-  title: "Onboarding — License upload | AuraPharma",
+  title: "Onboarding — License upload",
   description: "Upload pharmacy operation license and PIC certificate for verification.",
 };
 

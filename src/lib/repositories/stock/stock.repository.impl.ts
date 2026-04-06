@@ -33,7 +33,6 @@ import type {
 
 type ResolvedBranch = typeof branches.$inferSelect;
 type QueryableDb = Pick<typeof db, "query">;
-type StockView = "all" | "expiring";
 
 type GetDashboardOptions = StockGetDashboardOptions;
 
@@ -215,9 +214,11 @@ async function listOrganizationBranches(organizationId: string) {
   });
 }
 
-async function resolveBranch(context: AuthContext, preferredBranchId?: string): Promise<ResolvedBranch> {
-  const availableBranches = await listOrganizationBranches(context.organization.id);
-
+function pickResolvedBranch(
+  context: AuthContext,
+  preferredBranchId: string | undefined,
+  availableBranches: ResolvedBranch[],
+): ResolvedBranch {
   const branch =
     (preferredBranchId
       ? availableBranches.find((candidate) => candidate.id === preferredBranchId) ?? null
@@ -233,6 +234,40 @@ async function resolveBranch(context: AuthContext, preferredBranchId?: string): 
   }
 
   return branch;
+}
+
+async function resolveBranch(context: AuthContext, preferredBranchId?: string): Promise<ResolvedBranch> {
+  const availableBranches = await listOrganizationBranches(context.organization.id);
+  return pickResolvedBranch(context, preferredBranchId, availableBranches);
+}
+
+async function fetchRecentEntriesForBranch(
+  organizationId: string,
+  branchId: string,
+): Promise<
+  Array<{
+    id: string;
+    productName: string;
+    batchNumber: string;
+    quantityReceived: number;
+    createdAt: Date;
+  }>
+> {
+  return db
+    .select({
+      id: inventoryBatches.id,
+      productName: products.name,
+      batchNumber: inventoryBatches.batchNumber,
+      quantityReceived: inventoryBatches.quantityReceived,
+      createdAt: inventoryBatches.createdAt,
+    })
+    .from(inventoryBatches)
+    .innerJoin(products, eq(inventoryBatches.productId, products.id))
+    .where(
+      and(eq(inventoryBatches.organizationId, organizationId), eq(inventoryBatches.branchId, branchId)),
+    )
+    .orderBy(desc(inventoryBatches.createdAt))
+    .limit(3);
 }
 
 async function findCategoryByName(
@@ -279,8 +314,8 @@ export class StockRepositoryImpl implements StockRepository {
     context: AuthContext,
     options: GetDashboardOptions = {},
   ): Promise<StockDashboardData> {
-    const branch = await resolveBranch(context, options.branchId);
     const branchOptions = await listOrganizationBranches(context.organization.id);
+    const branch = pickResolvedBranch(context, options.branchId, branchOptions);
     const today = startOfTodayUtc();
     const thirtyDaysAgo = new Date(today.getTime() - 30 * 86_400_000);
     const search = normalizeSearchTerm(options.search);
@@ -303,27 +338,13 @@ export class StockRepositoryImpl implements StockRepository {
       ...(viewFilter ? [viewFilter] : []),
     );
 
-    const metricsNearExpiryWhere = and(
+    const stockEligibleForExpiryMetrics = and(
       branchBase,
       ne(inventoryBatches.status, "disposed"),
       gt(inventoryBatches.quantityAvailable, 0),
-      sql`${inventoryBatches.expiresAt}::date >= ${sql.raw(`'${todayStr}'::date`)}`,
-      sql`${inventoryBatches.expiresAt}::date <= (${sql.raw(`'${todayStr}'::date`)} + interval '30 days')`,
     );
 
-    const metricsExpiredWhere = and(
-      branchBase,
-      ne(inventoryBatches.status, "disposed"),
-      gt(inventoryBatches.quantityAvailable, 0),
-      sql`${inventoryBatches.expiresAt}::date < ${sql.raw(`'${todayStr}'::date`)}`,
-    );
-
-    const metricsActiveWhere = and(
-      branchBase,
-      ne(inventoryBatches.status, "disposed"),
-      gt(inventoryBatches.quantityAvailable, 0),
-      sql`${inventoryBatches.expiresAt}::date > (${sql.raw(`'${todayStr}'::date`)} + interval '30 days')`,
-    );
+    const todaySql = sql.raw(`'${todayStr}'::date`);
 
     const batchSelect = {
       id: inventoryBatches.id,
@@ -349,23 +370,66 @@ export class StockRepositoryImpl implements StockRepository {
         .leftJoin(productCategories, eq(products.categoryId, productCategories.id))
         .leftJoin(suppliers, eq(inventoryBatches.supplierId, suppliers.id));
 
+    const listCountQuery = search
+      ? db
+          .select({ total: sql<number>`count(*)::int` })
+          .from(inventoryBatches)
+          .innerJoin(products, eq(inventoryBatches.productId, products.id))
+          .leftJoin(productCategories, eq(products.categoryId, productCategories.id))
+          .leftJoin(suppliers, eq(inventoryBatches.supplierId, suppliers.id))
+          .where(listWhere)
+      : db
+          .select({ total: sql<number>`count(*)::int` })
+          .from(inventoryBatches)
+          .where(and(branchBase, ...(viewFilter ? [viewFilter] : [])));
+
+    const offsetGuess = (page - 1) * pageSize;
+    const pagedQueryGuess = inventoryJoin()
+      .where(listWhere)
+      .orderBy(asc(inventoryBatches.expiresAt), desc(inventoryBatches.createdAt))
+      .limit(pageSize)
+      .offset(offsetGuess);
+
+    const branchStockSq = db.$with("branch_stock").as(
+      db
+        .select({
+          productId: inventoryBatches.productId,
+          totalAvailable: sql<number>`coalesce(sum(${inventoryBatches.quantityAvailable}), 0)::int`.as(
+            "total_available",
+          ),
+        })
+        .from(inventoryBatches)
+        .where(
+          and(
+            eq(inventoryBatches.organizationId, context.organization.id),
+            eq(inventoryBatches.branchId, branch.id),
+          ),
+        )
+        .groupBy(inventoryBatches.productId),
+    );
+
+    const productStockQuery = db
+      .with(branchStockSq)
+      .select({
+        productId: products.id,
+        productName: products.name,
+        reorderLevel: products.reorderLevel,
+        totalAvailable: sql<number>`coalesce(${branchStockSq.totalAvailable}, 0)::int`,
+      })
+      .from(products)
+      .leftJoin(branchStockSq, eq(branchStockSq.productId, products.id))
+      .where(eq(products.organizationId, context.organization.id));
+
     const [
       countRows,
       sumsRows,
-      nearRows,
-      expiredRows,
-      activeRows,
+      expiryMetricsRows,
       recentBatchRows,
       productStockRows,
       salesActivity,
+      pagedRowsFirst,
     ] = await Promise.all([
-      db
-        .select({ total: sql<number>`count(*)::int` })
-        .from(inventoryBatches)
-        .innerJoin(products, eq(inventoryBatches.productId, products.id))
-        .leftJoin(productCategories, eq(products.categoryId, productCategories.id))
-        .leftJoin(suppliers, eq(inventoryBatches.supplierId, suppliers.id))
-        .where(listWhere),
+      listCountQuery,
       db
         .select({
           totalStockValueCents: sql`coalesce(sum(${inventoryBatches.quantityAvailable} * ${inventoryBatches.unitCostCents}), 0)::bigint`,
@@ -375,44 +439,15 @@ export class StockRepositoryImpl implements StockRepository {
         .from(inventoryBatches)
         .where(branchBase),
       db
-        .select({ c: sql<number>`count(*)::int` })
-        .from(inventoryBatches)
-        .where(metricsNearExpiryWhere),
-      db
-        .select({ c: sql<number>`count(*)::int` })
-        .from(inventoryBatches)
-        .where(metricsExpiredWhere),
-      db
-        .select({ c: sql<number>`count(*)::int` })
-        .from(inventoryBatches)
-        .where(metricsActiveWhere),
-      db
         .select({
-          id: inventoryBatches.id,
-          productName: products.name,
-          batchNumber: inventoryBatches.batchNumber,
-          quantityReceived: inventoryBatches.quantityReceived,
-          createdAt: inventoryBatches.createdAt,
+          nearExpiryBatchCount: sql<number>`count(*) filter (where ${inventoryBatches.expiresAt}::date >= ${todaySql} and ${inventoryBatches.expiresAt}::date <= (${todaySql} + interval '30 days'))::int`,
+          expiredBatchCount: sql<number>`count(*) filter (where ${inventoryBatches.expiresAt}::date < ${todaySql})::int`,
+          activeBatchCount: sql<number>`count(*) filter (where ${inventoryBatches.expiresAt}::date > (${todaySql} + interval '30 days'))::int`,
         })
         .from(inventoryBatches)
-        .innerJoin(products, eq(inventoryBatches.productId, products.id))
-        .where(branchBase)
-        .orderBy(desc(inventoryBatches.createdAt))
-        .limit(3),
-      db
-        .select({
-          productId: products.id,
-          productName: products.name,
-          reorderLevel: products.reorderLevel,
-          totalAvailable: sql<number>`coalesce(sum(${inventoryBatches.quantityAvailable}), 0)::int`,
-        })
-        .from(products)
-        .leftJoin(
-          inventoryBatches,
-          and(eq(inventoryBatches.productId, products.id), eq(inventoryBatches.branchId, branch.id)),
-        )
-        .where(eq(products.organizationId, context.organization.id))
-        .groupBy(products.id, products.name, products.reorderLevel),
+        .where(stockEligibleForExpiryMetrics),
+      fetchRecentEntriesForBranch(context.organization.id, branch.id),
+      productStockQuery,
       db
         .select({
           unitsSold: sql<number>`coalesce(sum(abs(${inventoryTransactions.quantityDelta})), 0)::int`,
@@ -426,33 +461,35 @@ export class StockRepositoryImpl implements StockRepository {
             sql`${inventoryTransactions.occurredAt} >= ${thirtyDaysAgo.toISOString()}`,
           ),
         ),
+      pagedQueryGuess,
     ]);
 
     const countRow = countRows[0];
     const sumsRow = sumsRows[0];
-    const nearRow = nearRows[0];
-    const expiredRow = expiredRows[0];
-    const activeRow = activeRows[0];
+    const expiryRow = expiryMetricsRows[0];
 
     const totalItems = Number(countRow?.total ?? 0);
     const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
     const normalizedPage = Math.min(page, totalPages);
     const offset = (normalizedPage - 1) * pageSize;
 
-    const pagedRows = await inventoryJoin()
-      .where(listWhere)
-      .orderBy(asc(inventoryBatches.expiresAt), desc(inventoryBatches.createdAt))
-      .limit(pageSize)
-      .offset(offset);
+    let pagedRows = pagedRowsFirst;
+    if (offset !== offsetGuess) {
+      pagedRows = await inventoryJoin()
+        .where(listWhere)
+        .orderBy(asc(inventoryBatches.expiresAt), desc(inventoryBatches.createdAt))
+        .limit(pageSize)
+        .offset(offset);
+    }
 
     const pagedInventory = pagedRows.map((row) => mapBatchRowToInventoryItem(row, today));
 
     const totalStockValueCents = Number(sumsRow?.totalStockValueCents ?? 0);
     const totalAvailableUnits = Number(sumsRow?.totalAvailableUnits ?? 0);
     const totalBatchCount = Number(sumsRow?.totalBatchCount ?? 0);
-    const nearExpiryBatchCount = Number(nearRow?.c ?? 0);
-    const expiredBatchCount = Number(expiredRow?.c ?? 0);
-    const activeBatchCount = Number(activeRow?.c ?? 0);
+    const nearExpiryBatchCount = Number(expiryRow?.nearExpiryBatchCount ?? 0);
+    const expiredBatchCount = Number(expiryRow?.expiredBatchCount ?? 0);
+    const activeBatchCount = Number(expiryRow?.activeBatchCount ?? 0);
 
     const outOfStockProducts = productStockRows.filter((row) => row.totalAvailable <= 0);
     const lowStockProducts = productStockRows.filter(
@@ -522,9 +559,9 @@ export class StockRepositoryImpl implements StockRepository {
     context: AuthContext,
     options: GetCatalogOptions = {},
   ): Promise<StockCatalogData> {
-    const branch = await resolveBranch(context, options.branchId);
     const branchOptions = await listOrganizationBranches(context.organization.id);
-    const [supplierRows, productRows, dashboard] = await Promise.all([
+    const branch = pickResolvedBranch(context, options.branchId, branchOptions);
+    const [supplierRows, productRows, recentBatchRows] = await Promise.all([
       db.query.suppliers.findMany({
         where: and(eq(suppliers.organizationId, context.organization.id), eq(suppliers.status, "active")),
         orderBy: (supplierTable, { asc: orderAsc }) => [orderAsc(supplierTable.name)],
@@ -541,7 +578,7 @@ export class StockRepositoryImpl implements StockRepository {
         .leftJoin(productCategories, eq(products.categoryId, productCategories.id))
         .where(eq(products.organizationId, context.organization.id))
         .orderBy(asc(products.name)),
-      this.getDashboard(context, { branchId: branch.id }),
+      fetchRecentEntriesForBranch(context.organization.id, branch.id),
     ]);
 
     return {
@@ -559,15 +596,19 @@ export class StockRepositoryImpl implements StockRepository {
         name: supplier.name,
       })),
       products: productRows,
-      recentEntries: dashboard.recentEntries,
+      recentEntries: recentBatchRows.map((row) => ({
+        id: row.id,
+        productName: row.productName,
+        batchNumber: row.batchNumber,
+        quantityReceived: row.quantityReceived,
+        createdAt: row.createdAt.toISOString(),
+      })),
     };
   }
 
   async getBranches(context: AuthContext, preferredBranchId?: string) {
-    const [selectedBranch, branchOptions] = await Promise.all([
-      resolveBranch(context, preferredBranchId),
-      listOrganizationBranches(context.organization.id),
-    ]);
+    const branchOptions = await listOrganizationBranches(context.organization.id);
+    const selectedBranch = pickResolvedBranch(context, preferredBranchId, branchOptions);
 
     return {
       branch: {

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { BatchDetailContent } from "@/components/dashboard/batch-detail-content";
 
 export const metadata: Metadata = {
-  title: "Batch Details | AuraPharma",
+  title: "Batch Details",
   description: "View batch details, stock levels, and transaction history.",
 };
 

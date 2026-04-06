@@ -27,27 +27,6 @@ type LineItem = {
   unitPrice: number;
 };
 
-const INITIAL_ITEMS: LineItem[] = [
-  {
-    id: "1",
-    name: "Amoxicillin Capsules",
-    nameLines: ["Amoxicillin", "Capsules"],
-    batch: "AUTO",
-    expiry: "AUTO",
-    qty: 2,
-    unitPrice: 12.5,
-  },
-  {
-    id: "2",
-    name: "Paracetamol Tablets",
-    nameLines: ["Paracetamol", "Tablets"],
-    batch: "AUTO",
-    expiry: "AUTO",
-    qty: 1,
-    unitPrice: 5,
-  },
-];
-
 const fieldLabel =
   "mb-2 block text-xs font-semibold uppercase tracking-[0.06em] text-[#64748b]";
 const inputClass =
@@ -64,10 +43,10 @@ export function NewSaleContent() {
   const [customerSearch, setCustomerSearch] = useState("");
   const [patientId, setPatientId] = useState("");
   const [mobile, setMobile] = useState("");
-  const [items, setItems] = useState<LineItem[]>(INITIAL_ITEMS);
+  const [items, setItems] = useState<LineItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState("aura-pay");
-  const [reference, setReference] = useState("TXN-9021-X");
-  const [discountCode, setDiscountCode] = useState("H-2024-OFF");
+  const [reference, setReference] = useState("");
+  const [discountCode, setDiscountCode] = useState("");
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
@@ -741,7 +720,7 @@ export function NewSaleContent() {
                     type="text"
                     value={reference}
                     onChange={(e) => setReference(e.target.value)}
-                    placeholder="TXN-9021-X"
+                    placeholder="Optional"
                     className={inputClass}
                   />
                 </div>

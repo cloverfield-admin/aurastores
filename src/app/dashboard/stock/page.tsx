@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { StockInventoryContent } from "@/components/dashboard/stock-inventory-content";
 
 export const metadata: Metadata = {
-  title: "Stock Inventory | AuraPharma",
+  title: "Stock Inventory",
   description:
     "Manage pharmacy stock, track batches, and monitor expiry across all branches.",
 };

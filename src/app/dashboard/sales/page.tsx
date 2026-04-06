@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { SalesPerformanceContent } from "@/components/dashboard/sales-performance-content";
 
 export const metadata: Metadata = {
-  title: "Aura Sales | AuraPharma",
+  title: "Aura Sales",
   description:
     "Monthly sales performance, analytics, and financial tracking across pharmacy branches.",
 };

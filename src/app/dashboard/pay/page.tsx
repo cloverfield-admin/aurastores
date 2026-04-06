@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Aura Pay | AuraPharma",
+  title: "Aura Pay",
+  description:
+    "Payments workspace for AuraPharma — connect modules to show live transaction and payout data.",
 };
 
 export default function AuraPayPage() {

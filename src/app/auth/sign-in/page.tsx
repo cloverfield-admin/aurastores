@@ -7,7 +7,7 @@ import {
 import { SignInForm } from "@/components/auth/sign-in-form";
 
 export const metadata: Metadata = {
-  title: "Sign in — AuraPharma",
+  title: "Sign in",
   description: "Sign in to your AuraPharma pharmacy workspace.",
 };
 
