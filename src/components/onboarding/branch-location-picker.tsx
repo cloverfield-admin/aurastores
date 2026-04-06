@@ -330,12 +330,12 @@ export function BranchLocationPicker({
         <p>
           Set{" "}
           <span className="rounded bg-white/80 px-1.5 py-0.5 font-mono text-xs text-[#334155]">
-            NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+            GOOGLE_MAPS_API_KEY
           </span>{" "}
           in <span className="font-mono text-xs">.env.local</span> to load the map and search. For
           pins and styling, add{" "}
           <span className="rounded bg-white/80 px-1.5 py-0.5 font-mono text-xs text-[#334155]">
-            NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID
+            GOOGLE_MAPS_MAP_ID
           </span>
           .
         </p>
