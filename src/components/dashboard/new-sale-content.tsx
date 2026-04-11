@@ -258,6 +258,75 @@ export function NewSaleContent() {
     );
   }
 
+  type IncrementScanResult =
+    | { ok: true; name: string; newQty: number }
+    | { ok: false };
+
+  /** When the scanned product is already on a line, bump qty by 1 (stock-capped). */
+  function tryIncrementQtyForProduct(productId: string, specificLineId?: string): IncrementScanResult {
+    const line = specificLineId
+      ? items.find((row) => row.id === specificLineId)
+      : items.find((row) => row.productId === productId);
+
+    if (!line || line.productId !== productId) {
+      return { ok: false };
+    }
+
+    const product = productById.get(productId);
+    if (!product) {
+      notify({
+        variant: "error",
+        title: "Product unavailable",
+        description: "This medication is no longer in the catalog for this branch.",
+      });
+      return { ok: false };
+    }
+
+    if (product.batches.length === 0) {
+      notify({
+        variant: "error",
+        title: "No stock",
+        description: "No available batches for this product in this branch.",
+      });
+      return { ok: false };
+    }
+
+    const selectedBatch =
+      (line.batchId ? product.batches.find((batch) => batch.id === line.batchId) : undefined) ??
+      product.batches[0];
+
+    if (!selectedBatch) {
+      notify({
+        variant: "error",
+        title: "No stock",
+        description: "No available batches for this product in this branch.",
+      });
+      return { ok: false };
+    }
+
+    if (selectedBatch.quantityAvailable <= 0) {
+      notify({
+        variant: "error",
+        title: "Out of stock",
+        description: `${product.name} has no available units in this branch.`,
+      });
+      return { ok: false };
+    }
+
+    if (line.qty + 1 > selectedBatch.quantityAvailable) {
+      notify({
+        variant: "error",
+        title: "Cannot add more",
+        description: `Only ${selectedBatch.quantityAvailable} unit${selectedBatch.quantityAvailable === 1 ? "" : "s"} available for ${product.name}.`,
+      });
+      return { ok: false };
+    }
+
+    const newQty = line.qty + 1;
+    updateQty(line.id, newQty);
+    return { ok: true, name: product.name, newQty };
+  }
+
   function lineSubtotal(row: LineItem) {
     const line = row.qty * row.unitPrice;
     return line * (1 + TAX_RATE);
@@ -524,9 +593,35 @@ export function NewSaleContent() {
             });
             return;
           }
+
           if (scannerLineId === "add") {
+            const inc = tryIncrementQtyForProduct(product.id);
+            if (inc.ok) {
+              notify({
+                variant: "info",
+                title: "Quantity updated",
+                description: `${inc.name} — now ${inc.newQty} ${inc.newQty === 1 ? "unit" : "units"}.`,
+              });
+              setScannerLineId(null);
+              return;
+            }
+            const alreadyOnSale = items.some((row) => row.productId === product.id);
+            if (alreadyOnSale) {
+              setScannerLineId(null);
+              return;
+            }
             addItemWithProduct(product.id);
           } else if (scannerLineId) {
+            const inc = tryIncrementQtyForProduct(product.id, scannerLineId);
+            if (inc.ok) {
+              notify({
+                variant: "info",
+                title: "Quantity updated",
+                description: `${inc.name} — now ${inc.newQty} ${inc.newQty === 1 ? "unit" : "units"}.`,
+              });
+              setScannerLineId(null);
+              return;
+            }
             updateItemProduct(scannerLineId, product.id);
           }
           setScannerLineId(null);

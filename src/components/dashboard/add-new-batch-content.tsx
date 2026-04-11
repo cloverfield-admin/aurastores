@@ -17,6 +17,17 @@ import { ROUTES } from "@/lib/routes";
 
 const PRODUCT_SUGGEST_DEBOUNCE_MS = 350;
 
+/** Unique default for inventory batch number (Product ref). Max 64 chars per API. */
+function generateProductRef(): string {
+  const d = new Date();
+  const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+  const suffix =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase()
+      : Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `B-${ymd}-${suffix}`;
+}
+
 const fieldLabel =
   "mb-2 block text-xs font-normal uppercase tracking-[0.1em] text-[#6c7a78]";
 const inputClass =
@@ -55,8 +66,10 @@ export function AddNewBatchContent() {
   const [debouncedProductSearch, setDebouncedProductSearch] = useState("");
   const [productSuggestOpen, setProductSuggestOpen] = useState(false);
   const [productBarcode, setProductBarcode] = useState<string | null>(null);
+  /** True after a scan found no single product for this barcode; show dedicated Barcode row and require medication name separately. */
+  const [barcodeLookupNeedsMedicationName, setBarcodeLookupNeedsMedicationName] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [batchNumber, setBatchNumber] = useState("B-2024-XP9");
+  const [batchNumber, setBatchNumber] = useState(generateProductRef);
   const [category, setCategory] = useState("");
   const [expiry, setExpiry] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -93,10 +106,16 @@ export function AddNewBatchContent() {
       setProductName(product.name);
       setProductBarcode(product.barcode?.trim() || null);
       setDebouncedProductSearch(product.name);
+      setBarcodeLookupNeedsMedicationName(false);
       setProductSuggestOpen(false);
     },
     [],
   );
+
+  const clearProductBarcode = useCallback(() => {
+    setProductBarcode(null);
+    setBarcodeLookupNeedsMedicationName(false);
+  }, []);
 
   const onProductNameKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Escape") {
@@ -129,37 +148,62 @@ export function AddNewBatchContent() {
           if (!trimmed) {
             return;
           }
-          setProductBarcode(trimmed);
-          setProductSuggestOpen(true);
 
-          let displayName = trimmed;
-          if (trimmed.length >= 2) {
-            try {
-              const res = await fetchJson<StockProductSuggestResponse>(
-                `${apiUrl("/stock/products/suggest")}?q=${encodeURIComponent(trimmed)}`,
-                { method: "GET" },
-              );
-              const exactByBarcode = res.products.filter((p) => p.barcode === trimmed);
-              if (exactByBarcode.length === 1) {
-                displayName = exactByBarcode[0].name;
-              }
-            } catch {
-              /* keep scanned string as provisional name */
-            }
+          setProductBarcode(trimmed);
+          setProductSuggestOpen(false);
+
+          if (trimmed.length < 2) {
+            setProductName("");
+            setDebouncedProductSearch("");
+            setBarcodeLookupNeedsMedicationName(true);
+            notify({
+              variant: "info",
+              title: "Barcode captured",
+              description: "Enter the medication name above. Short codes cannot be looked up until you add the product.",
+            });
+            return;
           }
 
-          setProductName(displayName);
-          setDebouncedProductSearch(trimmed);
-          notify({
-            variant: "success",
-            title: "Barcode captured",
-            description:
-              displayName !== trimmed
-                ? `Matched ${displayName}.`
-                : trimmed.length >= 2
-                  ? "Choose a suggestion or enter the medication name for a new product."
-                  : "Enter the medication name; this barcode will be stored with the new product.",
-          });
+          try {
+            const res = await fetchJson<StockProductSuggestResponse>(
+              `${apiUrl("/stock/products/suggest")}?q=${encodeURIComponent(trimmed)}`,
+              { method: "GET" },
+            );
+            const exactByBarcode = res.products.filter((p) => p.barcode === trimmed);
+            if (exactByBarcode.length === 1) {
+              const matched = exactByBarcode[0];
+              setProductName(matched.name);
+              setDebouncedProductSearch(matched.name);
+              setBarcodeLookupNeedsMedicationName(false);
+              notify({
+                variant: "success",
+                title: "Product matched",
+                description: `Loaded “${matched.name}” from this barcode.`,
+              });
+              return;
+            }
+
+            setProductName("");
+            setDebouncedProductSearch("");
+            setBarcodeLookupNeedsMedicationName(true);
+            notify({
+              variant: "success",
+              title: "Barcode captured",
+              description:
+                exactByBarcode.length > 1
+                  ? "Enter the medication name above, or type a few letters to search and pick the right product."
+                  : "No product uses this barcode yet. Enter the medication name above, then save to create it with this barcode.",
+            });
+          } catch {
+            setProductName("");
+            setDebouncedProductSearch("");
+            setBarcodeLookupNeedsMedicationName(true);
+            notify({
+              variant: "warning",
+              title: "Barcode captured",
+              description: "Could not look up this barcode. Enter the medication name above, then try again or save.",
+            });
+          }
         }}
         title="Scan product barcode"
       />
@@ -220,10 +264,12 @@ export function AddNewBatchContent() {
                     "dashboard-add-batch",
                     "Saving product to inventory...",
                     async () => {
+                      const trimmedMedication = productName.trim();
+                      const trimmedBarcode = productBarcode?.trim() ?? "";
                       const result = await createBatchMutation.mutateAsync({
                         branchId,
-                        productName: productName.trim(),
-                        productBarcode: productBarcode?.trim() || undefined,
+                        productName: trimmedMedication,
+                        ...(trimmedBarcode.length > 0 ? { productBarcode: trimmedBarcode } : {}),
                         batchNumber: batchNumber.trim(),
                         categoryName: category.trim() || undefined,
                         expiresAt: expiry,
@@ -237,7 +283,9 @@ export function AddNewBatchContent() {
                       notify({
                         variant: "success",
                         title: "Product saved",
-                        description: `${result.productName} (${result.batchNumber}) was added to inventory.`,
+                        description: `${result.productName} (${result.batchNumber}) was added to inventory.${
+                          trimmedBarcode.length > 0 ? ` Barcode ${trimmedBarcode} stored on the product.` : ""
+                        }`,
                       });
                       router.push(
                         branchId
@@ -343,18 +391,45 @@ export function AddNewBatchContent() {
                     </button>
                   </div>
                   <p className="mt-2 text-[11px] text-[#6c7a78]">
-                    Type at least two characters to search existing products, or enter a new name to
-                    create a product record for your organization. Scanning saves the code on new
-                    products when no match exists.
+                    Medication name is only the product label (never the barcode). Type at least two
+                    characters to search, or use Scan to look up by barcode—if nothing matches, enter
+                    the name above and save to attach this barcode to a new product.
                   </p>
-                  {productBarcode ? (
+                  {productBarcode && barcodeLookupNeedsMedicationName ? (
+                    <div className="mt-4 space-y-2 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <label className={fieldLabel} htmlFor="captured-barcode">
+                          Barcode
+                        </label>
+                        <button
+                          type="button"
+                          onClick={clearProductBarcode}
+                          className="text-[11px] font-semibold text-[#64748b] underline decoration-[#64748b]/40 hover:text-[#0f172a]"
+                        >
+                          Clear barcode
+                        </button>
+                      </div>
+                      <input
+                        id="captured-barcode"
+                        readOnly
+                        value={productBarcode}
+                        className={`${inputClass} cursor-default bg-[#e2e8f0]/60 text-[#0f172a]`}
+                        aria-readonly="true"
+                      />
+                      <p className="text-[11px] leading-relaxed text-[#64748b]">
+                        No product uses this barcode yet. Enter the medication name in the field
+                        above, then save to create the product with this barcode.
+                      </p>
+                    </div>
+                  ) : null}
+                  {productBarcode && !barcodeLookupNeedsMedicationName ? (
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <span className="rounded-md bg-[#e0f2f1] px-2 py-1 text-[11px] font-medium text-[#004d49]">
                         Barcode: {productBarcode}
                       </span>
                       <button
                         type="button"
-                        onClick={() => setProductBarcode(null)}
+                        onClick={clearProductBarcode}
                         className="text-[11px] font-semibold text-[#64748b] underline decoration-[#64748b]/40 hover:text-[#0f172a]"
                       >
                         Clear
@@ -374,7 +449,7 @@ export function AddNewBatchContent() {
                       value={batchNumber}
                       onChange={(e) => setBatchNumber(e.target.value)}
                       className={inputClass}
-                      placeholder="B-2024-XP9"
+                      placeholder="Auto-generated, editable"
                     />
                   </div>
                   <div>
