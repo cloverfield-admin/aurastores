@@ -42,8 +42,8 @@ jobs:
       - name: Validate Drizzle config (on PR) or Run Migration (on main)
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "🧪 PR detected – validating Drizzle setup"
-            npx drizzle-kit introspect
+            echo "🧪 PR detected – skipping DB introspection (no secrets available)"
+            npx drizzle-kit generate
           else
             echo "✅ Merging to main – running migration"
             npx drizzle-kit migrate
