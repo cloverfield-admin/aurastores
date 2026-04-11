@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Inter, Manrope } from "next/font/google";
 import { AuraFeedbackProvider } from "@/components/providers/aura-feedback-provider";
 import { AppQueryProvider } from "@/components/providers/query-provider";
+import { getMetadataBase } from "@/lib/site-url";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -24,10 +25,35 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
+const defaultTitle = "AuraPharma — Pharmacy management platform";
+const defaultDescription =
+  "Cloud-based pharmacy management with inventory, sales intelligence, and multi-branch sync.";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
-  title: "AuraPharma — Pharmacy management platform",
-  description:
-    "Cloud-based pharmacy management with inventory, sales intelligence, and multi-branch sync.",
+  metadataBase: getMetadataBase(),
+  title: {
+    default: defaultTitle,
+    template: "%s | AuraPharma",
+  },
+  description: defaultDescription,
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    siteName: "AuraPharma",
+    title: defaultTitle,
+    description: defaultDescription,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: defaultTitle,
+    description: defaultDescription,
+  },
 };
 
 export default function RootLayout({

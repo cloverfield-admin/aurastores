@@ -1,15 +1,13 @@
 import { config } from "dotenv";
 import { defineConfig } from "drizzle-kit";
 
-config({ path: process.env.NODE_ENV === "production" ? ".env.local" : ".env" });
+// Match Next.js: base defaults in `.env`, local secrets (e.g. DATABASE_URL) in `.env.local`.
+config({ path: ".env" });
+config({ path: ".env.local", override: true });
 
 export default defineConfig({
   schema: [
-    "./src/lib/db/schema/account.schema.ts",
-    "./src/lib/db/schema/branch.schema.ts",
-    "./src/lib/db/schema/inventory.schema.ts",
-    "./src/lib/db/schema/sales.schema.ts",
-    "./src/lib/db/schema/onboarding.schema.ts",
+    "./src/lib/db/schema/",
   ],
   out: "./drizzle",
   dialect: "postgresql",

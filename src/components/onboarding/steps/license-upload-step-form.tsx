@@ -187,7 +187,7 @@ export function LicenseUploadStepForm() {
                   Pharmacy Operation License
                 </h2>
                 <p className="mt-1 text-sm text-[#3c4948]">
-                  Issued by the State Board of Pharmacy
+                  Issued by the State Board of Pharmacies
                 </p>
               </div>
             </div>

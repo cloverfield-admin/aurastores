@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800" fill="none">
+  <rect width="1280" height="800" fill="#0f172a"/>
+  <rect x="40" y="48" width="200" height="704" rx="12" fill="#1e293b"/>
+  <rect x="64" y="80" width="152" height="14" rx="4" fill="#334155"/>
+  <rect x="64" y="110" width="120" height="10" rx="3" fill="#475569"/>
+  <rect x="64" y="140" width="152" height="36" rx="8" fill="#0f766e" fill-opacity="0.35"/>
+  <rect x="64" y="192" width="152" height="36" rx="8" fill="#334155"/>
+  <rect x="64" y="244" width="152" height="36" rx="8" fill="#334155"/>
+  <rect x="268" y="48" width="972" height="72" rx="12" fill="#1e293b"/>
+  <rect x="292" y="72" width="240" height="24" rx="6" fill="#334155"/>
+  <rect x="1100" y="68" width="120" height="32" rx="8" fill="#0d9488"/>
+  <rect x="268" y="144" width="620" height="360" rx="12" fill="#1e293b"/>
+  <rect x="292" y="176" width="180" height="12" rx="4" fill="#64748b"/>
+  <rect x="292" y="212" width="572" height="120" rx="8" fill="#0f172a"/>
+  <path d="M308 280 L340 248 L380 268 L440 220 L500 260 L560 200 L620 240 L680 210" stroke="#14b8a6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="292" y="352" width="260" height="10" rx="3" fill="#475569"/>
+  <rect x="292" y="372" width="200" height="10" rx="3" fill="#475569"/>
+  <rect x="908" y="144" width="332" height="608" rx="12" fill="#1e293b"/>
+  <rect x="932" y="176" width="120" height="12" rx="4" fill="#64748b"/>
+  <rect x="932" y="212" width="284" height="160" rx="8" fill="#0f172a"/>
+  <rect x="952" y="236" width="80" height="48" rx="6" fill="#0f766e" fill-opacity="0.4"/>
+  <rect x="1048" y="236" width="80" height="48" rx="6" fill="#4338ca" fill-opacity="0.4"/>
+  <rect x="1144" y="236" width="56" height="48" rx="6" fill="#334155"/>
+  <rect x="932" y="396" width="284" height="200" rx="8" fill="#0f172a"/>
+  <rect x="268" y="528" width="620" height="224" rx="12" fill="#1e293b"/>
+  <rect x="292" y="560" width="200" height="12" rx="4" fill="#64748b"/>
+  <rect x="292" y="592" width="572" height="140" rx="8" fill="#0f172a"/>
+  <rect x="312" y="616" width="120" height="92" rx="6" fill="#334155"/>
+  <rect x="448" y="616" width="120" height="92" rx="6" fill="#334155"/>
+  <rect x="584" y="616" width="120" height="92" rx="6" fill="#334155"/>
+  <rect x="720" y="616" width="120" height="92" rx="6" fill="#0f766e" fill-opacity="0.25"/>
+</svg>

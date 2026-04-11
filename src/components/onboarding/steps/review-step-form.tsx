@@ -1,17 +1,79 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { useOnboardingProgress } from "@/components/onboarding/onboarding-progress-provider";
 import { AuraInlineAlert } from "@/components/ui/aura-inline-alert";
+import { BranchLocationMapPreview } from "@/components/onboarding/branch-location-picker";
 import { useCompleteOnboardingMutation } from "@/lib/queries/onboarding";
 import { ROUTES } from "@/lib/routes";
 
-const MAP_PREVIEW =
-  "https://www.figma.com/api/mcp/asset/5f3b3f7e-b727-4a02-bf8e-c880d991f8ea";
+const REVIEW_DAY_ORDER = [
+  { dayOfWeek: 1, label: "Monday" },
+  { dayOfWeek: 2, label: "Tuesday" },
+  { dayOfWeek: 3, label: "Wednesday" },
+  { dayOfWeek: 4, label: "Thursday" },
+  { dayOfWeek: 5, label: "Friday" },
+  { dayOfWeek: 6, label: "Saturday" },
+  { dayOfWeek: 0, label: "Sunday" },
+] as const;
+
+function formatReviewTime(value: string | null | undefined): string {
+  if (value == null || value === "") {
+    return "";
+  }
+  const match = /^(\d{1,2}):(\d{2})/.exec(String(value));
+  if (!match) {
+    return String(value);
+  }
+  let h = Number.parseInt(match[1], 10);
+  const m = match[2];
+  const am = h < 12 || h === 24;
+  if (h === 0) {
+    h = 12;
+  } else if (h > 12) {
+    h -= 12;
+  }
+  return `${h}:${m} ${am ? "AM" : "PM"}`;
+}
+
+function reviewHoursLines(
+  hoursMode: "24-7" | "custom" | undefined,
+  operatingHours:
+    | Array<{
+        dayOfWeek: number;
+        opensAt: string | null;
+        closesAt: string | null;
+        isClosed: boolean;
+      }>
+    | undefined,
+): Array<{ label: string; text: string; emphasize?: boolean }> {
+  if (hoursMode === "24-7") {
+    return [{ label: "Every day", text: "Open 24 hours" }];
+  }
+  if (!operatingHours?.length) {
+    return [
+      { label: "Mon - Fri", text: "08:00 AM - 08:00 PM" },
+      { label: "Saturday", text: "09:00 AM - 03:00 PM" },
+      { label: "Sunday", text: "Closed", emphasize: true },
+    ];
+  }
+  const byDay = new Map(operatingHours.map((h) => [h.dayOfWeek, h]));
+  return REVIEW_DAY_ORDER.map(({ dayOfWeek, label }) => {
+    const row = byDay.get(dayOfWeek);
+    if (!row || row.isClosed) {
+      return { label, text: "Closed", emphasize: dayOfWeek === 0 };
+    }
+    const open = formatReviewTime(row.opensAt);
+    const close = formatReviewTime(row.closesAt);
+    if (!open || !close) {
+      return { label, text: "Hours set" };
+    }
+    return { label, text: `${open} - ${close}` };
+  });
+}
 
 const labelClass =
   "text-[10px] font-semibold uppercase tracking-[0.1em] text-[#94a3b8]";
@@ -41,6 +103,10 @@ export function ReviewStepForm() {
   );
   const docs = draft?.documents ?? [];
   const branch = draft?.mainBranch;
+  const hoursLines = useMemo(
+    () => reviewHoursLines(branch?.hoursMode, branch?.operatingHours),
+    [branch?.hoursMode, branch?.operatingHours],
+  );
   const reviewDocuments = docs.length
     ? docs.map((document) => ({
         key: document.id,
@@ -226,20 +292,10 @@ export function ReviewStepForm() {
                   Physical Location
                 </h3>
               </div>
-              <div className="relative h-[88px] overflow-hidden rounded-lg bg-[#f1f5f9]">
-                <Image
-                  src={MAP_PREVIEW}
-                  alt=""
-                  fill
-                  className="object-cover opacity-50"
-                  sizes="(max-width: 768px) 100vw, 33vw"
-                />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="material-symbols-outlined notranslate text-2xl text-[#006a65] drop-shadow">
-                    location_on
-                  </span>
-                </div>
-              </div>
+              <BranchLocationMapPreview
+                latitude={branch?.latitude ?? null}
+                longitude={branch?.longitude ?? null}
+              />
               <p className="text-sm leading-relaxed text-[#475569]">
                 {branch?.branchLocation || "Not provided"}
               </p>
@@ -263,24 +319,16 @@ export function ReviewStepForm() {
                 </Link>
               </div>
               <ul className="mt-6 space-y-2 text-sm">
-                <li className="flex justify-between gap-4">
-                  <span className="text-[#64748b]">Mon - Fri</span>
-                  <span className="font-semibold text-[#334155]">
-                    {branch?.hoursMode === "24-7" ? "Open 24 Hours" : "08:00 AM - 08:00 PM"}
-                  </span>
-                </li>
-                <li className="flex justify-between gap-4">
-                  <span className="text-[#64748b]">Saturday</span>
-                  <span className="font-semibold text-[#334155]">
-                    {branch?.hoursMode === "24-7" ? "Open 24 Hours" : "09:00 AM - 03:00 PM"}
-                  </span>
-                </li>
-                <li className="flex justify-between gap-4">
-                  <span className="text-[#64748b]">Sunday</span>
-                  <span className="font-semibold text-[#ba1a1a]">
-                    {branch?.hoursMode === "24-7" ? "Open 24 Hours" : "Closed"}
-                  </span>
-                </li>
+                {hoursLines.map((line) => (
+                  <li key={line.label} className="flex justify-between gap-4">
+                    <span className="text-[#64748b]">{line.label}</span>
+                    <span
+                      className={`font-semibold ${line.emphasize ? "text-[#ba1a1a]" : "text-[#334155]"}`}
+                    >
+                      {line.text}
+                    </span>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
@@ -338,7 +386,7 @@ export function ReviewStepForm() {
 
       <button
         type="button"
-        className="fixed bottom-8 right-8 z-50 flex size-12 items-center justify-center rounded-full border border-[#f1f5f9] bg-white shadow-lg transition hover:bg-slate-50"
+        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] z-50 flex size-12 items-center justify-center rounded-full border border-[#f1f5f9] bg-white shadow-lg transition hover:bg-slate-50"
         aria-label="Chat support"
       >
         <span className="material-symbols-outlined notranslate text-[#475569]">chat</span>

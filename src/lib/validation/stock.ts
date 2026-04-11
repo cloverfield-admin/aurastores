@@ -13,9 +13,21 @@ const optionalText = (max: number) =>
       return trimmed.length > 0 ? trimmed : undefined;
     });
 
+const optionalBarcode = z
+  .union([z.string().trim().max(128), z.literal("")])
+  .optional()
+  .transform((value) => {
+    if (!value) {
+      return undefined;
+    }
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  });
+
 export const createStockBatchSchema = z.object({
   branchId: z.string().uuid().optional(),
   productName: z.string().trim().min(2).max(200),
+  productBarcode: optionalBarcode,
   batchNumber: z.string().trim().min(2).max(64),
   expiresAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD date format."),
   quantityReceived: z.coerce.number().int().min(1).max(1_000_000),

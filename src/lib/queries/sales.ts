@@ -62,6 +62,7 @@ export type SalesCatalogResponse = {
     id: string;
     name: string;
     sku: string;
+    barcode: string | null;
     categoryName: string;
     defaultSellingPriceCents: number;
     batches: Array<{

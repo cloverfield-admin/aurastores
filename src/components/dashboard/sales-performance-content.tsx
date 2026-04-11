@@ -104,7 +104,8 @@ export function SalesPerformanceContent() {
               Monthly Sales Performance
             </h1>
             <p className="max-w-xl text-base text-[#3c4948]">
-              Real-time clinical intelligence and financial tracking for October 2024.
+              Real-time clinical intelligence and financial tracking for the current branch (rolling
+              30-day window in metrics below).
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -379,8 +380,8 @@ export function SalesPerformanceContent() {
         {/* Footer strip */}
         <footer className="flex flex-col gap-4 border-t border-[#f1f5f9] pt-6 text-[11px] uppercase tracking-[0.1em] text-[#94a3b8] sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <span className="font-semibold text-[#cbd5e1]">AuraPharma v2.4.0</span>
-            <span>© 2024 Clinical Intelligence</span>
+            <span className="font-semibold text-[#cbd5e1]">AuraPharma v1.0.0</span>
+            <span>© {new Date().getFullYear()} Clinical Intelligence</span>
           </div>
           <div className="flex flex-wrap gap-4">
             <Link href="#" className="underline decoration-[rgba(20,184,166,0.3)] hover:text-[#64748b]">

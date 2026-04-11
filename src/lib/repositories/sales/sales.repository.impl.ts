@@ -294,6 +294,7 @@ export class SalesRepositoryImpl implements SalesRepository {
           id: products.id,
           name: products.name,
           sku: products.sku,
+          barcode: products.barcode,
           categoryName: sql<string>`coalesce(${productCategories.name}, 'Uncategorized')`,
           defaultSellingPriceCents: products.defaultSellingPriceCents,
         })
@@ -348,6 +349,7 @@ export class SalesRepositoryImpl implements SalesRepository {
         id: row.id,
         name: row.name,
         sku: row.sku,
+        barcode: row.barcode,
         categoryName: row.categoryName,
         defaultSellingPriceCents: row.defaultSellingPriceCents,
         batches: batchMap.get(row.id) ?? [],

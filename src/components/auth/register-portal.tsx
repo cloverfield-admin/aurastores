@@ -1,20 +1,15 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
+import { AuraAvatar } from "@/components/ui/aura-avatar";
 import { AuraInlineAlert } from "@/components/ui/aura-inline-alert";
 import { useSignUpMutation } from "@/lib/queries/auth";
 import { ROUTES } from "@/lib/routes";
 
-const AVATAR_1 =
-  "https://www.figma.com/api/mcp/asset/bf2fd018-7a9a-49cf-9d8a-d06b38655f9a";
-const AVATAR_2 =
-  "https://www.figma.com/api/mcp/asset/c5796867-7f50-42e5-9b24-0dc2b5e6b994";
-const AVATAR_3 =
-  "https://www.figma.com/api/mcp/asset/ace232d6-cead-4f8d-8050-27da1685e72f";
+const REGISTER_SOCIAL_PROOF = ["Alex Morgan", "Jordan Lee", "Sam Rivera"] as const;
 
 function RegisterFieldLabel({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) {
   return (
@@ -108,8 +103,8 @@ export function RegisterPortal() {
         <Link href="/" className="bg-gradient-to-r from-[#14b8a6] to-[#6366f1] bg-clip-text text-2xl font-bold tracking-tight text-transparent">
           AuraPharma
         </Link>
-        <div className="flex items-center gap-4 sm:gap-6">
-          <span className="hidden text-base font-medium uppercase tracking-[0.05em] text-[#6c7a78] sm:inline">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-6">
+          <span className="truncate text-xs font-medium uppercase tracking-[0.05em] text-[#6c7a78] sm:text-base">
             Already a member?
           </span>
           <Link
@@ -200,19 +195,13 @@ export function RegisterPortal() {
 
             <div className="flex flex-wrap items-center gap-4 border-t border-[rgba(187,201,199,0.35)] pt-8">
               <div className="flex -space-x-3">
-                {[AVATAR_1, AVATAR_2, AVATAR_3].map((src) => (
-                  <div
-                    key={src}
-                    className="relative size-10 overflow-hidden rounded-full border-2 border-[#f7f9fb] shadow-sm"
-                  >
-                    <Image
-                      src={src}
-                      alt=""
-                      fill
-                      className="object-cover"
-                      sizes="40px"
-                    />
-                  </div>
+                {REGISTER_SOCIAL_PROOF.map((name) => (
+                  <AuraAvatar
+                    key={name}
+                    name={name}
+                    decorative
+                    className="size-10 rounded-full border-2 border-[#f7f9fb] text-xs shadow-sm"
+                  />
                 ))}
               </div>
               <p className="text-base font-medium uppercase tracking-wide text-[#6c7a78]">

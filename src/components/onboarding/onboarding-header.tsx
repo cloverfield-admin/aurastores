@@ -1,11 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
-
-const PHARMACY_AVATAR =
-  "https://www.figma.com/api/mcp/asset/14ce51e4-60be-4a56-944e-e881a63f4a4c";
-
-const CLINICAL_USER_AVATAR =
-  "https://www.figma.com/api/mcp/asset/e6578bfb-7698-432f-827b-76ba70e49a7d";
+import { AuraAvatar } from "@/components/ui/aura-avatar";
 
 type OnboardingHeaderProps = {
   variant?: "default" | "clinical";
@@ -39,15 +33,11 @@ export function OnboardingHeader({ variant = "default" }: OnboardingHeaderProps)
                 notifications
               </span>
             </button>
-            <div className="relative size-8 overflow-hidden rounded-full bg-[#e6e8ea] ring-2 ring-white">
-              <Image
-                src={CLINICAL_USER_AVATAR}
-                alt="Account"
-                fill
-                className="object-cover"
-                sizes="32px"
-              />
-            </div>
+            <AuraAvatar
+              name="Clinical User"
+              className="size-8 rounded-full ring-2 ring-white text-xs"
+              aria-label="Account"
+            />
           </div>
         </div>
         <div
@@ -74,15 +64,11 @@ export function OnboardingHeader({ variant = "default" }: OnboardingHeaderProps)
           >
             Support
           </Link>
-          <div className="relative size-8 overflow-hidden rounded-full bg-[#e0e3e5] ring-2 ring-white">
-            <Image
-              src={PHARMACY_AVATAR}
-              alt="Pharmacy"
-              fill
-              className="object-cover"
-              sizes="32px"
-            />
-          </div>
+          <AuraAvatar
+            name="Demo Pharmacy"
+            className="size-8 rounded-full ring-2 ring-white text-xs"
+            aria-label="Pharmacy"
+          />
         </div>
       </div>
     </header>

@@ -40,6 +40,8 @@ export type OnboardingDraft = {
     branchName: string;
     pharmacistCount: number;
     branchLocation: string;
+    latitude: number | null;
+    longitude: number | null;
     hoursMode: "24-7" | "custom";
     operatingHours: Array<{
       dayOfWeek: number;

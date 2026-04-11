@@ -1,15 +1,13 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { useStockBranchesQuery } from "@/lib/queries/stock";
 import { ROUTES } from "@/lib/routes";
-import { DASHBOARD_ASSETS } from "./dashboard-assets";
-
-const BRANCH_TABS = ["Main Branch", "East Side", "Warehouse"] as const;
+import { PharmacySearchField } from "@/components/dashboard/pharmacy-search-field";
+import { AuraAvatar } from "@/components/ui/aura-avatar";
 
 const MODULE_NAV: { label: string; icon: string; href: string }[] = [
   { label: "Aura Stock", icon: "inventory_2", href: ROUTES.dashboard.stock },
@@ -29,7 +27,51 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const searchParams = useSearchParams();
   const { withLoading, notify } = useAuraFeedback();
   const [localSearch, setLocalSearch] = useState("");
-  const [defaultBranchTab, setDefaultBranchTab] = useState<(typeof BRANCH_TABS)[number]>("Main Branch");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileNavCloseRef = useRef<HTMLButtonElement>(null);
+
+  const closeMobileNav = useCallback(() => {
+    setMobileNavOpen(false);
+  }, []);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      closeMobileNav();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [pathname, closeMobileNav]);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onChange = () => {
+      if (mq.matches) {
+        closeMobileNav();
+      }
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [closeMobileNav]);
+
+  useEffect(() => {
+    if (!mobileNavOpen) {
+      return;
+    }
+    document.body.style.overflow = "hidden";
+    mobileNavCloseRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeMobileNav();
+        mobileMenuButtonRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [mobileNavOpen, closeMobileNav]);
 
   const isStock = pathname === ROUTES.dashboard.stock || pathname.startsWith(`${ROUTES.dashboard.stock}/`);
   const isSales = pathname === ROUTES.dashboard.sales || pathname.startsWith(`${ROUTES.dashboard.sales}/`);
@@ -38,6 +80,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const isSettings = pathname === ROUTES.settings;
   const isStaff = pathname === ROUTES.dashboard.staff || pathname.startsWith(`${ROUTES.dashboard.staff}/`);
   const isStaffAdd = pathname === ROUTES.dashboard.staffAdd;
+  const isDashboardMain = pathname === ROUTES.dashboard.main;
   const searchPlaceholder = isStock
     ? "Search inventory..."
     : isSales
@@ -55,54 +98,121 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const insightsBranchId = isInsights ? searchParams.get("branch") ?? undefined : undefined;
   const staffBranchId = isStaff ? searchParams.get("branch") ?? undefined : undefined;
   const sectionBranchId = isStock ? stockBranchId : isSales ? salesBranchId : isInsights ? insightsBranchId : isStaff ? staffBranchId : undefined;
-  const branchesQuery = useStockBranchesQuery(sectionBranchId, isStock || isSales || isInsights || isStaff);
+  const branchesQuery = useStockBranchesQuery(sectionBranchId, !isDashboardMain);
   const sectionBranchTabs = branchesQuery.data?.branches ?? [];
   const activeSectionBranchId = branchesQuery.data?.branch.id ?? sectionBranchId;
+
+  function replaceBranchInUrl(branchId: string, opts?: { resetPage?: boolean }) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("branch", branchId);
+    if (opts?.resetPage) {
+      params.delete("page");
+    }
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname);
+  }
 
   const SALES_TABS = ["Overview", "Analytics", "Reports"] as const;
   const [salesTab, setSalesTab] = useState<(typeof SALES_TABS)[number]>("Overview");
 
   const preservedBranch = searchParams.get("branch") ?? undefined;
 
-  function updateStockBranch(branchId: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("branch", branchId);
-    params.delete("page");
-    const next = params.toString();
-    router.replace(next ? `${pathname}?${next}` : pathname);
-  }
-
-  function updateSalesBranch(branchId: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("branch", branchId);
-    const next = params.toString();
-    router.replace(next ? `${pathname}?${next}` : pathname);
-  }
-
-  function updateInsightsBranch(branchId: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("branch", branchId);
-    const next = params.toString();
-    router.replace(next ? `${pathname}?${next}` : pathname);
-  }
-
-  function updateStaffBranch(branchId: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("branch", branchId);
-    const next = params.toString();
-    router.replace(next ? `${pathname}?${next}` : pathname);
-  }
-
   function navHref(base: string) {
     return preservedBranch ? `${base}?branch=${preservedBranch}` : base;
   }
 
+  function branchSwitcherNav(opts: {
+    ariaLabel: string;
+    variant: "insights" | "default";
+    onSelectBranch: (branchId: string) => void;
+  }) {
+    if (branchesQuery.isPending) {
+      return <span className="text-sm text-[#94a3b8]">Loading branches…</span>;
+    }
+    if (sectionBranchTabs.length === 0) {
+      return (
+        <div className="flex flex-wrap items-center gap-2 text-sm text-[#64748b]">
+          <span>No branches yet.</span>
+          <Link
+            href={ROUTES.dashboard.onboarding.pharmacyDetails}
+            className="font-semibold text-[#0d9488] underline decoration-[rgba(20,184,166,0.35)]"
+          >
+            Finish branch setup
+          </Link>
+        </div>
+      );
+    }
+    return (
+      <nav
+        className="flex min-w-0 max-w-full flex-wrap items-center gap-x-4 gap-y-2 overflow-x-auto overscroll-x-contain sm:gap-x-6"
+        aria-label={opts.ariaLabel}
+      >
+        {sectionBranchTabs.map((tab) => {
+          const active = tab.id === activeSectionBranchId;
+          const className =
+            opts.variant === "insights"
+              ? `pb-1.5 pt-1 text-sm ${
+                  active
+                    ? "border-b-2 border-[#0fb9b1] font-medium text-[#0fb9b1]"
+                    : "font-normal text-[#475569] hover:text-[#0f172a]"
+                }`
+              : `pb-1.5 pt-1 font-[family-name:var(--font-manrope)] text-sm ${
+                  active
+                    ? "border-b-2 border-[#14b8a6] font-semibold text-[#0d9488]"
+                    : "font-normal text-[#64748b] hover:text-[#0f172a]"
+                }`;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => opts.onSelectBranch(tab.id)}
+              className={className}
+            >
+              {tab.name}
+            </button>
+          );
+        })}
+      </nav>
+    );
+  }
+
   return (
     <div className="aura-landing min-h-dvh bg-[#f7f9fb] text-[#191c1e]">
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 z-40 flex h-full w-64 flex-col justify-between border-r border-[#f1f5f9] bg-[#f8fafc] p-4">
+      {mobileNavOpen ? (
+        <button
+          type="button"
+          aria-label="Close navigation menu"
+          className="fixed inset-0 z-[90] bg-black/40 lg:hidden"
+          onClick={closeMobileNav}
+        />
+      ) : null}
+
+      {/* Sidebar: off-canvas below lg */}
+      <aside
+        id="dashboard-mobile-nav"
+        className={`fixed left-0 top-0 z-[100] flex h-dvh w-64 max-w-[min(100vw,20rem)] flex-col justify-between border-r border-[#f1f5f9] bg-[#f8fafc] p-4 shadow-[4px_0_24px_rgba(15,23,42,0.08)] transition-transform duration-200 ease-out motion-reduce:transition-none lg:z-40 lg:max-w-none lg:translate-x-0 lg:shadow-none ${
+          mobileNavOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        }`}
+      >
+        <div className="flex shrink-0 items-center justify-between gap-2 lg:hidden">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#64748b]">Menu</span>
+          <button
+            ref={mobileNavCloseRef}
+            type="button"
+            data-mobile-nav-close
+            aria-label="Close navigation menu"
+            onClick={closeMobileNav}
+            className="rounded-lg p-2 text-[#64748b] hover:bg-slate-100"
+          >
+            <span className="material-symbols-outlined notranslate text-xl">close</span>
+          </button>
+        </div>
         <div>
-          <Link href={ROUTES.dashboard.main} className="flex items-center gap-3 px-2 pb-8 pt-2">
+          <Link
+            href={ROUTES.dashboard.main}
+            onClick={closeMobileNav}
+            className="flex items-center gap-3 px-2 pb-8 pt-2 lg:pt-2"
+          >
             <div
               className="flex size-10 items-center justify-center rounded-xl shadow-md"
               style={{
@@ -138,6 +248,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 <Link
                   key={item.href}
                   href={href}
+                  onClick={closeMobileNav}
                   className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
                     active
                       ? "bg-white text-[#0d9488] shadow-sm"
@@ -160,6 +271,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
           <nav className="flex flex-col gap-1" aria-label="Account">
             <Link
               href={ROUTES.settings}
+              onClick={closeMobileNav}
               className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
                 isSettings
                   ? "bg-white text-[#0d9488] shadow-sm"
@@ -175,6 +287,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
             </Link>
             <Link
               href={ROUTES.features}
+              onClick={closeMobileNav}
               className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#64748b] hover:bg-slate-100/80"
             >
               <span className="material-symbols-outlined notranslate text-xl">support_agent</span>
@@ -183,18 +296,15 @@ export function DashboardShell({ children }: DashboardShellProps) {
           </nav>
           <Link
             href={ROUTES.settings}
+            onClick={closeMobileNav}
             className="mt-3 block rounded-xl bg-[#f1f5f9] p-3 transition hover:bg-[#e2e8f0]"
           >
             <div className="flex items-center gap-3">
-              <div className="relative size-8 shrink-0 overflow-hidden rounded-full bg-[#cbd5e1]">
-                <Image
-                  src={DASHBOARD_ASSETS.sidebarProfile}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="32px"
-                />
-              </div>
+              <AuraAvatar
+                name="Pharmacy Manager"
+                decorative
+                className="size-8 shrink-0 rounded-full text-[11px] ring-2 ring-white"
+              />
               <div className="min-w-0">
                 <p className="truncate font-[family-name:var(--font-manrope)] text-xs font-bold text-[#191c1e]">
                   Pharmacy Manager
@@ -207,9 +317,23 @@ export function DashboardShell({ children }: DashboardShellProps) {
       </aside>
 
       {/* Top bar */}
-      <header className="fixed left-0 right-0 top-0 z-30 border-b border-[#f1f5f9] bg-white/80 shadow-[0_1px_2px_0_rgba(226,232,240,0.5)] backdrop-blur-md lg:left-64">
+      <header className="fixed left-0 right-0 top-0 z-[110] border-b border-[#f1f5f9] bg-white/80 shadow-[0_1px_2px_0_rgba(226,232,240,0.5)] backdrop-blur-md lg:left-64 lg:z-30">
         <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+          <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+            <div className="flex min-w-0 items-center gap-3 sm:contents">
+              <button
+                ref={mobileMenuButtonRef}
+                type="button"
+                className="shrink-0 rounded-lg p-2 text-[#64748b] hover:bg-slate-100 lg:hidden"
+                aria-expanded={mobileNavOpen}
+                aria-controls="dashboard-mobile-nav"
+                onClick={() => setMobileNavOpen((open) => !open)}
+              >
+                <span className="material-symbols-outlined notranslate text-2xl">
+                  {mobileNavOpen ? "close" : "menu"}
+                </span>
+              </button>
+            </div>
             {isSettings ? (
               <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#0f172a] sm:text-lg">
                 Profile & Settings
@@ -230,85 +354,34 @@ export function DashboardShell({ children }: DashboardShellProps) {
                     className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
                   />
                 </label>
-                <nav className="flex flex-wrap items-center gap-6" aria-label="Branch filter">
-                  {(sectionBranchTabs.length > 0 ? sectionBranchTabs : BRANCH_TABS).map((tab) => {
-                    const tabId = typeof tab === "string" ? tab : tab.id;
-                    const tabLabel = typeof tab === "string" ? tab : tab.name;
-                    const active = tabId === activeSectionBranchId;
-                    return (
-                      <button
-                        key={tabId}
-                        type="button"
-                        onClick={() => updateStaffBranch(tabId)}
-                        className={`pb-1.5 pt-1 font-[family-name:var(--font-manrope)] text-sm ${
-                          active
-                            ? "border-b-2 border-[#14b8a6] font-semibold text-[#0d9488]"
-                            : "font-normal text-[#64748b] hover:text-[#0f172a]"
-                        }`}
-                      >
-                        {tabLabel}
-                      </button>
-                    );
-                  })}
-                </nav>
+                {branchSwitcherNav({
+                  ariaLabel: "Branch filter",
+                  variant: "default",
+                  onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
+                })}
               </>
             ) : isInsights ? (
               <>
                 <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#0f172a] sm:text-lg">
                   Pharmacy Network Dashboard
                 </h1>
-                <nav
-                  className="flex flex-wrap items-center gap-6"
-                  aria-label="Branch filter"
-                >
-                  {(sectionBranchTabs.length > 0 ? sectionBranchTabs : BRANCH_TABS).map((tab) => {
-                    const tabId = typeof tab === "string" ? tab : tab.id;
-                    const tabLabel = typeof tab === "string" ? tab : tab.name;
-                    const active = tabId === activeSectionBranchId;
-                    return (
-                      <button
-                        key={tabId}
-                        type="button"
-                        onClick={() => updateInsightsBranch(tabId)}
-                        className={`pb-1.5 pt-1 text-sm ${
-                          active
-                            ? "border-b-2 border-[#0fb9b1] font-medium text-[#0fb9b1]"
-                            : "font-normal text-[#475569] hover:text-[#0f172a]"
-                        }`}
-                      >
-                        {tabLabel}
-                      </button>
-                    );
-                  })}
-                </nav>
+                {branchSwitcherNav({
+                  ariaLabel: "Branch filter",
+                  variant: "insights",
+                  onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
+                })}
               </>
             ) : isSales ? (
               <>
+                {branchSwitcherNav({
+                  ariaLabel: "Active branch context",
+                  variant: "default",
+                  onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
+                })}
                 <nav
-                  className="flex flex-wrap items-center gap-6"
-                  aria-label="Active branch context"
+                  className="flex min-w-0 max-w-full items-center gap-4 overflow-x-auto overscroll-x-contain pb-0.5 sm:gap-6"
+                  aria-label="Sales sections"
                 >
-                  {(sectionBranchTabs.length > 0 ? sectionBranchTabs : BRANCH_TABS).map((tab) => {
-                    const tabId = typeof tab === "string" ? tab : tab.id;
-                    const tabLabel = typeof tab === "string" ? tab : tab.name;
-                    const active = tabId === activeSectionBranchId;
-                    return (
-                      <button
-                        key={tabId}
-                        type="button"
-                        onClick={() => updateSalesBranch(tabId)}
-                        className={`pb-1.5 pt-1 font-[family-name:var(--font-manrope)] text-sm ${
-                          active
-                            ? "border-b-2 border-[#14b8a6] font-semibold text-[#0d9488]"
-                            : "font-normal text-[#64748b] hover:text-[#0f172a]"
-                        }`}
-                      >
-                        {tabLabel}
-                      </button>
-                    );
-                  })}
-                </nav>
-                <nav className="flex items-center gap-6" aria-label="Sales sections">
                   {SALES_TABS.map((tab) => {
                     const active = tab === salesTab;
                     return (
@@ -331,55 +404,33 @@ export function DashboardShell({ children }: DashboardShellProps) {
             ) : (
               <>
                 {!isStock && !isSettings ? (
-                  <label className="relative block w-full sm:w-64">
-                    <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
-                      search
-                    </span>
-                    <input
-                      type="search"
-                      placeholder={searchPlaceholder}
-                      value={localSearch}
-                      onChange={(event) => {
-                        setLocalSearch(event.target.value);
-                      }}
-                      className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
-                    />
-                  </label>
-                ) : null}
-                <nav
-                  className="flex flex-wrap items-center gap-6"
-                  aria-label="Active branch context"
-                >
-                  {(isStock && sectionBranchTabs.length > 0 ? sectionBranchTabs : BRANCH_TABS).map((tab) => {
-                    const tabId = typeof tab === "string" ? tab : tab.id;
-                    const tabLabel = typeof tab === "string" ? tab : tab.name;
-                    const isActive = isStock
-                      ? tabId === activeSectionBranchId
-                      : tabLabel === defaultBranchTab;
-
-                    return (
-                      <button
-                        key={tabId}
-                        type="button"
-                        onClick={() => {
-                          if (isStock) {
-                            updateStockBranch(tabId);
-                            return;
-                          }
-
-                          setDefaultBranchTab(tabLabel as (typeof BRANCH_TABS)[number]);
+                  isDashboardMain ? (
+                    <PharmacySearchField />
+                  ) : (
+                    <label className="relative block w-full sm:w-64">
+                      <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
+                        search
+                      </span>
+                      <input
+                        type="search"
+                        placeholder={searchPlaceholder}
+                        value={localSearch}
+                        onChange={(event) => {
+                          setLocalSearch(event.target.value);
                         }}
-                        className={`pb-1.5 pt-1 font-[family-name:var(--font-manrope)] text-sm ${
-                          isActive
-                            ? "border-b-2 border-[#14b8a6] font-semibold text-[#0d9488]"
-                            : "font-normal text-[#64748b] hover:text-[#0f172a]"
-                        }`}
-                      >
-                        {tabLabel}
-                      </button>
-                    );
-                  })}
-                </nav>
+                        className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
+                      />
+                    </label>
+                  )
+                ) : null}
+                {!isDashboardMain
+                  ? branchSwitcherNav({
+                      ariaLabel: "Active branch context",
+                      variant: "default",
+                      onSelectBranch: (branchId) =>
+                        replaceBranchInUrl(branchId, { resetPage: isStock }),
+                    })
+                  : null}
               </>
             )}
           </div>
@@ -426,7 +477,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 </button>
               </>
             )}
-            {!isSales && !isInsights && !isSettings && !isStaff && !isStaffAdd && (
+            {!isSales && !isInsights && !isSettings && !isStaff && !isStaffAdd && !isDashboardMain && (
               <button
                 type="button"
                 onClick={async () => {
@@ -478,15 +529,13 @@ export function DashboardShell({ children }: DashboardShellProps) {
               </button>
               <Link
                 href={ROUTES.settings}
-                className="relative block size-8 overflow-hidden rounded-full shadow-[0_0_0_2px_rgba(20,184,166,0.2)] transition hover:opacity-90"
+                className="block shadow-[0_0_0_2px_rgba(20,184,166,0.2)] transition hover:opacity-90"
                 aria-label="Profile and settings"
               >
-                <Image
-                  src={DASHBOARD_ASSETS.topUserAvatar}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="32px"
+                <AuraAvatar
+                  name="Pharmacy Manager"
+                  decorative
+                  className="size-8 rounded-full text-[11px]"
                 />
               </Link>
             </div>

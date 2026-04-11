@@ -79,6 +79,7 @@ export type StockCatalogData = {
     id: string;
     name: string;
     sku: string;
+    barcode: string | null;
     categoryName: string;
     defaultSellingPriceCents: number;
   }>;
@@ -95,6 +96,8 @@ export type StockGetDashboardOptions = {
 
 export type StockGetCatalogOptions = {
   branchId?: string;
+  /** When false, skips loading all products (empty array). Default true for backward compatibility. */
+  includeProducts?: boolean;
 };
 
 export type StockBatchDetail = {
@@ -148,6 +151,8 @@ export interface StockRepository {
     options?: StockGetDashboardOptions,
   ): Promise<StockDashboardData>;
   getCatalog(context: AuthContext, options?: StockGetCatalogOptions): Promise<StockCatalogData>;
+  /** Capped product name/SKU search for add-batch and similar UIs. */
+  suggestProducts(context: AuthContext, query: string, limit?: number): Promise<StockCatalogData["products"]>;
   getBranches(
     context: AuthContext,
     preferredBranchId?: string,
