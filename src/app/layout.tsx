@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Inter, Manrope } from "next/font/google";
 import { AuraFeedbackProvider } from "@/components/providers/aura-feedback-provider";
 import { AppQueryProvider } from "@/components/providers/query-provider";
@@ -28,6 +28,12 @@ const inter = Inter({
 const defaultTitle = "AuraPharma — Pharmacy management platform";
 const defaultDescription =
   "Cloud-based pharmacy management with inventory, sales intelligence, and multi-branch sync.";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   metadataBase: getMetadataBase(),

@@ -1,11 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { AuraAvatar } from "@/components/ui/aura-avatar";
 import { apiUrl } from "@/lib/api/version";
 import { ROUTES } from "@/lib/routes";
-import { DASHBOARD_ASSETS } from "./dashboard-assets";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 
 type UserProfileSettingsContentProps = {
@@ -66,13 +65,10 @@ export function UserProfileSettingsContent({ context }: UserProfileSettingsConte
                     }}
                   >
                     <div className="relative size-full overflow-hidden rounded-xl bg-white">
-                      <Image
-                        src={DASHBOARD_ASSETS.settingsProfile}
-                        alt=""
-                        fill
-                        className="object-cover"
-                        sizes="128px"
-                        priority
+                      <AuraAvatar
+                        name={user.fullName}
+                        className="size-full rounded-xl"
+                        textClassName="text-4xl"
                       />
                     </div>
                   </div>

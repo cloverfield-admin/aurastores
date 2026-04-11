@@ -1,15 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
+import { AuraAvatar } from "@/components/ui/aura-avatar";
 import { ONBOARDING_STEPS, onboardingStepIndex } from "./onboarding-steps";
 import { useOnboardingProgress } from "./onboarding-progress-provider";
 import type { OnboardingStepId } from "./types";
 
-const REVIEW_USER_AVATAR =
-  "https://www.figma.com/api/mcp/asset/31e0bfc5-7394-467e-a1e4-3067e11b4035";
-
-/** Header subtitle overrides (Figma copy) keyed by step. */
+/** Header subtitle overrides keyed by step. */
 const REVIEW_PORTAL_HEADER_TITLE: Partial<Record<OnboardingStepId, string>> = {
   review: "Final Validation",
 };
@@ -187,15 +184,11 @@ export function ReviewPortalShell({
             >
               <span className="material-symbols-outlined notranslate text-xl">help</span>
             </button>
-            <div className="relative ml-1 size-8 overflow-hidden rounded-full bg-[#e2e8f0]">
-              <Image
-                src={REVIEW_USER_AVATAR}
-                alt=""
-                fill
-                className="object-cover"
-                sizes="32px"
-              />
-            </div>
+            <AuraAvatar
+              name="Onboarding Lead"
+              decorative
+              className="ml-1 size-8 rounded-full text-xs"
+            />
           </div>
         </div>
       </header>

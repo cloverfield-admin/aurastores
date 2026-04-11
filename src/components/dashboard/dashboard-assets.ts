@@ -1,21 +1,8 @@
-/** Figma MCP assets (refresh from design if expired). */
+import { AURA_ASSETS } from "@/lib/aura-assets";
+
+/** Branch map thumbnails and other dashboard imagery from `public/aura`. */
 export const DASHBOARD_ASSETS = {
-  topUserAvatar:
-    "https://www.figma.com/api/mcp/asset/a6c15ba4-1425-42b3-9cb7-28680d7a4b0f",
-  sidebarProfile:
-    "https://www.figma.com/api/mcp/asset/5388e75c-5e7f-43b9-b4c8-e799fa5235ce",
-  /** Settings page pharmacist profile (from Figma node 24:21) */
-  settingsProfile:
-    "https://www.figma.com/api/mcp/asset/c0550336-7fc1-4966-a7cb-c5116f2ba75e",
-  staffA: "https://www.figma.com/api/mcp/asset/d61389b2-5873-46fd-b6f3-544d842caea7",
-  staffB: "https://www.figma.com/api/mcp/asset/2e18b06a-55e9-4a5b-8d59-7ad7b11551a7",
-  staffC: "https://www.figma.com/api/mcp/asset/8274aaaf-359d-4724-8c46-38790d58c044",
-  /** Staff directory avatars (from Figma node 24-566) */
-  staffAvatar1: "https://www.figma.com/api/mcp/asset/1a7c3fb8-53c5-4eef-b2b5-f16560916d19",
-  staffAvatar2: "https://www.figma.com/api/mcp/asset/288eeae4-479c-4c61-ac53-a13eccfa88d4",
-  staffAvatar3: "https://www.figma.com/api/mcp/asset/5ea5e7f6-8be1-452e-983c-defeef3ad5ee",
-  staffAvatar4: "https://www.figma.com/api/mcp/asset/e0c645c0-1e00-41a8-9dfb-531a380e7528",
-  mapMain: "https://www.figma.com/api/mcp/asset/3821e45f-32ca-4cd0-bea1-ba6480922e72",
-  mapEast: "https://www.figma.com/api/mcp/asset/4073cfcd-b5cb-433f-89ec-0a3daaa59b54",
-  mapWarehouse: "https://www.figma.com/api/mcp/asset/7c9e3c00-9cc0-4941-8130-6a9b11f0ef5a",
+  mapMain: AURA_ASSETS.mapMain,
+  mapEast: AURA_ASSETS.mapEast,
+  mapWarehouse: AURA_ASSETS.mapWarehouse,
 } as const;

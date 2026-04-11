@@ -1,9 +1,10 @@
-import Image from "next/image";
-
-const HIPAA_BADGE =
-  "https://www.figma.com/api/mcp/asset/4c226b3c-5eb2-436a-a81b-264e43911a2c";
-const SOC2_BADGE =
-  "https://www.figma.com/api/mcp/asset/edc5e857-b157-4ea7-8f85-8b932b5c5e7a";
+function TrustChip({ label }: { label: string }) {
+  return (
+    <span className="inline-flex h-6 items-center rounded border border-[#cbd5e1] bg-white px-2 text-[9px] font-bold tracking-wide text-[#475569] shadow-sm">
+      {label}
+    </span>
+  );
+}
 
 export function LicenseVerificationAside() {
   return (
@@ -69,13 +70,9 @@ export function LicenseVerificationAside() {
           environments. Your data is only accessible to authorized clinical verification
           specialists.
         </p>
-        <div className="mt-4 flex gap-3 opacity-70">
-          <div className="relative h-6 w-12 overflow-hidden rounded bg-[#e6e8ea]">
-            <Image src={HIPAA_BADGE} alt="HIPAA" fill className="object-contain p-0.5" sizes="48px" />
-          </div>
-          <div className="relative h-6 w-12 overflow-hidden rounded bg-[#e6e8ea]">
-            <Image src={SOC2_BADGE} alt="SOC 2" fill className="object-contain p-0.5" sizes="48px" />
-          </div>
+        <div className="mt-4 flex flex-wrap gap-2 opacity-90">
+          <TrustChip label="HIPAA" />
+          <TrustChip label="SOC 2" />
         </div>
       </div>
 

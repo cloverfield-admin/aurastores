@@ -386,7 +386,7 @@ export function ReviewStepForm() {
 
       <button
         type="button"
-        className="fixed bottom-8 right-8 z-50 flex size-12 items-center justify-center rounded-full border border-[#f1f5f9] bg-white shadow-lg transition hover:bg-slate-50"
+        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] z-50 flex size-12 items-center justify-center rounded-full border border-[#f1f5f9] bg-white shadow-lg transition hover:bg-slate-50"
         aria-label="Chat support"
       >
         <span className="material-symbols-outlined notranslate text-[#475569]">chat</span>

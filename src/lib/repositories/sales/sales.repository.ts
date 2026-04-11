@@ -53,6 +53,7 @@ export type SalesCatalogData = {
     id: string;
     name: string;
     sku: string;
+    barcode: string | null;
     categoryName: string;
     defaultSellingPriceCents: number;
     batches: Array<{

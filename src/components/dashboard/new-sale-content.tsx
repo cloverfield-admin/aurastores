@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { BarcodeScannerModal } from "@/components/dashboard/barcode-scanner-modal";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { useCreateSaleMutation, useSalesCatalogQuery } from "@/lib/queries/sales";
 import { ROUTES } from "@/lib/routes";
@@ -47,8 +48,10 @@ export function NewSaleContent() {
   const [paymentMethod, setPaymentMethod] = useState("aura-pay");
   const [reference, setReference] = useState("");
   const [discountCode, setDiscountCode] = useState("");
-  const [notes, setNotes] = useState("");
+  const [notes] = useState("");
+  const [scannerLineId, setScannerLineId] = useState<string | "add" | null>(null);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- hydrate placeholder line items when catalog loads */
   useEffect(() => {
     if (!salesCatalogQuery.data?.products.length) {
       return;
@@ -83,6 +86,7 @@ export function NewSaleContent() {
       }),
     );
   }, [salesCatalogQuery.data?.products]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const { subtotal, tax, discount, grandTotal, auraPoints } = useMemo(() => {
     const sub = items.reduce((acc, row) => acc + row.qty * row.unitPrice, 0);
@@ -106,6 +110,68 @@ export function NewSaleContent() {
 
   function getPreferredBatch<T extends { quantityAvailable: number }>(batches: T[]) {
     return batches.find((batch) => batch.quantityAvailable > 0) ?? batches[0];
+  }
+
+  function findProductByBarcode(code: string) {
+    const trimmed = code.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+    const catalog = salesCatalogQuery.data?.products ?? [];
+    const direct = catalog.find((p) => p.barcode === trimmed);
+    if (direct) {
+      return direct;
+    }
+    if (trimmed.length === 12) {
+      return catalog.find((p) => p.barcode === `0${trimmed}`);
+    }
+    return undefined;
+  }
+
+  function addItemWithProduct(productId: string) {
+    if (salesCatalogQuery.isLoading) {
+      notify({
+        variant: "info",
+        title: "Catalog still loading",
+        description: "Please wait a moment and try again.",
+      });
+      return;
+    }
+
+    if (salesCatalogQuery.isError) {
+      notify({
+        variant: "error",
+        title: "Unable to load medications",
+        description: "Refresh the page or switch branch, then try again.",
+      });
+      return;
+    }
+
+    const product = salesCatalogQuery.data?.products.find((p) => p.id === productId);
+    if (!product) {
+      notify({
+        variant: "warning",
+        title: "Product not found",
+        description: "This item is not in the catalog for the selected branch.",
+      });
+      return;
+    }
+
+    const defaultBatch = getPreferredBatch(product.batches);
+    setItems((prev) => [
+      ...prev,
+      {
+        id: `new-${Date.now()}`,
+        productId: product.id,
+        batchId: defaultBatch?.id,
+        name: product.name,
+        nameLines: product.name.split(" ").slice(0, 2),
+        batch: defaultBatch?.batchNumber ?? "N/A",
+        expiry: defaultBatch ? new Date(defaultBatch.expiresAt).toLocaleDateString("en-US") : "N/A",
+        qty: 1,
+        unitPrice: product.defaultSellingPriceCents / 100,
+      },
+    ]);
   }
 
   function updateQty(id: string, qty: number) {
@@ -242,7 +308,7 @@ export function NewSaleContent() {
     }
 
     if (product.batches.length === 0) {
-      return "No available stock batch in this branch.";
+      return "No available stock for this product in this branch.";
     }
 
     const selectedBatch =
@@ -250,15 +316,15 @@ export function NewSaleContent() {
       product.batches[0];
 
     if (!selectedBatch) {
-      return "No available stock batch in this branch.";
+      return "No available stock for this product in this branch.";
     }
 
     if (selectedBatch.quantityAvailable <= 0) {
-      return "Selected batch is out of stock.";
+      return "Selected product is out of stock.";
     }
 
     if (item.qty > selectedBatch.quantityAvailable) {
-      return `Only ${selectedBatch.quantityAvailable} unit${selectedBatch.quantityAvailable === 1 ? "" : "s"} available for this batch.`;
+      return `Only ${selectedBatch.quantityAvailable} unit${selectedBatch.quantityAvailable === 1 ? "" : "s"} available for this product.`;
     }
 
     return null;
@@ -380,7 +446,7 @@ export function NewSaleContent() {
             <thead>
               <tr>
                 <th>Medication</th>
-                <th>Batch</th>
+                <th>Product ref</th>
                 <th>Qty</th>
                 <th>Unit Price</th>
                 <th>Line Total</th>
@@ -440,6 +506,33 @@ export function NewSaleContent() {
 
   return (
     <div className="px-4 pb-24 pt-2 sm:px-6 lg:px-8">
+      <BarcodeScannerModal
+        open={scannerLineId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setScannerLineId(null);
+          }
+        }}
+        onScan={(code) => {
+          const product = findProductByBarcode(code);
+          if (!product) {
+            notify({
+              variant: "error",
+              title: "No matching medication",
+              description:
+                "No product in this branch uses that barcode. Add stock with the barcode first, or pick from the list.",
+            });
+            return;
+          }
+          if (scannerLineId === "add") {
+            addItemWithProduct(product.id);
+          } else if (scannerLineId) {
+            updateItemProduct(scannerLineId, product.id);
+          }
+          setScannerLineId(null);
+        }}
+        title="Scan medication barcode"
+      />
       <div className="mx-auto max-w-[1280px]">
         {/* Header */}
         <div className="mb-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
@@ -563,18 +656,29 @@ export function NewSaleContent() {
                     Items &amp; Prescription
                   </h2>
                 </div>
-                <button
-                  type="button"
-                  onClick={addItem}
-                  disabled={salesCatalogQuery.isLoading}
-                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#006a65] transition hover:text-[#004d49] disabled:cursor-not-allowed disabled:text-[#94a3b8]"
-                >
-                  <span className="material-symbols-outlined notranslate text-lg">add</span>
-                  Add Item
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setScannerLineId("add")}
+                    disabled={salesCatalogQuery.isLoading}
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#4648d4] transition hover:text-[#2f2ebe] disabled:cursor-not-allowed disabled:text-[#94a3b8]"
+                  >
+                    <span className="material-symbols-outlined notranslate text-lg">barcode_scanner</span>
+                    Scan to add
+                  </button>
+                  <button
+                    type="button"
+                    onClick={addItem}
+                    disabled={salesCatalogQuery.isLoading}
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#006a65] transition hover:text-[#004d49] disabled:cursor-not-allowed disabled:text-[#94a3b8]"
+                  >
+                    <span className="material-symbols-outlined notranslate text-lg">add</span>
+                    Add Item
+                  </button>
+                </div>
               </div>
 
-              <div className="overflow-x-auto rounded-xl border border-[#f1f5f9]">
+              <div className="overflow-x-auto overscroll-x-contain rounded-xl border border-[#f1f5f9]">
                 <table className="w-full min-w-[640px] border-collapse text-left">
                   <thead>
                     <tr className="border-b border-[#f1f5f9]">
@@ -597,20 +701,20 @@ export function NewSaleContent() {
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map((row) => (
-                      (() => {
-                        const rowIssue = getLineItemIssue(row);
-                        return (
-                      <tr
-                        key={row.id}
-                        className={`border-b last:border-0 ${rowIssue ? "border-[#fee2e2] bg-[#fff7f7]" : "border-[#f8fafc]"}`}
-                      >
+                    {items.map((row) => {
+                      const rowIssue = getLineItemIssue(row);
+                      return (
+                        <tr
+                          key={row.id}
+                          className={`border-b last:border-0 ${rowIssue ? "border-[#fee2e2] bg-[#fff7f7]" : "border-[#f8fafc]"}`}
+                        >
                         <td className="px-4 py-5 align-top">
                           <div className="space-y-2">
+                            <div className="flex gap-2">
                             <select
                               value={row.productId ?? ""}
                               onChange={(event) => updateItemProduct(row.id, event.target.value)}
-                              className="w-full rounded-xl border-0 bg-[#f2f4f6] px-3 py-2 text-sm text-[#191c1e] outline-none focus:ring-2 focus:ring-[#006a65]/20"
+                              className="min-w-0 flex-1 rounded-xl border-0 bg-[#f2f4f6] px-3 py-2 text-sm text-[#191c1e] outline-none focus:ring-2 focus:ring-[#006a65]/20"
                             >
                               <option value="" disabled>
                                 Select medication
@@ -621,6 +725,19 @@ export function NewSaleContent() {
                                 </option>
                               ))}
                             </select>
+                            <button
+                              type="button"
+                              onClick={() => setScannerLineId(row.id)}
+                              disabled={salesCatalogQuery.isLoading}
+                              className="inline-flex shrink-0 items-center justify-center rounded-xl border border-[#e2e8f0] bg-white px-2.5 py-2 text-[#006a65] transition hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-50"
+                              aria-label="Scan barcode for this line"
+                              title="Scan barcode"
+                            >
+                              <span className="material-symbols-outlined notranslate text-xl">
+                                barcode_scanner
+                              </span>
+                            </button>
+                            </div>
                             {row.nameLines.filter(Boolean).map((line, i) => (
                               <p
                                 key={`${row.id}-line-${i}`}
@@ -630,7 +747,7 @@ export function NewSaleContent() {
                               </p>
                             ))}
                             <p className="text-[11px] text-[#94a3b8]">
-                              Batch: {row.batch} | Exp: {row.expiry}
+                              Ref: {row.batch} | Exp: {row.expiry}
                             </p>
                             {rowIssue ? <p className="text-[11px] font-medium text-[#ba1a1a]">{rowIssue}</p> : null}
                           </div>
@@ -667,10 +784,9 @@ export function NewSaleContent() {
                             </span>
                           </button>
                         </td>
-                      </tr>
-                        );
-                      })()
-                    ))}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

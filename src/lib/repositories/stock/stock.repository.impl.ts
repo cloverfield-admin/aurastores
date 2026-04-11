@@ -237,6 +237,14 @@ function pickResolvedBranch(
 }
 
 async function resolveBranch(context: AuthContext, preferredBranchId?: string): Promise<ResolvedBranch> {
+  if (preferredBranchId) {
+    const direct = await db.query.branches.findFirst({
+      where: and(eq(branches.id, preferredBranchId), eq(branches.organizationId, context.organization.id)),
+    });
+    if (direct) {
+      return direct;
+    }
+  }
   const availableBranches = await listOrganizationBranches(context.organization.id);
   return pickResolvedBranch(context, preferredBranchId, availableBranches);
 }
@@ -559,25 +567,31 @@ export class StockRepositoryImpl implements StockRepository {
     context: AuthContext,
     options: GetCatalogOptions = {},
   ): Promise<StockCatalogData> {
+    const includeProducts = options.includeProducts ?? true;
     const branchOptions = await listOrganizationBranches(context.organization.id);
     const branch = pickResolvedBranch(context, options.branchId, branchOptions);
+    const productRowsPromise = includeProducts
+      ? db
+          .select({
+            id: products.id,
+            name: products.name,
+            sku: products.sku,
+            barcode: products.barcode,
+            categoryName: sql<string>`coalesce(${productCategories.name}, 'Uncategorized')`,
+            defaultSellingPriceCents: products.defaultSellingPriceCents,
+          })
+          .from(products)
+          .leftJoin(productCategories, eq(products.categoryId, productCategories.id))
+          .where(eq(products.organizationId, context.organization.id))
+          .orderBy(asc(products.name))
+      : Promise.resolve([]);
+
     const [supplierRows, productRows, recentBatchRows] = await Promise.all([
       db.query.suppliers.findMany({
         where: and(eq(suppliers.organizationId, context.organization.id), eq(suppliers.status, "active")),
         orderBy: (supplierTable, { asc: orderAsc }) => [orderAsc(supplierTable.name)],
       }),
-      db
-        .select({
-          id: products.id,
-          name: products.name,
-          sku: products.sku,
-          categoryName: sql<string>`coalesce(${productCategories.name}, 'Uncategorized')`,
-          defaultSellingPriceCents: products.defaultSellingPriceCents,
-        })
-        .from(products)
-        .leftJoin(productCategories, eq(products.categoryId, productCategories.id))
-        .where(eq(products.organizationId, context.organization.id))
-        .orderBy(asc(products.name)),
+      productRowsPromise,
       fetchRecentEntriesForBranch(context.organization.id, branch.id),
     ]);
 
@@ -606,6 +620,38 @@ export class StockRepositoryImpl implements StockRepository {
     };
   }
 
+  async suggestProducts(context: AuthContext, query: string, limit = 30): Promise<StockCatalogData["products"]> {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      return [];
+    }
+    const pattern = `%${trimmed}%`;
+    const orgId = context.organization.id;
+    return db
+      .select({
+        id: products.id,
+        name: products.name,
+        sku: products.sku,
+        barcode: products.barcode,
+        categoryName: sql<string>`coalesce(${productCategories.name}, 'Uncategorized')`,
+        defaultSellingPriceCents: products.defaultSellingPriceCents,
+      })
+      .from(products)
+      .leftJoin(productCategories, eq(products.categoryId, productCategories.id))
+      .where(
+        and(
+          eq(products.organizationId, orgId),
+          or(
+            eq(products.barcode, trimmed),
+            ilike(products.name, pattern),
+            ilike(products.sku, pattern),
+          ),
+        ),
+      )
+      .orderBy(asc(products.name))
+      .limit(Math.min(Math.max(limit, 1), 50));
+  }
+
   async getBranches(context: AuthContext, preferredBranchId?: string) {
     const branchOptions = await listOrganizationBranches(context.organization.id);
     const selectedBranch = pickResolvedBranch(context, preferredBranchId, branchOptions);
@@ -630,6 +676,8 @@ export class StockRepositoryImpl implements StockRepository {
     const unitSalePriceCents =
       typeof input.unitSalePrice === "number" ? moneyToCents(input.unitSalePrice) : null;
 
+    const barcodeNorm = input.productBarcode?.trim() || undefined;
+
     return db.transaction(async (tx) => {
       let categoryId: string | null = null;
 
@@ -652,6 +700,15 @@ export class StockRepositoryImpl implements StockRepository {
 
       let product = await findProductByName(tx, context.organization.id, input.productName);
 
+      if (barcodeNorm) {
+        const barcodeOwner = await tx.query.products.findFirst({
+          where: and(eq(products.organizationId, context.organization.id), eq(products.barcode, barcodeNorm)),
+        });
+        if (barcodeOwner && (!product || barcodeOwner.id !== product.id)) {
+          throw new Error(`This barcode is already assigned to “${barcodeOwner.name}”.`);
+        }
+      }
+
       if (!product) {
         [product] = await tx
           .insert(products)
@@ -660,6 +717,7 @@ export class StockRepositoryImpl implements StockRepository {
             categoryId,
             name: input.productName,
             sku: buildSku(input.productName),
+            barcode: barcodeNorm ?? null,
             defaultSellingPriceCents: unitSalePriceCents ?? unitCostCents,
           })
           .returning();
@@ -676,6 +734,19 @@ export class StockRepositoryImpl implements StockRepository {
           })
           .where(eq(products.id, product.id))
           .returning();
+      }
+
+      if (product && barcodeNorm && !product.barcode) {
+        [product] = await tx
+          .update(products)
+          .set({
+            barcode: barcodeNorm,
+            updatedAt: new Date(),
+          })
+          .where(eq(products.id, product.id))
+          .returning();
+      } else if (product && barcodeNorm && product.barcode && product.barcode !== barcodeNorm) {
+        throw new Error("This medication already has a different barcode on file.");
       }
 
       let supplierId: string | null = null;

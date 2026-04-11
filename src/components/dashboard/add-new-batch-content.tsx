@@ -1,14 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { BarcodeScannerModal } from "@/components/dashboard/barcode-scanner-modal";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
+import { fetchJson } from "@/lib/api/client";
+import { apiUrl } from "@/lib/api/version";
 import {
   useCreateStockBatchMutation,
   useStockCatalogQuery,
+  useStockProductSuggestQuery,
+  type StockProductSuggestResponse,
 } from "@/lib/queries/stock";
 import { ROUTES } from "@/lib/routes";
+
+const PRODUCT_SUGGEST_DEBOUNCE_MS = 350;
 
 const fieldLabel =
   "mb-2 block text-xs font-normal uppercase tracking-[0.1em] text-[#6c7a78]";
@@ -41,9 +48,14 @@ export function AddNewBatchContent() {
   const searchParams = useSearchParams();
   const { withLoading, notify } = useAuraFeedback();
   const branchId = searchParams.get("branch") ?? undefined;
-  const stockCatalogQuery = useStockCatalogQuery({ branchId });
+  const stockCatalogQuery = useStockCatalogQuery({ branchId, includeProducts: false });
   const createBatchMutation = useCreateStockBatchMutation();
+  const productFieldRef = useRef<HTMLDivElement>(null);
   const [productName, setProductName] = useState("");
+  const [debouncedProductSearch, setDebouncedProductSearch] = useState("");
+  const [productSuggestOpen, setProductSuggestOpen] = useState(false);
+  const [productBarcode, setProductBarcode] = useState<string | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [batchNumber, setBatchNumber] = useState("B-2024-XP9");
   const [category, setCategory] = useState("");
   const [expiry, setExpiry] = useState("");
@@ -52,6 +64,45 @@ export function AddNewBatchContent() {
   const [supplier, setSupplier] = useState("");
   const [purchaseOrderNumber, setPurchaseOrderNumber] = useState("");
   const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedProductSearch(productName);
+    }, PRODUCT_SUGGEST_DEBOUNCE_MS);
+    return () => window.clearTimeout(timeout);
+  }, [productName]);
+
+  const productSuggestQuery = useStockProductSuggestQuery(debouncedProductSearch);
+  const productSuggestions = productSuggestQuery.data?.products ?? [];
+
+  useEffect(() => {
+    function onPointerDown(event: MouseEvent) {
+      if (!productFieldRef.current?.contains(event.target as Node)) {
+        setProductSuggestOpen(false);
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, []);
+
+  const showProductSuggestPanel =
+    productSuggestOpen && debouncedProductSearch.trim().length >= 2;
+
+  const pickProductSuggestion = useCallback(
+    (product: { name: string; barcode: string | null }) => {
+      setProductName(product.name);
+      setProductBarcode(product.barcode?.trim() || null);
+      setDebouncedProductSearch(product.name);
+      setProductSuggestOpen(false);
+    },
+    [],
+  );
+
+  const onProductNameKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      setProductSuggestOpen(false);
+    }
+  };
 
   const q = Number.parseFloat(quantity) || 0;
   const p = Number.parseFloat(unitPrice) || 0;
@@ -63,13 +114,55 @@ export function AddNewBatchContent() {
     return Math.round((filled / fields.length) * 100);
   }, [productName, batchNumber, expiry, quantity, unitPrice]);
 
-  const previewMedication = productName.trim() || "Amoxicillin 500mg Capsules";
+  const previewMedication = productName.trim() || "";
   const recentEntries = stockCatalogQuery.data?.recentEntries ?? [];
   const isSaveDisabled =
     !productName.trim() || !batchNumber.trim() || !expiry || q <= 0 || p <= 0;
 
   return (
     <div className="px-4 pb-16 pt-2 sm:px-6 lg:px-8">
+      <BarcodeScannerModal
+        open={scannerOpen}
+        onOpenChange={setScannerOpen}
+        onScan={async (code) => {
+          const trimmed = code.trim();
+          if (!trimmed) {
+            return;
+          }
+          setProductBarcode(trimmed);
+          setProductSuggestOpen(true);
+
+          let displayName = trimmed;
+          if (trimmed.length >= 2) {
+            try {
+              const res = await fetchJson<StockProductSuggestResponse>(
+                `${apiUrl("/stock/products/suggest")}?q=${encodeURIComponent(trimmed)}`,
+                { method: "GET" },
+              );
+              const exactByBarcode = res.products.filter((p) => p.barcode === trimmed);
+              if (exactByBarcode.length === 1) {
+                displayName = exactByBarcode[0].name;
+              }
+            } catch {
+              /* keep scanned string as provisional name */
+            }
+          }
+
+          setProductName(displayName);
+          setDebouncedProductSearch(trimmed);
+          notify({
+            variant: "success",
+            title: "Barcode captured",
+            description:
+              displayName !== trimmed
+                ? `Matched ${displayName}.`
+                : trimmed.length >= 2
+                  ? "Choose a suggestion or enter the medication name for a new product."
+                  : "Enter the medication name; this barcode will be stored with the new product.",
+          });
+        }}
+        title="Scan product barcode"
+      />
       <div className="mx-auto max-w-[1280px]">
         {/* Page header */}
         <div className="mb-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
@@ -89,11 +182,11 @@ export function AddNewBatchContent() {
                 chevron_right
               </span>
               <span className="text-xs font-semibold uppercase tracking-[0.1em] text-[#006a65]">
-                New Batch
+                New Product
               </span>
             </nav>
             <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-bold tracking-tight text-[#191c1e] sm:text-[30px] sm:leading-9 sm:tracking-[-0.025em]">
-              Add New Batch
+              Add New Product
             </h1>
           </div>
           <div className="flex flex-wrap items-center gap-4">
@@ -117,7 +210,7 @@ export function AddNewBatchContent() {
                   notify({
                     variant: "error",
                     title: "Complete the required fields",
-                    description: "Add the product, batch, expiry date, quantity, and purchase price.",
+                    description: "Add the medication name, product ref, expiry date, quantity, and purchase price.",
                   });
                   return;
                 }
@@ -125,11 +218,12 @@ export function AddNewBatchContent() {
                 try {
                   await withLoading(
                     "dashboard-add-batch",
-                    "Saving batch to inventory...",
+                    "Saving product to inventory...",
                     async () => {
                       const result = await createBatchMutation.mutateAsync({
                         branchId,
                         productName: productName.trim(),
+                        productBarcode: productBarcode?.trim() || undefined,
                         batchNumber: batchNumber.trim(),
                         categoryName: category.trim() || undefined,
                         expiresAt: expiry,
@@ -142,7 +236,7 @@ export function AddNewBatchContent() {
 
                       notify({
                         variant: "success",
-                        title: "Batch saved",
+                        title: "Product saved",
                         description: `${result.productName} (${result.batchNumber}) was added to inventory.`,
                       });
                       router.push(
@@ -155,7 +249,7 @@ export function AddNewBatchContent() {
                 } catch (err) {
                   notify({
                     variant: "error",
-                    title: "Failed to save batch",
+                    title: "Failed to save product",
                     description: err instanceof Error ? err.message : "Please try again.",
                   });
                 }
@@ -185,7 +279,7 @@ export function AddNewBatchContent() {
               </div>
 
               <div className="space-y-6">
-                <div>
+                <div ref={productFieldRef}>
                   <label className={fieldLabel} htmlFor="medication">
                     Medication Name
                   </label>
@@ -193,20 +287,53 @@ export function AddNewBatchContent() {
                     <input
                       id="medication"
                       type="text"
-                      list="stock-product-suggestions"
                       value={productName}
-                      onChange={(e) => setProductName(e.target.value)}
+                      onChange={(e) => {
+                        setProductName(e.target.value);
+                        setProductSuggestOpen(true);
+                      }}
+                      onFocus={() => setProductSuggestOpen(true)}
+                      onKeyDown={onProductNameKeyDown}
                       placeholder="e.g. Amoxicillin 500mg Capsules"
                       className={`${inputClass} pr-36`}
                       autoComplete="off"
+                      spellCheck={false}
                     />
-                    <datalist id="stock-product-suggestions">
-                      {stockCatalogQuery.data?.products.map((product) => (
-                        <option key={product.id} value={product.name} />
-                      ))}
-                    </datalist>
+                    {showProductSuggestPanel ? (
+                      <div
+                        id="add-batch-product-suggestions"
+                        role="listbox"
+                        className="absolute left-0 right-12 top-full z-20 mt-1 max-h-56 overflow-auto rounded-lg border border-[#e2e8f0] bg-white py-1 shadow-lg"
+                      >
+                        {productSuggestQuery.isFetching && productSuggestions.length === 0 ? (
+                          <p className="px-4 py-3 text-sm text-[#64748b]">Searching products…</p>
+                        ) : productSuggestions.length === 0 ? (
+                          <p className="px-4 py-3 text-sm text-[#64748b]">
+                            No matches. You can still use this as a new product name.
+                          </p>
+                        ) : (
+                          productSuggestions.map((product) => (
+                            <button
+                              key={product.id}
+                              type="button"
+                              role="option"
+                              aria-selected={false}
+                              className="flex w-full flex-col items-start gap-0.5 px-4 py-2.5 text-left text-sm hover:bg-[#f8fafc]"
+                      onClick={() => pickProductSuggestion(product)}
+                    >
+                      <span className="font-medium text-[#0f172a]">{product.name}</span>
+                      <span className="text-xs text-[#64748b]">
+                                {product.sku} · {product.categoryName}
+                                {product.barcode ? ` · ${product.barcode}` : ""}
+                              </span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    ) : null}
                     <button
                       type="button"
+                      onClick={() => setScannerOpen(true)}
                       className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1.5 rounded-md bg-[rgba(15,185,177,0.2)] px-3 py-1 text-xs font-semibold text-[#004340] transition hover:bg-[rgba(15,185,177,0.3)]"
                     >
                       <span className="material-symbols-outlined notranslate text-base">
@@ -216,15 +343,30 @@ export function AddNewBatchContent() {
                     </button>
                   </div>
                   <p className="mt-2 text-[11px] text-[#6c7a78]">
-                    Existing products appear as suggestions. New names create a product record
-                    automatically for your branch.
+                    Type at least two characters to search existing products, or enter a new name to
+                    create a product record for your organization. Scanning saves the code on new
+                    products when no match exists.
                   </p>
+                  {productBarcode ? (
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className="rounded-md bg-[#e0f2f1] px-2 py-1 text-[11px] font-medium text-[#004d49]">
+                        Barcode: {productBarcode}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setProductBarcode(null)}
+                        className="text-[11px] font-semibold text-[#64748b] underline decoration-[#64748b]/40 hover:text-[#0f172a]"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="grid gap-6 sm:grid-cols-2">
                   <div>
                     <label className={fieldLabel} htmlFor="batchNumber">
-                      Batch Number
+                      Product ref
                     </label>
                     <input
                       id="batchNumber"
@@ -415,11 +557,11 @@ export function AddNewBatchContent() {
               </div>
             </div>
 
-            {/* Batch Preview */}
+            {/* Product preview */}
             <div className="relative rounded-xl border border-[rgba(0,106,101,0.05)] bg-[#f2f4f6] p-6 shadow-md">
               <div className="mb-6 flex items-center justify-between">
                 <h3 className="text-xs font-semibold uppercase tracking-[0.1em] text-[#6c7a78]">
-                  Batch Preview
+                  Product Preview
                 </h3>
                 <span className="rounded-full border border-[rgba(0,106,101,0.2)] bg-[rgba(0,106,101,0.1)] px-2.5 py-1 text-[10px] font-semibold tracking-wide text-[#006a65]">
                   DRAFT
@@ -444,7 +586,7 @@ export function AddNewBatchContent() {
                     Total Value
                   </p>
                   <p className="mt-1 font-[family-name:var(--font-manrope)] text-xl font-extrabold tracking-tight text-[#006a65]">
-                    {totalValue > 0 ? currencyFormatter.format(totalValue) : currencyFormatter.format(2450)}
+                    {totalValue > 0 ? currencyFormatter.format(totalValue) : currencyFormatter.format(0)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-[rgba(187,201,199,0.1)] bg-white/50 p-3 shadow-sm">
@@ -452,7 +594,7 @@ export function AddNewBatchContent() {
                     Stock Load
                   </p>
                   <p className="mt-1 font-[family-name:var(--font-manrope)] text-xl font-extrabold tracking-tight text-[#191c1e]">
-                    {q > 0 ? q : 500}{" "}
+                    {q > 0 ? q : 0}{" "}
                     <span className="text-sm font-normal text-[#6c7a78]">units</span>
                   </p>
                 </div>
@@ -476,7 +618,7 @@ export function AddNewBatchContent() {
                   />
                 </div>
                 <p className="pt-1 text-center text-[10px] text-[#6c7a78]">
-                  Complete the core batch details to finalize entry
+                  Complete the core product details to finalize entry
                 </p>
               </div>
             </div>
@@ -498,7 +640,7 @@ export function AddNewBatchContent() {
                         key={entry.id}
                         title={entry.productName}
                         meta={`Added ${entry.quantityReceived.toLocaleString()} units • ${formatRelativeEntry(entry.createdAt)}`}
-                        batch={`Batch #${entry.batchNumber}`}
+                        batch={`Ref #${entry.batchNumber}`}
                         batchClass={
                           index === 0
                             ? "bg-[rgba(0,106,101,0.05)] text-[#191c1e]"
@@ -518,7 +660,7 @@ export function AddNewBatchContent() {
                   </ul>
                 ) : (
                   <p className="text-sm text-[#6c7a78]">
-                    Recent batch entries will appear here once inventory starts moving.
+                    Recent product entries will appear here once inventory starts moving.
                   </p>
                 )}
               </div>

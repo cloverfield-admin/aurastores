@@ -250,7 +250,7 @@ export function ItemsNearExpiryContent() {
       notify({
         variant: "success",
         title: "Adjustment recorded",
-        description: `${result.adjustedCount} batch updated for ${label}.`,
+        description: `${result.adjustedCount} product${result.adjustedCount === 1 ? "" : "s"} updated for ${label}.`,
       });
     });
   }
@@ -268,7 +268,7 @@ export function ItemsNearExpiryContent() {
               <span>{stockQuery.data?.branch.name ?? "Central"}</span>
             </div>
             <h1 className="font-[family-name:var(--font-manrope)] text-[38px] font-extrabold leading-none tracking-[-0.03em] text-[#171d23]">
-              Expiring Batches
+              Expiring Products
             </h1>
             <p className="max-w-3xl text-[15px] leading-6 text-[#5e6873]">
               Monitor and manage inventory nearing clinical expiration. Proactive disposal
@@ -330,8 +330,8 @@ export function ItemsNearExpiryContent() {
             </article>
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_260px]">
-            <div className="space-y-5">
+          <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_260px]">
+            <div className="min-w-0 space-y-5">
               <section className="rounded-[26px] bg-[#f5f7f8] p-5 shadow-[0_18px_40px_rgba(14,30,37,0.05)]">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
                   <label className="relative block flex-1">
@@ -345,7 +345,7 @@ export function ItemsNearExpiryContent() {
                         setSearch(event.target.value);
                         setPage(1);
                       }}
-                      placeholder="Search medication or batch ID..."
+                      placeholder="Search medication or product ref..."
                       className="w-full rounded-[18px] border border-white bg-white py-3 pl-12 pr-4 text-sm text-[#171d23] shadow-sm outline-none placeholder:text-[#a0a9b2] focus:border-[#cfe9e7]"
                     />
                   </label>
@@ -408,7 +408,7 @@ export function ItemsNearExpiryContent() {
                 ) : pagination.items.length === 0 && !stockQuery.isLoading ? (
                   <div className="px-6 py-12 text-center">
                     <p className="font-[family-name:var(--font-manrope)] text-2xl font-bold text-[#171d23]">
-                      No batches found
+                      No products found
                     </p>
                     <p className="mt-2 text-sm text-[#66717c]">
                       Try a different search or filter combination.
@@ -422,7 +422,7 @@ export function ItemsNearExpiryContent() {
                   </div>
                 ) : (
                   <>
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto overscroll-x-contain">
                       <table className="w-full min-w-[740px]">
                         <thead>
                           <tr className="border-b border-[#eef2f4] bg-white">
@@ -430,7 +430,7 @@ export function ItemsNearExpiryContent() {
                               Medication Name
                             </th>
                             <th className="px-5 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7f8a96]">
-                              Batch ID
+                              Product ref
                             </th>
                             <th className="px-5 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7f8a96]">
                               Expiry Date
@@ -516,20 +516,20 @@ export function ItemsNearExpiryContent() {
                                         onClick={async () => {
                                           await withLoading(
                                             "dashboard-dispose-batch",
-                                            "Disposing batch...",
+                                            "Disposing product...",
                                             async () => {
                                               const result = await disposeBatchMutation.mutateAsync({
                                                 batchId: row.id,
                                                 branchId,
                                                 note:
                                                   stage === "critical"
-                                                    ? "Disposed from expiring batches dashboard."
-                                                    : "Preventive disposal from expiring batches dashboard.",
+                                                    ? "Disposed from expiring products dashboard."
+                                                    : "Preventive disposal from expiring products dashboard.",
                                               });
 
                                               notify({
                                                 variant: "success",
-                                                title: "Batch disposed",
+                                                title: "Product disposed",
                                                 description: `${result.productName} (${result.batchNumber}) was removed from available stock.`,
                                               });
                                             },
@@ -650,7 +650,7 @@ export function ItemsNearExpiryContent() {
                             {entry.productName}
                           </p>
                           <p className="mt-1 text-xs text-[#66717c]">
-                            Batch #{entry.batchNumber} · {entry.quantityReceived.toLocaleString()} units
+                            Ref #{entry.batchNumber} · {entry.quantityReceived.toLocaleString()} units
                           </p>
                           <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-[#adb5bd]">
                             {formatRelativeSync(entry.createdAt)}

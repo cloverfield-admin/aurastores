@@ -11,6 +11,9 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const branchId = url.searchParams.get("branch") ?? undefined;
-  const catalog = await services.stock.getCatalog(context, { branchId });
+  const includeProductsParam = url.searchParams.get("includeProducts");
+  const includeProducts =
+    includeProductsParam === "0" || includeProductsParam === "false" ? false : undefined;
+  const catalog = await services.stock.getCatalog(context, { branchId, includeProducts });
   return NextResponse.json(catalog);
 }
