@@ -1,0 +1,50 @@
+name: Migrate and Build
+
+on:
+  push:
+    branches: ['main'] # On merge to main (real deploy)
+  pull_request:
+    branches: ['main'] # On PR to main (validation only)
+
+jobs:
+  validate-or-deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Generate .env file
+        run: |
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+
+      - name: Validate Drizzle config (on PR) or Run Migration (on main)
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "🧪 PR detected – validating Drizzle setup"
+            npx drizzle-kit introspect
+          else
+            echo "✅ Merging to main – running migration"
+            npx drizzle-kit migrate
+          fi
