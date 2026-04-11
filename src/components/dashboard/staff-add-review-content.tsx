@@ -4,11 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
+import { useAddStaffMemberMutation } from "@/lib/queries/staff";
+import { useStockBranchesQuery } from "@/lib/queries/stock";
 import {
   clearStaffAddDraft,
   getStaffAddDraft,
   type StaffAddDraft,
 } from "@/lib/staff-add-draft";
+import type { AddStaffByEmailPayload } from "@/lib/validation/staff";
 import { ROUTES } from "@/lib/routes";
 
 const ACCESS_LABELS: Record<string, string> = {
@@ -21,6 +24,20 @@ const ACCESS_LABELS: Record<string, string> = {
 const labelClass =
   "text-[10px] font-semibold uppercase tracking-[0.1em] text-[#94a3b8]";
 const valueClass = "text-base font-semibold text-[#334155]";
+
+function mapProfessionalRole(role: string): AddStaffByEmailPayload["appRole"] {
+  const r = role.toLowerCase();
+  if (r.includes("pharmacist")) {
+    return "pharmacist";
+  }
+  if (r.includes("technician")) {
+    return "cashier";
+  }
+  if (r.includes("intern")) {
+    return "analyst";
+  }
+  return "pharmacist";
+}
 
 function emptyDraft(): StaffAddDraft {
   return {
@@ -43,9 +60,15 @@ function emptyDraft(): StaffAddDraft {
 export function StaffAddReviewContent() {
   const router = useRouter();
   const { notify, withLoading, isLoading } = useAuraFeedback();
+  const addStaffMutation = useAddStaffMemberMutation();
+  const branchesQuery = useStockBranchesQuery(undefined, true);
+  const primaryBranchId =
+    branchesQuery.data?.branches.find((b) => b.isPrimary)?.id ??
+    branchesQuery.data?.branches[0]?.id ??
+    null;
   const [draft, setDraft] = useState<StaffAddDraft | null>(null);
   const [certified, setCertified] = useState(false);
-  const isBusy = isLoading("dashboard-add-staff");
+  const isBusy = isLoading("dashboard-add-staff") || addStaffMutation.isPending;
 
   useEffect(() => {
     const stored = getStaffAddDraft();
@@ -74,12 +97,16 @@ export function StaffAddReviewContent() {
       return;
     }
 
-    await withLoading(
-      "dashboard-add-staff",
-      "Adding staff member...",
-      async () => {
-        // TODO: implement API
-        await new Promise((r) => setTimeout(r, 800));
+    await withLoading("dashboard-add-staff", "Adding staff member...", async () => {
+      try {
+        await addStaffMutation.mutateAsync({
+          email: draft.email.trim(),
+          fullName: draft.fullName.trim(),
+          phone: draft.phone.trim() ? draft.phone.trim() : null,
+          jobTitle: draft.department.trim() ? draft.department.trim() : null,
+          appRole: mapProfessionalRole(draft.professionalRole),
+          branchId: primaryBranchId,
+        });
         clearStaffAddDraft();
         notify({
           variant: "success",
@@ -87,8 +114,16 @@ export function StaffAddReviewContent() {
           description: `${draft.fullName} has been added to the staff directory.`,
         });
         router.push(ROUTES.dashboard.staff);
-      },
-    );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Could not add staff member.";
+        notify({
+          variant: "error",
+          title: "Could not add staff",
+          description: message,
+        });
+        throw err;
+      }
+    });
   };
 
   const accessGranted = draft

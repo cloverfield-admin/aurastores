@@ -1,65 +1,66 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { HomePageHeader } from "@/components/marketing/home-page-header";
+import { AURA_ASSETS } from "@/lib/aura-assets";
 import { ROUTES } from "@/lib/routes";
+import { getSiteUrl } from "@/lib/site-url";
+
+const homeTitle = "AuraPharma — Clarity around every prescription";
+const homeDescription =
+  "A cloud-based pharmacy management platform for inventory, pricing, payments, and every branch.";
 
 export const metadata: Metadata = {
-  title: "AuraPharma — Clarity around every prescription",
-  description:
-    "A cloud-based pharmacy management platform for inventory, pricing, payments, and every branch.",
+  title: { absolute: homeTitle },
+  description: homeDescription,
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: homeTitle,
+    description: homeDescription,
+    url: "/",
+  },
+  twitter: {
+    title: homeTitle,
+    description: homeDescription,
+  },
 };
-
-const IMG_DASHBOARD =
-  "https://www.figma.com/api/mcp/asset/8891e69f-6e28-4fbd-aa98-9ac7d12e79ca";
-const IMG_PHARMACY =
-  "https://www.figma.com/api/mcp/asset/2d9caa11-f68c-4d48-b7b5-25d27b3c5bd9";
-const IMG_ANALYTICS =
-  "https://www.figma.com/api/mcp/asset/3ce5e072-f16e-4d65-9363-09af3c4d39a8";
 
 const gradientBtn =
   "relative rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-8 py-4 text-center font-bold text-white shadow-[0_20px_25px_-5px_rgba(0,106,101,0.2),0_8px_10px_-6px_rgba(0,106,101,0.2)] transition hover:opacity-95";
 
-const gradientBtnSm =
-  "relative rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-6 py-2.5 text-center text-sm font-semibold text-white shadow-[0_10px_15px_-3px_rgba(15,185,177,0.2),0_4px_6px_-4px_rgba(15,185,177,0.2)] transition hover:opacity-95";
+function HomeJsonLd() {
+  const siteUrl = getSiteUrl();
+  const payload = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        name: "AuraPharma",
+        url: siteUrl,
+      },
+      {
+        "@type": "WebSite",
+        name: "AuraPharma",
+        url: siteUrl,
+        description: homeDescription,
+      },
+    ],
+  };
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(payload) }}
+    />
+  );
+}
 
 export default function HomePage() {
   const year = new Date().getFullYear();
 
   return (
     <div className="aura-landing min-h-screen bg-[#f7f9fb] text-[#191c1e]">
-      {/* Header */}
-      <header className="fixed left-0 right-0 top-0 z-50 border-b border-black/5 bg-white/80 shadow-sm backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-8">
-          <Link href="/" className="shrink-0">
-            <span className="bg-gradient-to-r from-[#0fb9b1] to-[#6366f1] bg-clip-text text-2xl font-bold text-transparent">
-              AuraPharma
-            </span>
-          </Link>
-          <nav className="hidden items-center gap-8 md:flex" aria-label="Primary">
-            <a
-              href="#ecosystem"
-              className="border-b-2 border-[#0fb9b1] pb-1.5 text-sm font-semibold text-[#0fb9b1]"
-            >
-              Features
-            </a>
-            <a
-              href="#network"
-              className="text-sm font-semibold text-[#475569] transition hover:text-[#0fb9b1]"
-            >
-              Solutions
-            </a>
-            <a
-              href="#pricing"
-              className="text-sm font-semibold text-[#475569] transition hover:text-[#0fb9b1]"
-            >
-              Pricing
-            </a>
-          </nav>
-          <Link href={ROUTES.demoSuccess} className={`${gradientBtnSm} shrink-0`}>
-            Book a Demo
-          </Link>
-        </div>
-      </header>
+      <HomeJsonLd />
+      <HomePageHeader />
 
       <main className="pt-[72px]">
         {/* Hero */}
@@ -111,7 +112,7 @@ export default function HomePage() {
               <div className="overflow-hidden rounded-2xl border-4 border-white/50 bg-white p-1 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]">
                 <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-[#0f172a]">
                   <Image
-                    src={IMG_DASHBOARD}
+                    src={AURA_ASSETS.heroDashboard}
                     alt="AuraPharma dashboard preview with analytics and inventory"
                     fill
                     className="object-cover object-top"
@@ -154,7 +155,7 @@ export default function HomePage() {
                   <h3 className="text-2xl font-bold">Aura Stock</h3>
                   <p className="max-w-xl text-base leading-relaxed text-[#3c4948]">
                     Precision-engineered inventory management with real-time tracking,
-                    batch-level precision, and automated reordering logic.
+                    product-level precision, and automated reordering logic.
                   </p>
                 </div>
                 <a
@@ -231,7 +232,7 @@ export default function HomePage() {
                     verified
                   </span>
                   <div>
-                    <p className="text-lg font-bold">Batch + Expiry Tracking</p>
+                    <p className="text-lg font-bold">Product + Expiry Tracking</p>
                     <p className="mt-1 text-sm leading-relaxed text-[#3c4948]">
                       Automated alerts for nearing expirations to reduce waste and ensure
                       patient safety.
@@ -256,7 +257,7 @@ export default function HomePage() {
               <div className="rounded-2xl bg-[#f2f4f6] p-4">
                 <div className="relative aspect-[4/3] overflow-hidden rounded-xl shadow-lg">
                   <Image
-                    src={IMG_PHARMACY}
+                    src={AURA_ASSETS.featurePharmacy}
                     alt="Organized pharmacy shelves with medicine inventory"
                     fill
                     className="object-cover"
@@ -272,7 +273,7 @@ export default function HomePage() {
               <div className="rounded-2xl bg-[#f2f4f6] p-4">
                 <div className="relative aspect-[4/3] overflow-hidden rounded-xl shadow-lg">
                   <Image
-                    src={IMG_ANALYTICS}
+                    src={AURA_ASSETS.featureAnalytics}
                     alt="Sales analytics and data visualization"
                     fill
                     className="object-cover"

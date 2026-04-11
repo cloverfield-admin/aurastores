@@ -104,3 +104,30 @@ body {
     width: 100%;
   }
 }
+
+/*
+ * Legacy Places Autocomplete (.pac-container) — kept for any remaining widgets.
+ * New PlaceAutocompleteElement uses its own overlay; high z-index is harmless.
+ */
+.pac-container {
+  z-index: 10050 !important;
+}
+
+/* New Places widget host fills the toolbar card */
+gmp-place-autocomplete {
+  display: block;
+  width: 100%;
+}
+
+/*
+ * Scrollable suggestion list (Places API widget). Without this, long lists can
+ * feel broken; max-height + overflow-y enables wheel / touch scrolling.
+ * overscroll-behavior reduces the parent page stealing scroll while over the list.
+ */
+gmp-place-autocomplete::part(prediction-list) {
+  max-height: min(50dvh, 320px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}

@@ -161,6 +161,11 @@ export const inventoryBatches = pgTable(
     branchStatusIdx: index("inventory_batches_branch_status_idx").on(table.branchId, table.status),
     productIdx: index("inventory_batches_product_idx").on(table.productId),
     expiryIdx: index("inventory_batches_expiry_idx").on(table.expiresAt),
+    orgBranchExpiryIdx: index("inventory_batches_org_branch_expiry_idx").on(
+      table.organizationId,
+      table.branchId,
+      table.expiresAt,
+    ),
   }),
 );
 
@@ -196,6 +201,12 @@ export const inventoryTransactions = pgTable(
     ),
     batchOccurredIdx: index("inventory_transactions_batch_occurred_idx").on(
       table.batchId,
+      table.occurredAt,
+    ),
+    orgBranchTypeOccurredIdx: index("inventory_transactions_org_branch_type_occurred_idx").on(
+      table.organizationId,
+      table.branchId,
+      table.transactionType,
       table.occurredAt,
     ),
   }),

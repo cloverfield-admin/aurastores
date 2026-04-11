@@ -15,6 +15,12 @@ export class StockService {
     return this.repos.stock.getCatalog(...args);
   }
 
+  suggestProducts(
+    ...args: Parameters<StockRepository["suggestProducts"]>
+  ): ReturnType<StockRepository["suggestProducts"]> {
+    return this.repos.stock.suggestProducts(...args);
+  }
+
   getBranches(
     ...args: Parameters<StockRepository["getBranches"]>
   ): ReturnType<StockRepository["getBranches"]> {

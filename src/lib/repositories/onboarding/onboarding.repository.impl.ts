@@ -16,16 +16,6 @@ import type {
 import { branchCodeFromName } from "@/lib/utils/slug";
 import type { IdentityInput, PharmacyDetailsInput } from "@/lib/validation/onboarding";
 
-const CUSTOM_HOURS = [
-  { dayOfWeek: 1, opensAt: "08:00:00", closesAt: "20:00:00", isClosed: false },
-  { dayOfWeek: 2, opensAt: "08:00:00", closesAt: "20:00:00", isClosed: false },
-  { dayOfWeek: 3, opensAt: "08:00:00", closesAt: "20:00:00", isClosed: false },
-  { dayOfWeek: 4, opensAt: "08:00:00", closesAt: "20:00:00", isClosed: false },
-  { dayOfWeek: 5, opensAt: "08:00:00", closesAt: "20:00:00", isClosed: false },
-  { dayOfWeek: 6, opensAt: "09:00:00", closesAt: "15:00:00", isClosed: false },
-  { dayOfWeek: 0, opensAt: null, closesAt: null, isClosed: true },
-] as const;
-
 const ALWAYS_OPEN_HOURS = [
   { dayOfWeek: 0, opensAt: "00:00:00", closesAt: "23:59:00", isClosed: false },
   { dayOfWeek: 1, opensAt: "00:00:00", closesAt: "23:59:00", isClosed: false },
@@ -44,8 +34,26 @@ function inferHoursMode(
     : "custom";
 }
 
-function hoursForMode(mode: PharmacyDetailsInput["hoursMode"]) {
-  return mode === "24-7" ? ALWAYS_OPEN_HOURS : CUSTOM_HOURS;
+function toDbTime(hhMm: string): string {
+  return `${hhMm}:00`;
+}
+
+function hoursRowsForPharmacyInput(input: PharmacyDetailsInput) {
+  if (input.hoursMode === "24-7") {
+    return [...ALWAYS_OPEN_HOURS];
+  }
+  const weekly = input.weeklyHours;
+  if (!weekly || weekly.length !== 7) {
+    throw new Error("Custom hours require a full weekly schedule.");
+  }
+  return [...weekly]
+    .sort((a, b) => a.dayOfWeek - b.dayOfWeek)
+    .map((row) => ({
+      dayOfWeek: row.dayOfWeek,
+      isClosed: row.isClosed,
+      opensAt: row.isClosed ? null : toDbTime(row.opensAt as string),
+      closesAt: row.isClosed ? null : toDbTime(row.closesAt as string),
+    }));
 }
 
 export class OnboardingRepositoryImpl implements OnboardingRepository {
@@ -108,6 +116,8 @@ export class OnboardingRepositoryImpl implements OnboardingRepository {
             branchName: primaryBranch.name,
             pharmacistCount: primaryBranch.licensedPharmacistCount,
             branchLocation: primaryBranch.addressLine1,
+            latitude: primaryBranch.latitude ?? null,
+            longitude: primaryBranch.longitude ?? null,
             hoursMode: inferHoursMode(operatingHours),
             operatingHours,
           }
@@ -185,6 +195,10 @@ export class OnboardingRepositoryImpl implements OnboardingRepository {
         status: "draft" as const,
         isPrimary: true,
         addressLine1: input.branchLocation,
+        latitude:
+          input.latitude != null && input.longitude != null ? input.latitude : null,
+        longitude:
+          input.latitude != null && input.longitude != null ? input.longitude : null,
         licensedPharmacistCount: input.pharmacistCount,
         updatedAt: new Date(),
       };
@@ -207,7 +221,7 @@ export class OnboardingRepositoryImpl implements OnboardingRepository {
       await tx.delete(branchOperatingHours).where(eq(branchOperatingHours.branchId, branch.id));
 
       await tx.insert(branchOperatingHours).values(
-        hoursForMode(input.hoursMode).map((hours) => ({
+        hoursRowsForPharmacyInput(input).map((hours) => ({
           branchId: branch.id,
           dayOfWeek: hours.dayOfWeek,
           opensAt: hours.opensAt,

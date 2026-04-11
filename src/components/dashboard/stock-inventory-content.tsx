@@ -87,7 +87,7 @@ const StockSearchField = memo(function StockSearchField({
         type="search"
         value={value}
         onChange={(event) => setValue(event.target.value)}
-        placeholder="Search by product, SKU, batch, or supplier"
+        placeholder="Search by product, SKU, product ref, or supplier"
         className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
         autoComplete="off"
         spellCheck={false}
@@ -144,7 +144,7 @@ const StockAdjustDialog = memo(function StockAdjustDialog({
             {label}
           </h3>
           <p className="mt-1 text-sm text-[#64748b]">
-            Apply one adjustment to {batchCount} batch{batchCount === 1 ? "" : "es"}.
+            Apply one adjustment to {batchCount} product{batchCount === 1 ? "" : "s"}.
           </p>
         </div>
 
@@ -152,7 +152,7 @@ const StockAdjustDialog = memo(function StockAdjustDialog({
           {batchCount > 1 ? (
             <div className="rounded-xl bg-[#f8fafc] p-3">
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">
-                Selected Batches
+                Selected products
               </p>
               <div className="max-h-24 space-y-1 overflow-y-auto text-xs text-[#475569]">
                 {selectedBatchLabels.map((batchLabel) => (
@@ -162,7 +162,7 @@ const StockAdjustDialog = memo(function StockAdjustDialog({
                 ))}
               </div>
               <p className="mt-2 text-[11px] text-[#b45309]">
-                This adjustment applies the same quantity change to all selected batches.
+                This adjustment applies the same quantity change to all selected products.
               </p>
             </div>
           ) : null}
@@ -221,7 +221,7 @@ const StockAdjustDialog = memo(function StockAdjustDialog({
               try {
                 const result = await onSubmit(quantityDelta, note.trim() || undefined);
                 setSuccessMessage(
-                  `Adjustment applied successfully to ${result.adjustedCount} batch${result.adjustedCount === 1 ? "" : "es"}.`,
+                  `Adjustment applied successfully to ${result.adjustedCount} product${result.adjustedCount === 1 ? "" : "s"}.`,
                 );
                 window.setTimeout(() => onClose(), 900);
               } catch (submitError) {
@@ -360,14 +360,14 @@ export function StockInventoryContent() {
     {
       label: "Total Stock Value",
       value: currencyFormatter.format(metrics.totalStockValueCents / 100),
-      sub: `${metrics.totalAvailableUnits.toLocaleString()} units across ${metrics.totalBatchCount.toLocaleString()} batches`,
+      sub: `${metrics.totalAvailableUnits.toLocaleString()} units across ${metrics.totalBatchCount.toLocaleString()} products`,
       badge: `${metrics.healthyBatchRatio}% healthy`,
       badgeClass: "bg-[#f0fdfa] text-[#0d9488]",
       icon: "payments",
     },
     {
       label: "Items Near Expiry",
-      value: `${metrics.nearExpiryBatchCount.toLocaleString()} Batches`,
+      value: `${metrics.nearExpiryBatchCount.toLocaleString()} Products`,
       sub: `${metrics.expiredBatchCount.toLocaleString()} already expired`,
       badge: metrics.nearExpiryBatchCount > 0 ? "Attention" : "Stable",
       badgeClass:
@@ -404,7 +404,7 @@ export function StockInventoryContent() {
     note?: string,
   ): Promise<{ adjustedCount: number }> {
     if (batchIds.length === 0) {
-      throw new Error("Select at least one batch to adjust.");
+      throw new Error("Select at least one product to adjust.");
     }
 
     return withLoading("dashboard-adjust-stock", "Applying stock adjustment...", async () => {
@@ -419,7 +419,7 @@ export function StockInventoryContent() {
       notify({
         variant: "success",
         title: "Adjustment recorded",
-        description: `${result.adjustedCount} batch${result.adjustedCount === 1 ? "" : "es"} updated for ${label}.`,
+        description: `${result.adjustedCount} product${result.adjustedCount === 1 ? "" : "s"} updated for ${label}.`,
       });
 
       setOptimisticAdjustments((current) => ({
@@ -455,7 +455,7 @@ export function StockInventoryContent() {
               <span className="size-2 rounded-full bg-[#22c55e]" aria-hidden />
               <span className="text-xs font-medium text-[#94a3b8]">
                 {stockQuery.data
-                  ? `Real-time batch sync active • Last synced ${formatRelativeSync(stockQuery.data.lastSyncedAt)}`
+                  ? `Real-time product sync active • Last synced ${formatRelativeSync(stockQuery.data.lastSyncedAt)}`
                   : "Loading live inventory snapshot..."}
               </span>
             </div>
@@ -473,8 +473,8 @@ export function StockInventoryContent() {
                 if (validBatchIds.length === 0) {
                   notify({
                     variant: "warning",
-                    title: "No adjustable batches selected",
-                    description: "Select at least one active or expiring batch to run bulk adjustment.",
+                    title: "No adjustable products selected",
+                    description: "Select at least one active or expiring product to run bulk adjustment.",
                   });
                   return;
                 }
@@ -520,7 +520,7 @@ export function StockInventoryContent() {
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-5 py-2.5 text-base font-semibold text-white shadow-sm transition hover:opacity-95"
             >
               <span className="material-symbols-outlined notranslate text-lg">add</span>
-              Add New Batch
+              Add New Product
             </Link>
           </div>
         </div>
@@ -622,14 +622,14 @@ export function StockInventoryContent() {
             <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] uppercase tracking-[0.1em] text-[#94a3b8]">
               <span>
                 {selectedBatchIds.length > 0
-                  ? `${selectedBatchIds.length} batch${selectedBatchIds.length === 1 ? "" : "es"} selected`
+                  ? `${selectedBatchIds.length} product${selectedBatchIds.length === 1 ? "" : "s"} selected`
                   : "Select rows to apply bulk adjustments"}
               </span>
               <span>Branch: {stockQuery.data?.branch.name ?? "Loading..."}</span>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="-mx-px overflow-x-auto overscroll-x-contain">
             {stockQuery.isError ? (
               <div className="px-6 py-10 text-sm text-[#b42318]">
                 {stockQuery.error instanceof Error
@@ -639,12 +639,12 @@ export function StockInventoryContent() {
             ) : rows.length === 0 && !stockQuery.isLoading ? (
               <div className="px-6 py-12 text-center">
                 <p className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]">
-                  {search || filter === "expiring" ? "No matching batches" : "No batches yet"}
+                  {search || filter === "expiring" ? "No matching products" : "No products yet"}
                 </p>
                 <p className="mt-2 text-sm text-[#64748b]">
                   {search || filter === "expiring"
                     ? "Try a different search term or switch back to the full inventory view."
-                    : "Add your first stock batch to start tracking metrics, expiry, and reorder risk."}
+                    : "Add your first stock product to start tracking metrics, expiry, and reorder risk."}
                 </p>
                 {!search && filter === "all" ? (
                   <Link
@@ -652,7 +652,7 @@ export function StockInventoryContent() {
                     className="mt-5 inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-5 py-2.5 text-sm font-semibold text-white"
                   >
                     <span className="material-symbols-outlined notranslate text-lg">add</span>
-                    Create First Batch
+                    Create First Product
                   </Link>
                 ) : null}
               </div>
@@ -679,7 +679,7 @@ export function StockInventoryContent() {
                           );
                         }}
                         className="size-4 rounded border-[#cbd5e1] text-[#0d9488] focus:ring-[#14b8a6]"
-                        aria-label="Select visible batches"
+                        aria-label="Select visible products"
                       />
                     </th>
                     <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-wider text-[#94a3b8]">
@@ -689,7 +689,7 @@ export function StockInventoryContent() {
                       Category
                     </th>
                     <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-wider text-[#94a3b8]">
-                      Batch ID
+                      Product ref
                     </th>
                     <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-wider text-[#94a3b8]">
                       Expiry Date
@@ -738,7 +738,7 @@ export function StockInventoryContent() {
                               );
                             }}
                             className="size-4 rounded border-[#cbd5e1] text-[#0d9488] focus:ring-[#14b8a6] disabled:opacity-40"
-                            aria-label={`Select batch ${row.batchNumber}`}
+                            aria-label={`Select product ${row.batchNumber}`}
                           />
                         </td>
                         <td className="px-6 py-4">
@@ -841,7 +841,7 @@ export function StockInventoryContent() {
                                 onClick={async () => {
                                   await withLoading(
                                     "dashboard-dispose-batch",
-                                    "Disposing batch from live inventory...",
+                                    "Disposing product from live inventory...",
                                     async () => {
                                       const result = await disposeBatchMutation.mutateAsync({
                                         batchId: row.id,
@@ -857,7 +857,7 @@ export function StockInventoryContent() {
                                       );
                                       notify({
                                         variant: "success",
-                                        title: "Batch disposed",
+                                        title: "Product disposed",
                                         description: `${result.productName} (${result.batchNumber}) was removed from available stock.`,
                                       });
                                     },
@@ -873,17 +873,17 @@ export function StockInventoryContent() {
                                 onClick={async () => {
                                   await withLoading(
                                     "dashboard-restore-batch",
-                                    "Restoring disposed batch...",
+                                    "Restoring disposed product...",
                                     async () => {
                                       const result = await restoreBatchMutation.mutateAsync({
                                         batchId: row.id,
                                         branchId,
-                                        note: "Batch restored from stock dashboard.",
+                                        note: "Product restored from stock dashboard.",
                                       });
 
                                       notify({
                                         variant: "success",
-                                        title: "Batch restored",
+                                        title: "Product restored",
                                         description: `${result.productName} (${result.batchNumber}) restored with ${result.restoredQuantity.toLocaleString()} units.`,
                                       });
                                     },
@@ -912,7 +912,7 @@ export function StockInventoryContent() {
           <div className="flex flex-col items-center justify-between gap-4 border-t border-[#f1f5f9] bg-[rgba(242,244,246,0.3)] px-6 py-4 sm:flex-row">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-[#94a3b8]">
               Showing page {pagination.page.toLocaleString()} of {pagination.totalPages.toLocaleString()} •{" "}
-              {pagination.totalItems.toLocaleString()} tracked batches
+              {pagination.totalItems.toLocaleString()} tracked products
             </p>
             <div className="flex items-center gap-2">
               <button
@@ -954,7 +954,7 @@ export function StockInventoryContent() {
                 </span>
               </div>
               <h3 className="font-[family-name:var(--font-manrope)] text-xl font-bold text-white">
-                Automated Batch Reorder
+                Automated Product Reorder
               </h3>
               <p className="mt-3 text-sm leading-relaxed text-white/80">
                 {stockQuery.data
@@ -1005,7 +1005,7 @@ export function StockInventoryContent() {
                 Inventory Efficiency
               </h3>
               <p className="mt-3 text-sm leading-relaxed text-[#0f766e]/80">
-                {`${metrics.healthyBatchRatio}% of your tracked batches are healthy, while ${metrics.nearExpiryBatchCount} batches need closer rotation this month.`}
+                {`${metrics.healthyBatchRatio}% of your tracked products are healthy, while ${metrics.nearExpiryBatchCount} products need closer rotation this month.`}
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-[#ccfbf1] px-3 py-1.5 text-[10px] font-semibold uppercase text-[#115e59]">
@@ -1023,8 +1023,8 @@ export function StockInventoryContent() {
 
         <footer className="flex flex-col gap-4 border-t border-[#f1f5f9] pt-6 text-[11px] uppercase tracking-[0.1em] text-[#94a3b8] sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <span className="font-semibold text-[#cbd5e1]">AuraPharma v2.4.0</span>
-            <span>© 2024 Clinical Intelligence</span>
+            <span className="font-semibold text-[#cbd5e1]">AuraPharma v1.0.0</span>
+            <span>© {new Date().getFullYear()} Clinical Intelligence</span>
           </div>
           <div className="flex flex-wrap gap-4">
             <Link href="#" className="underline decoration-[rgba(20,184,166,0.3)] hover:text-[#64748b]">
@@ -1042,7 +1042,7 @@ export function StockInventoryContent() {
 
       <button
         type="button"
-        className="fixed bottom-8 right-8 flex size-14 items-center justify-center rounded-full shadow-lg transition hover:opacity-95"
+        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] z-20 flex size-14 items-center justify-center rounded-full shadow-lg transition hover:opacity-95"
         style={{
           background: "linear-gradient(135deg, rgb(15, 185, 177) 0%, rgb(99, 102, 241) 100%)",
         }}
@@ -1059,7 +1059,7 @@ export function StockInventoryContent() {
         batchCount={adjustDialog.batchIds.length}
         selectedBatchLabels={adjustDialog.batchIds.map((batchId) => {
           const row = rowById.get(batchId);
-          return row ? `${row.productName} (#${row.batchNumber})` : `Batch ${batchId}`;
+          return row ? `${row.productName} (#${row.batchNumber})` : `Product ${batchId}`;
         })}
         isSubmitting={adjustStockMutation.isPending}
         onClose={() => {

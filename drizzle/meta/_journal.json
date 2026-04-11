@@ -36,6 +36,13 @@
       "when": 1774285200000,
       "tag": "0004_add_stock_search_trgm_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1774368000000,
+      "tag": "0005_stock_dashboard_indexes",
+      "breakpoints": true
     }
   ]
 }

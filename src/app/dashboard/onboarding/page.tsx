@@ -3,7 +3,7 @@ import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
 import { IdentityStepForm } from "@/components/onboarding/steps/identity-step-form";
 
 export const metadata: Metadata = {
-  title: "Onboarding — Business identity | AuraPharma",
+  title: "Onboarding — Business identity",
   description: "Verify your pharmacy business identity for clinical compliance.",
 };
 

@@ -3,7 +3,7 @@ import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
 import { PharmacyDetailsStepForm } from "@/components/onboarding/steps/pharmacy-details-step-form";
 
 export const metadata: Metadata = {
-  title: "Onboarding — Main branch setup | AuraPharma",
+  title: "Onboarding — Main branch setup",
   description:
     "Configure your primary branch, location, and operating hours for Aura Sync.",
 };

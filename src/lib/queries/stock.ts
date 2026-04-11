@@ -6,6 +6,7 @@ import { apiUrl } from "@/lib/api/version";
 
 export const stockDashboardQueryKey = ["stock", "dashboard"] as const;
 export const stockCatalogQueryKey = ["stock", "catalog"] as const;
+export const stockProductSuggestQueryKey = ["stock", "products", "suggest"] as const;
 export const stockBranchesQueryKey = ["stock", "branches"] as const;
 export const stockBatchDetailQueryKey = ["stock", "batch"] as const;
 
@@ -124,6 +125,7 @@ export type StockCatalogResponse = {
     id: string;
     name: string;
     sku: string;
+    barcode: string | null;
     categoryName: string;
     defaultSellingPriceCents: number;
   }>;
@@ -133,6 +135,7 @@ export type StockCatalogResponse = {
 export type CreateStockBatchPayload = {
   branchId?: string;
   productName: string;
+  productBarcode?: string;
   batchNumber: string;
   expiresAt: string;
   quantityReceived: number;
@@ -161,6 +164,12 @@ type StockDashboardQueryOptions = {
 
 type StockCatalogQueryOptions = {
   branchId?: string;
+  /** Omit full product list; use suggest endpoint for autocomplete. */
+  includeProducts?: boolean;
+};
+
+export type StockProductSuggestResponse = {
+  products: StockCatalogResponse["products"];
 };
 
 export type StockBranchesResponse = {
@@ -192,13 +201,34 @@ export function useStockDashboardQuery({
   });
 }
 
-export function useStockCatalogQuery({ branchId }: StockCatalogQueryOptions = {}) {
+export function useStockCatalogQuery({ branchId, includeProducts = true }: StockCatalogQueryOptions = {}) {
+  const includeProductsParam = includeProducts ? "1" : "0";
   return useQuery({
-    queryKey: [...stockCatalogQueryKey, { branchId }],
+    queryKey: [...stockCatalogQueryKey, { branchId, includeProducts }],
     queryFn: () =>
-      fetchJson<StockCatalogResponse>(`${apiUrl("/stock/catalog")}?branch=${encodeURIComponent(branchId ?? "")}`, {
-        method: "GET",
-      }),
+      fetchJson<StockCatalogResponse>(
+        `${apiUrl("/stock/catalog")}?branch=${encodeURIComponent(branchId ?? "")}&includeProducts=${includeProductsParam}`,
+        { method: "GET" },
+      ),
+  });
+}
+
+export function useStockProductSuggestQuery(q: string) {
+  const trimmed = q.trim();
+  return useQuery({
+    queryKey: [...stockProductSuggestQueryKey, trimmed],
+    queryFn: () =>
+      fetchJson<StockProductSuggestResponse>(
+        `${apiUrl("/stock/products/suggest")}?q=${encodeURIComponent(trimmed)}`,
+        { method: "GET" },
+      ),
+    enabled: trimmed.length >= 2,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    placeholderData: (previousData) => previousData,
+    meta: {
+      suppressGlobalLoading: true,
+    },
   });
 }
 
@@ -236,12 +266,20 @@ export function useCreateStockBatchMutation() {
         },
         body: JSON.stringify(payload),
       }),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: stockDashboardQueryKey }),
-        queryClient.invalidateQueries({ queryKey: stockCatalogQueryKey }),
-        queryClient.invalidateQueries({ queryKey: stockBranchesQueryKey }),
-      ]);
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: stockDashboardQueryKey });
+      void queryClient.invalidateQueries({
+        queryKey: stockCatalogQueryKey,
+        refetchType: "none",
+      });
+      void queryClient.invalidateQueries({
+        queryKey: stockBranchesQueryKey,
+        refetchType: "none",
+      });
+      void queryClient.invalidateQueries({
+        queryKey: stockProductSuggestQueryKey,
+        refetchType: "none",
+      });
     },
   });
 }

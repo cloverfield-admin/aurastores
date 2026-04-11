@@ -21,11 +21,21 @@ type IdentityPayload = {
   zip: string;
 };
 
-type PharmacyDetailsPayload = {
+type WeeklyHourPayload = {
+  dayOfWeek: number;
+  isClosed: boolean;
+  opensAt: string | null;
+  closesAt: string | null;
+};
+
+export type PharmacyDetailsPayload = {
   branchName: string;
   pharmacistCount: string;
   branchLocation: string;
   hoursMode: "24-7" | "custom";
+  weeklyHours?: WeeklyHourPayload[];
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 type CompleteOnboardingResponse = {

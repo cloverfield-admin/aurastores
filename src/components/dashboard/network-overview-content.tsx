@@ -3,11 +3,45 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
+import { AuraAvatar } from "@/components/ui/aura-avatar";
+import { useNetworkDashboardQuery } from "@/lib/queries/network";
 import { ROUTES } from "@/lib/routes";
 import { DASHBOARD_ASSETS } from "./dashboard-assets";
 
+const money = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "ZMW",
+  minimumFractionDigits: 2,
+});
+
+const MAP_CYCLE = [
+  DASHBOARD_ASSETS.mapMain,
+  DASHBOARD_ASSETS.mapEast,
+  DASHBOARD_ASSETS.mapWarehouse,
+] as const;
+
 export function NetworkOverviewContent() {
   const { withLoading, notify } = useAuraFeedback();
+  const networkQuery = useNetworkDashboardQuery();
+  const data = networkQuery.data;
+  const totals = data?.totals;
+  const revenueDeltaRaw =
+    totals && totals.previousRevenueCents30d > 0
+      ? ((totals.totalRevenueCents30d - totals.previousRevenueCents30d) / totals.previousRevenueCents30d) * 100
+      : null;
+  const revenueDeltaPct =
+    revenueDeltaRaw !== null && Number.isFinite(revenueDeltaRaw) ? revenueDeltaRaw.toFixed(1) : null;
+  const revenueProgressPct =
+    totals && totals.previousRevenueCents30d > 0
+      ? Math.min(100, Math.round((totals.totalRevenueCents30d / totals.previousRevenueCents30d) * 40))
+      : totals && totals.totalRevenueCents30d > 0
+        ? 60
+        : 0;
+
+  const staffExtra =
+    totals && data
+      ? Math.max(0, totals.activeStaffCount - data.staffPreviewNames.length)
+      : 0;
 
   return (
     <div className="px-4 pb-16 sm:px-6 lg:px-8">
@@ -31,6 +65,12 @@ export function NetworkOverviewContent() {
           </Link>
         </div>
 
+        {networkQuery.isError ? (
+          <p className="text-sm text-red-600">
+            Could not load network metrics. Try again in a moment.
+          </p>
+        ) : null}
+
         {/* KPI row */}
         <div className="grid gap-6 md:grid-cols-3">
           <article className="relative rounded-xl border border-[rgba(187,201,199,0.15)] bg-white p-6 shadow-sm">
@@ -40,20 +80,34 @@ export function NetworkOverviewContent() {
                   payments
                 </span>
               </div>
-              <span className="rounded-full bg-[rgba(96,99,238,0.1)] px-2 py-1 text-xs text-[#6063ee]">
-                +12.4% vs LW
-              </span>
+              {revenueDeltaPct !== null ? (
+                <span
+                  className={`rounded-full px-2 py-1 text-xs ${
+                    revenueDeltaPct.startsWith("-")
+                      ? "bg-[#fff1f2] text-[#e11d48]"
+                      : "bg-[rgba(96,99,238,0.1)] text-[#6063ee]"
+                  }`}
+                >
+                  {revenueDeltaPct.startsWith("-") ? "" : "+"}
+                  {revenueDeltaPct}% vs prior 30d
+                </span>
+              ) : (
+                <span className="rounded-full bg-[rgba(96,99,238,0.1)] px-2 py-1 text-xs text-[#6063ee]">
+                  All branches
+                </span>
+              )}
             </div>
             <p className="mt-4 text-base font-normal uppercase tracking-[0.1em] text-[#3c4948]">
               Network Revenue
             </p>
             <p className="mt-1 font-[family-name:var(--font-manrope)] text-3xl font-bold text-[#191c1e]">
-              ZMW 142,850.40
+              {networkQuery.isPending || !totals ? "—" : money.format(totals.totalRevenueCents30d / 100)}
             </p>
             <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#e6e8ea]">
               <div
-                className="h-full w-[78%] rounded-full"
+                className="h-full rounded-full transition-all"
                 style={{
+                  width: `${networkQuery.isPending ? 0 : revenueProgressPct}%`,
                   background:
                     "linear-gradient(135deg, rgb(15, 185, 177) 0%, rgb(99, 102, 241) 100%)",
                 }}
@@ -69,20 +123,26 @@ export function NetworkOverviewContent() {
                 </span>
               </div>
               <span className="rounded-full bg-[rgba(255,218,214,0.2)] px-2 py-1 text-xs text-[#ba1a1a]">
-                48 Low Stock
+                {networkQuery.isPending || !totals ? "—" : `${totals.totalLowStockSkuCount} low-stock SKUs`}
               </span>
             </div>
             <p className="mt-4 text-base font-normal uppercase tracking-[0.1em] text-[#3c4948]">
-              Stock Integrity
+              Stock integrity (avg)
             </p>
             <p className="mt-1 font-[family-name:var(--font-manrope)] text-3xl font-bold text-[#191c1e]">
-              94.2%
+              {networkQuery.isPending || !totals ? "—" : `${totals.healthyBatchRatioAvg}%`}
             </p>
             <div className="mt-4 flex gap-1">
-              <div className="h-1.5 flex-1 rounded-full bg-[#0fb9b1]" />
-              <div className="h-1.5 flex-1 rounded-full bg-[#0fb9b1]" />
-              <div className="h-1.5 flex-1 rounded-full bg-[#0fb9b1]" />
-              <div className="h-1.5 flex-1 rounded-full bg-[rgba(15,185,177,0.2)]" />
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className={`h-1.5 flex-1 rounded-full ${
+                    totals && i < Math.round(totals.healthyBatchRatioAvg / 25)
+                      ? "bg-[#0fb9b1]"
+                      : "bg-[rgba(15,185,177,0.2)]"
+                  }`}
+                />
+              ))}
             </div>
           </article>
 
@@ -94,73 +154,75 @@ export function NetworkOverviewContent() {
                 </span>
               </div>
               <span className="rounded-full bg-[rgba(0,106,101,0.1)] px-2 py-1 text-xs text-[#006a65]">
-                18 Active Now
+                {networkQuery.isPending || !totals ? "—" : `${totals.activeStaffCount} active`}
               </span>
             </div>
             <p className="mt-4 text-base font-normal uppercase tracking-[0.1em] text-[#3c4948]">
-              Staff Deployment
+              Staff deployment
             </p>
             <p className="mt-1 font-[family-name:var(--font-manrope)] text-3xl font-bold text-[#191c1e]">
-              24 / 28
+              {networkQuery.isPending || !totals
+                ? "—"
+                : `${totals.activeStaffCount} / ${totals.totalStaffCount}`}
             </p>
             <div className="mt-4 flex -space-x-2">
-              {[
-                DASHBOARD_ASSETS.staffA,
-                DASHBOARD_ASSETS.staffB,
-                DASHBOARD_ASSETS.staffC,
-              ].map((src) => (
-                <div
-                  key={src}
-                  className="relative size-8 shrink-0 overflow-hidden rounded-full border-2 border-white"
-                >
-                  <Image src={src} alt="" fill className="object-cover" sizes="32px" />
-                </div>
+              {(data?.staffPreviewNames ?? []).map((name) => (
+                <AuraAvatar
+                  key={name}
+                  name={name}
+                  decorative
+                  className="size-8 shrink-0 rounded-full border-2 border-white text-[10px]"
+                />
               ))}
-              <div className="relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-white bg-[#e6e8ea] text-[10px] font-semibold text-[#191c1e]">
-                +15
-              </div>
+              {staffExtra > 0 ? (
+                <div className="relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-white bg-[#e6e8ea] text-[10px] font-semibold text-[#191c1e]">
+                  +{staffExtra}
+                </div>
+              ) : null}
             </div>
           </article>
         </div>
 
         {/* Branch cards */}
         <div className="grid gap-8 lg:grid-cols-3">
-          <BranchLocationCard
-            name="Main Branch"
-            mapSrc={DASHBOARD_ASSETS.mapMain}
-            status="online"
-            onManageLogistics={withLoading}
-            notify={notify}
-            rows={[
-              { label: "Daily Rx Volume", value: "412 Units" },
-              { label: "Current Lead Pharmacist", valueLines: ["Dr. Sarah", "Chen"] },
-              { label: "Wait Time Avg.", value: "8 mins", valueTone: "teal" as const },
-            ]}
-          />
-          <BranchLocationCard
-            name="East Side"
-            mapSrc={DASHBOARD_ASSETS.mapEast}
-            status="online"
-            onManageLogistics={withLoading}
-            notify={notify}
-            rows={[
-              { label: "Daily Rx Volume", value: "285 Units" },
-              { label: "Current Lead Pharmacist", valueLines: ["Dr. James", "Miller"] },
-              { label: "Wait Time Avg.", value: "14 mins", valueTone: "teal" as const },
-            ]}
-          />
-          <BranchLocationCard
-            name="Warehouse"
-            mapSrc={DASHBOARD_ASSETS.mapWarehouse}
-            status="offline"
-            onManageLogistics={withLoading}
-            notify={notify}
-            rows={[
-              { labelLines: ["Inventory", "Throughput"], valueLines: ["1,200", "Units"] },
-              { label: "Floor Supervisor", value: "Marcus Reid" },
-              { label: "Restock Efficiency", value: "98.2%", valueTone: "indigo" as const },
-            ]}
-          />
+          {networkQuery.isPending ? (
+            <p className="text-sm text-[#64748b] lg:col-span-3">Loading branches…</p>
+          ) : !data || data.branches.length === 0 ? (
+            <p className="text-sm text-[#64748b] lg:col-span-3">
+              No branches yet. Use{" "}
+              <Link href={ROUTES.dashboard.onboarding.pharmacyDetails} className="font-semibold text-[#0d9488] underline">
+                branch setup
+              </Link>{" "}
+              to add your first location.
+            </p>
+          ) : (
+            data.branches.map((b, index) => (
+              <BranchLocationCard
+                key={b.id}
+                name={b.name}
+                mapPriority={index === 0}
+                mapSrc={MAP_CYCLE[index % MAP_CYCLE.length]!}
+                status={b.branchStatus === "inactive" ? "offline" : "online"}
+                onManageLogistics={withLoading}
+                notify={notify}
+                rows={[
+                  {
+                    label: "30-day sales",
+                    value: money.format(b.revenueCents30d / 100),
+                  },
+                  {
+                    label: "Lead pharmacist",
+                    value: b.leadPharmacistName ?? "—",
+                  },
+                  {
+                    label: "Units dispensed (30d)",
+                    value: b.unitsSold30d.toLocaleString(),
+                    valueTone: "teal" as const,
+                  },
+                ]}
+              />
+            ))
+          )}
         </div>
 
         {/* Activity stream */}
@@ -183,46 +245,17 @@ export function NetworkOverviewContent() {
               className="absolute bottom-2 left-[15px] top-2 w-0.5 rounded-full bg-gradient-to-b from-[#0fb9b1] via-[#6366f1] to-[#cbd5e1] opacity-30"
               aria-hidden
             />
-            <ul className="space-y-8">
-              <ActivityRow
-                dotClass="bg-[#006a65]"
-                iconWrapClass="bg-[rgba(15,185,177,0.1)]"
-                icon="local_shipping"
-                title="Bulk Restock Complete"
-                description="Warehouse dispatched 500 units of Insulin to Main Branch."
-                time="14:20 PM"
-                meta="Completed"
-                metaClass="text-[#006a65]"
-              />
-              <ActivityRow
-                dotClass="bg-[#4648d4]"
-                iconWrapClass="bg-[rgba(96,99,238,0.1)]"
-                icon="trending_up"
-                title="Revenue Peak Detected"
-                description="East Side surpassed daily target by 15% in last hour."
-                time="12:45 PM"
-                meta="Insight"
-                metaClass="text-[#4648d4]"
-              />
-              <ActivityRow
-                dimmed
-                dotClass="bg-[#cbd5e1]"
-                iconWrapClass="bg-[#f1f5f9]"
-                icon="schedule"
-                title="Shift Change"
-                description="Main Branch handover from Dr. Chen to Dr. Al-Sayed."
-                time="08:00 AM"
-                meta="Scheduled"
-                metaClass="text-[#94a3b8]"
-              />
-            </ul>
+            <p className="py-4 text-sm leading-relaxed text-[#64748b]">
+              No recent network events yet. Inventory and sales activity will appear here when an
+              activity feed is connected.
+            </p>
           </div>
         </section>
 
         {/* Footer strip */}
         <footer className="flex flex-col gap-4 border-t border-[#f1f5f9] pt-6 text-[11px] uppercase tracking-[0.1em] text-[#94a3b8] sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <span className="font-semibold text-[#cbd5e1]">AuraPharma v2.4.0</span>
+            <span className="font-semibold text-[#cbd5e1]">AuraPharma v1.0.0</span>
             <div className="flex flex-wrap gap-4">
               <Link href="#" className="underline decoration-[rgba(20,184,166,0.3)] hover:text-[#64748b]">
                 Privacy Policy
@@ -235,7 +268,9 @@ export function NetworkOverviewContent() {
               </Link>
             </div>
           </div>
-          <p className="text-right sm:text-left">© 2024 AuraPharma v2.4.0 Clinical Intelligence</p>
+          <p className="text-right sm:text-left">
+            © {new Date().getFullYear()} AuraPharma v1.0.0 Clinical Intelligence
+          </p>
         </footer>
       </div>
     </div>
@@ -252,6 +287,7 @@ type BranchRow = {
 
 function BranchLocationCard({
   name,
+  mapPriority,
   mapSrc,
   status,
   onManageLogistics,
@@ -259,6 +295,8 @@ function BranchLocationCard({
   rows,
 }: {
   name: string;
+  /** First visible map is typically LCP; load eagerly. */
+  mapPriority?: boolean;
   mapSrc: string;
   status: "online" | "offline";
   onManageLogistics: (key: string, message: string, task: () => Promise<unknown>) => Promise<unknown>;
@@ -278,6 +316,8 @@ function BranchLocationCard({
           alt=""
           fill
           className="object-cover object-[center_35%]"
+          loading={mapPriority ? "eager" : undefined}
+          priority={mapPriority}
           sizes="(max-width: 1024px) 100vw, 33vw"
         />
         <div
@@ -371,57 +411,5 @@ function BranchLocationCard({
         </button>
       </div>
     </article>
-  );
-}
-
-function ActivityRow({
-  dotClass,
-  iconWrapClass,
-  icon,
-  title,
-  description,
-  time,
-  meta,
-  metaClass,
-  dimmed,
-}: {
-  dotClass: string;
-  iconWrapClass: string;
-  icon: string;
-  title: string;
-  description: string;
-  time: string;
-  meta: string;
-  metaClass: string;
-  dimmed?: boolean;
-}) {
-  return (
-    <li className={`relative ${dimmed ? "opacity-60" : ""}`}>
-      <span
-        className={`absolute -left-[25px] top-2 size-4 rounded-full border-2 border-white shadow-[0_0_0_4px_#f2f4f6,0_1px_2px_rgba(0,0,0,0.05)] ${dotClass}`}
-        aria-hidden
-      />
-      <div className="flex flex-col gap-3 rounded-xl border border-[rgba(187,201,199,0.05)] bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-4">
-          <div
-            className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${iconWrapClass}`}
-          >
-            <span className="material-symbols-outlined notranslate text-xl text-[#191c1e]">
-              {icon}
-            </span>
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-[#191c1e]">{title}</p>
-            <p className="mt-0.5 text-xs leading-relaxed text-[#3c4948]">{description}</p>
-          </div>
-        </div>
-        <div className="shrink-0 text-right sm:pl-4">
-          <p className="text-[10px] font-normal uppercase tracking-wider text-[#3c4948]">
-            {time}
-          </p>
-          <p className={`mt-0.5 text-xs font-semibold ${metaClass}`}>{meta}</p>
-        </div>
-      </div>
-    </li>
   );
 }

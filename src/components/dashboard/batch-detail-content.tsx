@@ -184,7 +184,7 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
   if (batchQuery.isLoading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center px-4">
-        <p className="text-sm text-[#64748b]">Loading batch details...</p>
+        <p className="text-sm text-[#64748b]">Loading product details...</p>
       </div>
     );
   }
@@ -205,10 +205,10 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
               error
             </span>
             <h2 className="mt-4 font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]">
-              Batch not found
+              Product not found
             </h2>
             <p className="mt-2 text-sm text-[#64748b]">
-              This batch may have been removed or you may not have access to it.
+              This product may have been removed or you may not have access to it.
             </p>
           </div>
         </div>
@@ -227,20 +227,20 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
   const handleDispose = async () => {
     await withLoading(
       "dashboard-dispose-batch",
-      "Disposing batch from live inventory...",
+      "Disposing product from live inventory...",
       async () => {
         const result = await disposeMutation.mutateAsync({
           batchId: batch.id,
           branchId: batch.branchId,
           note:
             batch.status === "expired"
-              ? "Expired stock disposed from batch detail."
-              : "Manual stock disposal from batch detail.",
+              ? "Expired stock disposed from product detail."
+              : "Manual stock disposal from product detail.",
         });
 
         notify({
           variant: "success",
-          title: "Batch disposed",
+          title: "Product disposed",
           description: `${result.productName} (${result.batchNumber}) was removed from available stock.`,
         });
         await batchQuery.refetch();
@@ -249,16 +249,16 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
   };
 
   const handleRestore = async () => {
-    await withLoading("dashboard-restore-batch", "Restoring disposed batch...", async () => {
+    await withLoading("dashboard-restore-batch", "Restoring disposed product...", async () => {
       const result = await restoreMutation.mutateAsync({
         batchId: batch.id,
         branchId: batch.branchId,
-        note: "Batch restored from batch detail page.",
+        note: "Product restored from product detail page.",
       });
 
       notify({
         variant: "success",
-        title: "Batch restored",
+        title: "Product restored",
         description: `${result.productName} (${result.batchNumber}) restored with ${result.restoredQuantity.toLocaleString()} units.`,
       });
       await batchQuery.refetch();
@@ -266,7 +266,7 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
   };
 
   const handleMarkAsUsed = async () => {
-    const value = window.prompt("How many units were used from this batch?");
+    const value = window.prompt("How many units were used from this product?");
     if (value === null) return;
 
     const quantity = Number.parseInt(value, 10);
@@ -281,7 +281,7 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
 
     const note = window.prompt("Optional note for this usage log:")?.trim() || undefined;
 
-    await withLoading("dashboard-adjust-stock", "Recording batch usage...", async () => {
+    await withLoading("dashboard-adjust-stock", "Recording product usage...", async () => {
       const result = await adjustMutation.mutateAsync({
         branchId: batch.branchId,
         batchIds: [batch.id],
@@ -292,7 +292,7 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
       notify({
         variant: "success",
         title: "Usage recorded",
-        description: `${result.adjustedCount} batch updated.`,
+        description: `${result.adjustedCount} product${result.adjustedCount === 1 ? "" : "s"} updated.`,
       });
       await batchQuery.refetch();
     });
@@ -313,7 +313,7 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
             <span className="material-symbols-outlined notranslate text-sm text-[#cbd5e1]">
               chevron_right
             </span>
-            <span className="text-[#191c1e]">Batch Details</span>
+            <span className="text-[#191c1e]">Product details</span>
           </nav>
 
           <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
@@ -350,14 +350,14 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
                 onClick={() =>
                   notify({
                     variant: "info",
-                    title: "Edit batch details",
-                    description: "Batch editing is not wired yet in this dashboard flow.",
+                    title: "Edit product details",
+                    description: "Product editing is not wired yet in this dashboard flow.",
                   })
                 }
                 className="inline-flex items-center gap-2 rounded-xl bg-[#e0e3e5] px-5 py-2.5 text-sm font-semibold text-[#191c1e] transition hover:bg-[#d5dade]"
               >
                 <span className="material-symbols-outlined notranslate text-[18px]">edit</span>
-                Edit Batch Details
+                Edit Product Details
               </button>
               {batch.status === "disposed" ? (
                 <button
@@ -367,7 +367,7 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
                   className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-6 py-2.5 text-sm font-semibold text-white shadow-[0px_10px_15px_-3px_rgba(20,184,166,0.2),0px_4px_6px_-4px_rgba(20,184,166,0.2)] transition hover:opacity-95 disabled:opacity-60"
                 >
                   <span className="material-symbols-outlined notranslate text-[18px]">settings_backup_restore</span>
-                  Restore Batch
+                  Restore Product
                 </button>
               ) : (
                 <button
@@ -399,7 +399,7 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
           <section className="rounded-xl border border-[rgba(241,245,249,0.8)] bg-white p-6 shadow-[0px_1px_2px_rgba(0,0,0,0.05)] lg:col-span-4">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="font-[family-name:var(--font-manrope)] text-[22px] font-bold text-[#191c1e]">
-                Batch Identity
+                Product Identity
               </h2>
               <span className="material-symbols-outlined notranslate text-[#94a3b8]">info</span>
             </div>
@@ -572,10 +572,10 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
               ) : null}
             </div>
 
-            <div className="mt-6 overflow-x-auto">
+            <div className="mt-6 min-w-0 overflow-x-auto overscroll-x-contain">
               {dispensingHistory.length === 0 ? (
                 <p className="py-8 text-center text-sm text-[#94a3b8]">
-                  No transactions recorded for this batch yet.
+                  No transactions recorded for this product yet.
                 </p>
               ) : (
               <table className="min-w-full">
@@ -633,7 +633,7 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
                     Stability Index: {statusTone.label === "Stable" ? "Optimal" : "Monitor Closely"}
                   </h2>
                   <p className="mt-3 max-w-[520px] text-sm leading-7 text-white/80">
-                    Based on current storage telemetry, stock level, and shelf-life trend, this batch
+                    Based on current storage telemetry, stock level, and shelf-life trend, this product
                     remains {stability.potency.toFixed(1)}% potency aligned. Continue monitoring
                     through the expiration date and maintain the listed storage conditions.
                   </p>
