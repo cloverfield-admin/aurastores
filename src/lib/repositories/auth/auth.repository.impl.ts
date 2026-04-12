@@ -140,6 +140,16 @@ export class AuthRepositoryImpl implements AuthRepository {
       .where(eq(users.id, authUserId));
   }
 
+  async syncEmailVerifiedFromAuth(authUserId: string, isEmailVerified: boolean) {
+    await db
+      .update(users)
+      .set({
+        isEmailVerified,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, authUserId));
+  }
+
   async getPostAuthRedirect(authUserId: string) {
     const context = await this.findByAuthUserId(authUserId);
     if (!context) {

@@ -24,5 +24,6 @@ export interface AuthRepository {
   findByAuthUserId(authUserId: string): Promise<AuthContext | null>;
   createRegisteredUser(params: RegisteredUserParams): Promise<AuthContext>;
   updateLastLoginAt(authUserId: string): Promise<void>;
+  syncEmailVerifiedFromAuth(authUserId: string, isEmailVerified: boolean): Promise<void>;
   getPostAuthRedirect(authUserId: string): Promise<string>;
 }

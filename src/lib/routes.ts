@@ -2,6 +2,12 @@ export const ROUTES = {
   auth: {
     signIn: "/auth/sign-in",
     register: "/auth/register",
+    verifyEmail: "/auth/verify-email",
+    forgotPassword: "/auth/forgot-password",
+    /** PKCE redirect target for `resetPasswordForEmail` (email link lands here). */
+    recovery: "/auth/recovery",
+    updatePassword: "/auth/update-password",
+    /** @deprecated Use `updatePassword`; kept for bookmarks. */
     changePassword: "/auth/change-password",
   },
   dashboard: {

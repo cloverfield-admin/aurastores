@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { useStockBranchesQuery } from "@/lib/queries/stock";
 import { ROUTES } from "@/lib/routes";
 import { PharmacySearchField } from "@/components/dashboard/pharmacy-search-field";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
+
+/** Breathing room between fixed header and main scroll area (px). */
+const MAIN_BELOW_HEADER_GAP_PX = 8;
 
 const MODULE_NAV: { label: string; icon: string; href: string }[] = [
   { label: "Aura Stock", icon: "inventory_2", href: ROUTES.dashboard.stock },
@@ -28,30 +31,41 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const { withLoading, notify } = useAuraFeedback();
   const [localSearch, setLocalSearch] = useState("");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const [headerHeightPx, setHeaderHeightPx] = useState<number | null>(null);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileNavCloseRef = useRef<HTMLButtonElement>(null);
+  const mobileToolsToggleRef = useRef<HTMLButtonElement>(null);
+  const mobileToolsPanelRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
 
   const closeMobileNav = useCallback(() => {
     setMobileNavOpen(false);
   }, []);
 
+  const closeMobileTools = useCallback(() => {
+    setMobileToolsOpen(false);
+  }, []);
+
   useEffect(() => {
     const id = requestAnimationFrame(() => {
       closeMobileNav();
+      closeMobileTools();
     });
     return () => cancelAnimationFrame(id);
-  }, [pathname, closeMobileNav]);
+  }, [pathname, closeMobileNav, closeMobileTools]);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 1024px)");
     const onChange = () => {
       if (mq.matches) {
         closeMobileNav();
+        closeMobileTools();
       }
     };
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
-  }, [closeMobileNav]);
+  }, [closeMobileNav, closeMobileTools]);
 
   useEffect(() => {
     if (!mobileNavOpen) {
@@ -72,6 +86,53 @@ export function DashboardShell({ children }: DashboardShellProps) {
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [mobileNavOpen, closeMobileNav]);
+
+  useEffect(() => {
+    if (!mobileToolsOpen) {
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeMobileTools();
+        mobileToolsToggleRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileToolsOpen, closeMobileTools]);
+
+  useLayoutEffect(() => {
+    if (mobileToolsOpen) {
+      return;
+    }
+    const root = mobileToolsPanelRef.current;
+    if (!root) {
+      return;
+    }
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && root.contains(active)) {
+      active.blur();
+    }
+  }, [mobileToolsOpen]);
+
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) {
+      return;
+    }
+    const measure = () => {
+      setHeaderHeightPx(el.getBoundingClientRect().height);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [pathname, mobileNavOpen, mobileToolsOpen]);
 
   const isStock = pathname === ROUTES.dashboard.stock || pathname.startsWith(`${ROUTES.dashboard.stock}/`);
   const isSales = pathname === ROUTES.dashboard.sales || pathname.startsWith(`${ROUTES.dashboard.sales}/`);
@@ -121,11 +182,35 @@ export function DashboardShell({ children }: DashboardShellProps) {
     return preservedBranch ? `${base}?branch=${preservedBranch}` : base;
   }
 
-  function branchSwitcherNav(opts: {
-    ariaLabel: string;
-    variant: "insights" | "default";
-    onSelectBranch: (branchId: string) => void;
-  }) {
+  const hasMobileToolsPanel =
+    !isSettings
+    && !isStaffAdd
+    && (isStaff
+      || isInsights
+      || isSales
+      || isDashboardMain
+      || (isStock && !isDashboardMain)
+      || (!isStock && !isDashboardMain));
+
+  const mobileHeaderTitle = isSettings
+    ? "Profile & Settings"
+    : isStaffAdd
+      ? "Add New Staff"
+      : isInsights
+        ? "Insights"
+        : isSales
+          ? "Sales"
+          : isStaff
+            ? "Staff"
+            : isStock
+              ? "Stock"
+              : isDashboardMain
+                ? "Home"
+                : pathname === ROUTES.dashboard.pay || pathname.startsWith(`${ROUTES.dashboard.pay}/`)
+                  ? "Aura Pay"
+                  : "Dashboard";
+
+  function branchSwitcherNav(opts: { ariaLabel: string; onSelectBranch: (branchId: string) => void }) {
     if (branchesQuery.isPending) {
       return <span className="text-sm text-[#94a3b8]">Loading branches…</span>;
     }
@@ -149,18 +234,11 @@ export function DashboardShell({ children }: DashboardShellProps) {
       >
         {sectionBranchTabs.map((tab) => {
           const active = tab.id === activeSectionBranchId;
-          const className =
-            opts.variant === "insights"
-              ? `pb-1.5 pt-1 text-sm ${
-                  active
-                    ? "border-b-2 border-[#0fb9b1] font-medium text-[#0fb9b1]"
-                    : "font-normal text-[#475569] hover:text-[#0f172a]"
-                }`
-              : `pb-1.5 pt-1 font-[family-name:var(--font-manrope)] text-sm ${
-                  active
-                    ? "border-b-2 border-[#14b8a6] font-semibold text-[#0d9488]"
-                    : "font-normal text-[#64748b] hover:text-[#0f172a]"
-                }`;
+          const className = `pb-1.5 pt-1 font-[family-name:var(--font-manrope)] text-sm ${
+            active
+              ? "border-b-2 border-[#14b8a6] font-semibold text-[#0d9488]"
+              : "font-normal text-[#64748b] hover:text-[#0f172a]"
+          }`;
           return (
             <button
               key={tab.id}
@@ -190,11 +268,11 @@ export function DashboardShell({ children }: DashboardShellProps) {
       {/* Sidebar: off-canvas below lg */}
       <aside
         id="dashboard-mobile-nav"
-        className={`fixed left-0 top-0 z-[100] flex h-dvh w-64 max-w-[min(100vw,20rem)] flex-col justify-between border-r border-[#f1f5f9] bg-[#f8fafc] p-4 shadow-[4px_0_24px_rgba(15,23,42,0.08)] transition-transform duration-200 ease-out motion-reduce:transition-none lg:z-40 lg:max-w-none lg:translate-x-0 lg:shadow-none ${
+        className={`fixed left-0 top-0 z-[100] flex h-dvh w-64 max-w-[min(100vw,20rem)] flex-col border-r border-[#f1f5f9] bg-[#f8fafc] px-4 pb-4 pt-2 shadow-[4px_0_24px_rgba(15,23,42,0.08)] transition-transform duration-200 ease-out motion-reduce:transition-none lg:z-40 lg:max-w-none lg:translate-x-0 lg:p-4 lg:shadow-none ${
           mobileNavOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        <div className="flex shrink-0 items-center justify-between gap-2 lg:hidden">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#e2e8f0]/80 pb-2 lg:hidden">
           <span className="text-xs font-semibold uppercase tracking-wider text-[#64748b]">Menu</span>
           <button
             ref={mobileNavCloseRef}
@@ -207,11 +285,11 @@ export function DashboardShell({ children }: DashboardShellProps) {
             <span className="material-symbols-outlined notranslate text-xl">close</span>
           </button>
         </div>
-        <div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pt-2 lg:pt-0">
           <Link
             href={ROUTES.dashboard.main}
             onClick={closeMobileNav}
-            className="flex items-center gap-3 px-2 pb-8 pt-2 lg:pt-2"
+            className="flex items-center gap-3 px-2 pb-4 pt-0 lg:pb-8 lg:pt-2"
           >
             <div
               className="flex size-10 items-center justify-center rounded-xl shadow-md"
@@ -224,6 +302,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 local_pharmacy
               </span>
             </div>
+            <br />
+            <br />
             <div>
               <p className="bg-gradient-to-r from-[#14b8a6] to-[#6366f1] bg-clip-text font-[family-name:var(--font-manrope)] text-xl font-bold tracking-tight text-transparent">
                 AuraPharma
@@ -267,7 +347,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
           </nav>
         </div>
 
-        <div className="border-t border-[rgba(226,232,240,0.5)] pt-4">
+        <div className="mt-auto shrink-0 border-t border-[rgba(226,232,240,0.5)] pt-4">
           <nav className="flex flex-col gap-1" aria-label="Account">
             <Link
               href={ROUTES.settings}
@@ -317,97 +397,142 @@ export function DashboardShell({ children }: DashboardShellProps) {
       </aside>
 
       {/* Top bar */}
-      <header className="fixed left-0 right-0 top-0 z-[110] border-b border-[#f1f5f9] bg-white/80 shadow-[0_1px_2px_0_rgba(226,232,240,0.5)] backdrop-blur-md lg:left-64 lg:z-30">
-        <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-          <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
-            <div className="flex min-w-0 items-center gap-3 sm:contents">
+      <header
+        ref={headerRef}
+        className="fixed left-0 right-0 top-0 z-[110] border-b border-[#f1f5f9] bg-white/80 shadow-[0_1px_2px_0_rgba(226,232,240,0.5)] backdrop-blur-md lg:left-64 lg:z-30"
+      >
+        <div className="lg:hidden">
+          <div className="mx-auto max-w-[1280px] px-4 py-3">
+            <div className="flex items-center gap-3">
               <button
                 ref={mobileMenuButtonRef}
                 type="button"
-                className="shrink-0 rounded-lg p-2 text-[#64748b] hover:bg-slate-100 lg:hidden"
+                className="shrink-0 rounded-lg p-2 text-[#64748b] hover:bg-slate-100"
                 aria-expanded={mobileNavOpen}
                 aria-controls="dashboard-mobile-nav"
-                onClick={() => setMobileNavOpen((open) => !open)}
+                onClick={() => {
+                  closeMobileTools();
+                  setMobileNavOpen((open) => !open);
+                }}
               >
                 <span className="material-symbols-outlined notranslate text-2xl">
                   {mobileNavOpen ? "close" : "menu"}
                 </span>
               </button>
-            </div>
-            {isSettings ? (
-              <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#0f172a] sm:text-lg">
-                Profile & Settings
-              </h1>
-            ) : isStaffAdd ? (
-              <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#0f172a] sm:text-lg">
-                Add New Staff
-              </h1>
-            ) : isStaff ? (
-              <>
-                <label className="relative hidden w-full min-w-0 sm:block sm:w-64">
-                  <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
-                    search
-                  </span>
-                  <input
-                    type="search"
-                    placeholder={searchPlaceholder}
-                    className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
-                  />
-                </label>
-                {branchSwitcherNav({
-                  ariaLabel: "Branch filter",
-                  variant: "default",
-                  onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
-                })}
-              </>
-            ) : isInsights ? (
-              <>
-                <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#0f172a] sm:text-lg">
-                  Pharmacy Network Dashboard
-                </h1>
-                {branchSwitcherNav({
-                  ariaLabel: "Branch filter",
-                  variant: "insights",
-                  onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
-                })}
-              </>
-            ) : isSales ? (
-              <>
-                {branchSwitcherNav({
-                  ariaLabel: "Active branch context",
-                  variant: "default",
-                  onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
-                })}
-                <nav
-                  className="flex min-w-0 max-w-full items-center gap-4 overflow-x-auto overscroll-x-contain pb-0.5 sm:gap-6"
-                  aria-label="Sales sections"
+              <p className="min-w-0 flex-1 truncate font-[family-name:var(--font-manrope)] text-base font-bold leading-tight text-[#0f172a]">
+                {mobileHeaderTitle}
+              </p>
+              {hasMobileToolsPanel ? (
+                <button
+                  ref={mobileToolsToggleRef}
+                  type="button"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#e2e8f0] bg-white px-2.5 py-2 text-[#64748b] hover:bg-slate-50"
+                  aria-expanded={mobileToolsOpen}
+                  aria-controls="dashboard-mobile-tools"
+                  onClick={() => {
+                    closeMobileNav();
+                    setMobileToolsOpen((open) => !open);
+                  }}
                 >
-                  {SALES_TABS.map((tab) => {
-                    const active = tab === salesTab;
-                    return (
-                      <button
-                        key={tab}
-                        type="button"
-                        onClick={() => setSalesTab(tab)}
-                        className={`pb-1.5 pt-1 font-[family-name:var(--font-manrope)] text-sm ${
-                          active
-                            ? "border-b-2 border-[#14b8a6] font-semibold text-[#0d9488]"
-                            : "font-normal text-[#64748b] hover:text-[#0f172a]"
-                        }`}
-                      >
-                        {tab}
-                      </button>
-                    );
+                  <span className="material-symbols-outlined notranslate text-xl">tune</span>
+                  <span className="sr-only">Search and branches</span>
+                </button>
+              ) : null}
+              <div className="flex shrink-0 items-center gap-2 border-l border-[#f1f5f9] pl-3">
+                <button
+                  type="button"
+                  className="rounded-lg p-1.5 text-[#64748b] hover:bg-slate-100"
+                  aria-label="Notifications"
+                >
+                  <span className="material-symbols-outlined notranslate text-xl">
+                    notifications
+                  </span>
+                </button>
+                <Link
+                  href={ROUTES.settings}
+                  className="block shadow-[0_0_0_2px_rgba(20,184,166,0.2)] transition hover:opacity-90"
+                  aria-label="Profile and settings"
+                >
+                  <AuraAvatar
+                    name="Pharmacy Manager"
+                    decorative
+                    className="size-8 rounded-full text-[11px]"
+                  />
+                </Link>
+              </div>
+            </div>
+          </div>
+          {hasMobileToolsPanel ? (
+            <div
+              ref={mobileToolsPanelRef}
+              id="dashboard-mobile-tools"
+              role="region"
+              aria-label="Search and branch filters"
+              hidden={!mobileToolsOpen}
+              className="border-t border-[#f1f5f9] px-4 py-3"
+            >
+              {isStaff || isInsights ? (
+                <div className="flex flex-col gap-4">
+                  <label className="relative block w-full min-w-0">
+                    <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
+                      search
+                    </span>
+                    <input
+                      type="search"
+                      placeholder={searchPlaceholder}
+                      className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
+                    />
+                  </label>
+                  {branchSwitcherNav({
+                    ariaLabel: "Branch filter",
+                    onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
                   })}
-                </nav>
-              </>
-            ) : (
-              <>
-                {!isStock && !isSettings ? (
-                  isDashboardMain ? (
-                    <PharmacySearchField />
-                  ) : (
-                    <label className="relative block w-full sm:w-64">
+                </div>
+              ) : isSales ? (
+                <div className="flex flex-col gap-4">
+                  {branchSwitcherNav({
+                    ariaLabel: "Active branch context",
+                    onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
+                  })}
+                  <nav
+                    className="flex min-w-0 max-w-full items-center gap-4 overflow-x-auto overscroll-x-contain pb-0.5 sm:gap-6"
+                    aria-label="Sales sections"
+                  >
+                    {SALES_TABS.map((tab) => {
+                      const active = tab === salesTab;
+                      return (
+                        <button
+                          key={tab}
+                          type="button"
+                          onClick={() => setSalesTab(tab)}
+                          className={`pb-1.5 pt-1 font-[family-name:var(--font-manrope)] text-sm ${
+                            active
+                              ? "border-b-2 border-[#14b8a6] font-semibold text-[#0d9488]"
+                              : "font-normal text-[#64748b] hover:text-[#0f172a]"
+                          }`}
+                        >
+                          {tab}
+                        </button>
+                      );
+                    })}
+                  </nav>
+                  <label className="relative block w-full min-w-0">
+                    <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
+                      search
+                    </span>
+                    <input
+                      type="search"
+                      placeholder={searchPlaceholder}
+                      className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none"
+                    />
+                  </label>
+                </div>
+              ) : isDashboardMain ? (
+                <PharmacySearchField />
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {!isStock && !isSettings ? (
+                    <label className="relative block w-full min-w-0">
                       <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
                         search
                       </span>
@@ -421,130 +546,214 @@ export function DashboardShell({ children }: DashboardShellProps) {
                         className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
                       />
                     </label>
-                  )
-                ) : null}
-                {!isDashboardMain
-                  ? branchSwitcherNav({
-                      ariaLabel: "Active branch context",
-                      variant: "default",
-                      onSelectBranch: (branchId) =>
-                        replaceBranchInUrl(branchId, { resetPage: isStock }),
-                    })
-                  : null}
-              </>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-transparent pt-2 sm:border-t-0 sm:pt-0">
-            {isInsights && (
-              <>
-                <label className="relative hidden w-full min-w-0 sm:block sm:w-64">
+                  ) : null}
+                  {!isDashboardMain
+                    ? branchSwitcherNav({
+                        ariaLabel: "Active branch context",
+                        onSelectBranch: (branchId) =>
+                          replaceBranchInUrl(branchId, { resetPage: isStock }),
+                      })
+                    : null}
+                  {!isSales && !isInsights && !isSettings && !isStaff && !isStaffAdd && !isDashboardMain ? (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await withLoading(
+                          "dashboard-aura-sync",
+                          "Syncing inventory across branches...",
+                          async () => {
+                            await new Promise((r) => setTimeout(r, 800));
+                            notify({
+                              variant: "success",
+                              title: "Sync complete",
+                              description: "All branches are up to date.",
+                            });
+                          },
+                        );
+                      }}
+                      className={`inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 font-[family-name:var(--font-manrope)] text-sm ${
+                        topActionVariant === "primary"
+                          ? "bg-[#0fb9b1] font-bold text-[#004340]"
+                          : "bg-[#f2f4f6] font-medium text-[#191c1e]"
+                      }`}
+                    >
+                      <span className="material-symbols-outlined notranslate text-lg">{topActionIcon}</span>
+                      {topActionLabel}
+                    </button>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="hidden lg:block">
+          <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+            <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+              {isSettings ? (
+                <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#0f172a] sm:text-lg">
+                  Profile & Settings
+                </h1>
+              ) : isStaffAdd ? (
+                <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#0f172a] sm:text-lg">
+                  Add New Staff
+                </h1>
+              ) : isStaff || isInsights ? (
+                <>
+                  <label className="relative hidden w-full min-w-0 sm:block sm:w-64">
+                    <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
+                      search
+                    </span>
+                    <input
+                      type="search"
+                      placeholder={searchPlaceholder}
+                      className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
+                    />
+                  </label>
+                  {branchSwitcherNav({
+                    ariaLabel: "Branch filter",
+                    onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
+                  })}
+                </>
+              ) : isSales ? (
+                <>
+                  {branchSwitcherNav({
+                    ariaLabel: "Active branch context",
+                    onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
+                  })}
+                  <nav
+                    className="flex min-w-0 max-w-full items-center gap-4 overflow-x-auto overscroll-x-contain pb-0.5 sm:gap-6"
+                    aria-label="Sales sections"
+                  >
+                    {SALES_TABS.map((tab) => {
+                      const active = tab === salesTab;
+                      return (
+                        <button
+                          key={tab}
+                          type="button"
+                          onClick={() => setSalesTab(tab)}
+                          className={`pb-1.5 pt-1 font-[family-name:var(--font-manrope)] text-sm ${
+                            active
+                              ? "border-b-2 border-[#14b8a6] font-semibold text-[#0d9488]"
+                              : "font-normal text-[#64748b] hover:text-[#0f172a]"
+                          }`}
+                        >
+                          {tab}
+                        </button>
+                      );
+                    })}
+                  </nav>
+                </>
+              ) : (
+                <>
+                  {!isStock && !isSettings ? (
+                    isDashboardMain ? (
+                      <PharmacySearchField />
+                    ) : (
+                      <label className="relative block w-full sm:w-64">
+                        <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
+                          search
+                        </span>
+                        <input
+                          type="search"
+                          placeholder={searchPlaceholder}
+                          value={localSearch}
+                          onChange={(event) => {
+                            setLocalSearch(event.target.value);
+                          }}
+                          className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
+                        />
+                      </label>
+                    )
+                  ) : null}
+                  {!isDashboardMain
+                    ? branchSwitcherNav({
+                        ariaLabel: "Active branch context",
+                        onSelectBranch: (branchId) =>
+                          replaceBranchInUrl(branchId, { resetPage: isStock }),
+                      })
+                    : null}
+                </>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-transparent pt-2 sm:border-t-0 sm:pt-0">
+              {!isSales && !isInsights && !isSettings && !isStaff && !isStaffAdd && !isDashboardMain && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await withLoading(
+                      "dashboard-aura-sync",
+                      "Syncing inventory across branches...",
+                      async () => {
+                        await new Promise((r) => setTimeout(r, 800));
+                        notify({
+                          variant: "success",
+                          title: "Sync complete",
+                          description: "All branches are up to date.",
+                        });
+                      },
+                    );
+                  }}
+                  className={`inline-flex items-center gap-2 rounded-lg px-4 py-1.5 font-[family-name:var(--font-manrope)] text-sm ${
+                    topActionVariant === "primary"
+                      ? "bg-[#0fb9b1] font-bold text-[#004340]"
+                      : "bg-[#f2f4f6] font-medium text-[#191c1e]"
+                  }`}
+                >
+                  <span className="material-symbols-outlined notranslate text-lg">{topActionIcon}</span>
+                  {topActionLabel}
+                </button>
+              )}
+              {isSales && (
+                <label className="relative hidden w-64 sm:block">
                   <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
                     search
                   </span>
                   <input
                     type="search"
                     placeholder={searchPlaceholder}
-                    className="w-full rounded-full border-0 bg-[#e0e3e5] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#6b7280] outline-none"
+                    className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none"
                   />
                 </label>
+              )}
+              <div className="flex items-center gap-2 border-l border-[#f1f5f9] pl-4">
                 <button
                   type="button"
-                  className="rounded-lg p-2 text-[#64748b] hover:bg-slate-100"
-                  aria-label="Calendar"
+                  className="rounded-lg p-1.5 text-[#64748b] hover:bg-slate-100"
+                  aria-label="Notifications"
                 >
-                  <span className="material-symbols-outlined notranslate text-xl">calendar_today</span>
+                  <span className="material-symbols-outlined notranslate text-xl">
+                    notifications
+                  </span>
                 </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await withLoading(
-                      "dashboard-export-report",
-                      "Preparing report export...",
-                      async () => {
-                        // TODO: implement export
-                        await new Promise((r) => setTimeout(r, 600));
-                        notify({
-                          variant: "success",
-                          title: "Report exported",
-                          description: "Your report has been downloaded.",
-                        });
-                      },
-                    );
-                  }}
-                  className="inline-flex items-center rounded-lg bg-[#0fb9b1] px-4 py-2 text-xs font-semibold text-[#004340] transition hover:opacity-95"
+                <Link
+                  href={ROUTES.settings}
+                  className="block shadow-[0_0_0_2px_rgba(20,184,166,0.2)] transition hover:opacity-90"
+                  aria-label="Profile and settings"
                 >
-                  Export Report
-                </button>
-              </>
-            )}
-            {!isSales && !isInsights && !isSettings && !isStaff && !isStaffAdd && !isDashboardMain && (
-              <button
-                type="button"
-                onClick={async () => {
-                  await withLoading(
-                    "dashboard-aura-sync",
-                    "Syncing inventory across branches...",
-                    async () => {
-                      // TODO: implement Aura Sync
-                      await new Promise((r) => setTimeout(r, 800));
-                      notify({
-                        variant: "success",
-                        title: "Sync complete",
-                        description: "All branches are up to date.",
-                      });
-                    },
-                  );
-                }}
-                className={`inline-flex items-center gap-2 rounded-lg px-4 py-1.5 font-[family-name:var(--font-manrope)] text-sm ${
-                  topActionVariant === "primary"
-                    ? "bg-[#0fb9b1] font-bold text-[#004340]"
-                    : "bg-[#f2f4f6] font-medium text-[#191c1e]"
-                }`}
-              >
-                <span className="material-symbols-outlined notranslate text-lg">{topActionIcon}</span>
-                {topActionLabel}
-              </button>
-            )}
-            {isSales && (
-              <label className="relative hidden w-64 sm:block">
-                <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
-                  search
-                </span>
-                <input
-                  type="search"
-                  placeholder={searchPlaceholder}
-                  className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none"
-                />
-              </label>
-            )}
-            <div className="flex items-center gap-2 border-l border-[#f1f5f9] pl-4">
-              <button
-                type="button"
-                className="rounded-lg p-1.5 text-[#64748b] hover:bg-slate-100"
-                aria-label="Notifications"
-              >
-                <span className="material-symbols-outlined notranslate text-xl">
-                  notifications
-                </span>
-              </button>
-              <Link
-                href={ROUTES.settings}
-                className="block shadow-[0_0_0_2px_rgba(20,184,166,0.2)] transition hover:opacity-90"
-                aria-label="Profile and settings"
-              >
-                <AuraAvatar
-                  name="Pharmacy Manager"
-                  decorative
-                  className="size-8 rounded-full text-[11px]"
-                />
-              </Link>
+                  <AuraAvatar
+                    name="Pharmacy Manager"
+                    decorative
+                    className="size-8 rounded-full text-[11px]"
+                  />
+                </Link>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
       <div className="lg:pl-64">
-        <div className="pt-32 sm:pt-24">{children}</div>
+        <div
+          style={{
+            paddingTop:
+              headerHeightPx != null
+                ? `${Math.ceil(headerHeightPx) + MAIN_BELOW_HEADER_GAP_PX}px`
+                : `calc(max(5.5rem, env(safe-area-inset-top, 0px)) + ${MAIN_BELOW_HEADER_GAP_PX}px)`,
+          }}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

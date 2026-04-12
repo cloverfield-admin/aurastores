@@ -15,5 +15,15 @@ export const signUpSchema = z.object({
   password: z.string().min(8).max(128),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: normalizedEmail,
+});
+
+export const updatePasswordSchema = z.object({
+  password: z.string().min(8).max(128),
+});
+
 export type SignInInput = z.infer<typeof signInSchema>;
 export type SignUpInput = z.infer<typeof signUpSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type UpdatePasswordInput = z.infer<typeof updatePasswordSchema>;

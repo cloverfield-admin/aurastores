@@ -78,7 +78,7 @@ export function SignInForm() {
                 Password
               </AuraFieldLabel>
               <Link
-                href={ROUTES.auth.changePassword}
+                href={ROUTES.auth.forgotPassword}
                 className={`shrink-0 text-xs font-semibold text-[#006a65] hover:underline ${isBusy ? "pointer-events-none opacity-60" : ""}`}
               >
                 Forgot password?
