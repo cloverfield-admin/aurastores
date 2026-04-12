@@ -39,7 +39,7 @@ jobs:
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
           echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
 
-      - name: Validate Drizzle config (on PR) or Run Migration (on main)
+      - name: Validate Drizzle config (on PR) or Run Migration (on main).
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             echo "🧪 PR detected – skipping DB introspection (no secrets available)"
