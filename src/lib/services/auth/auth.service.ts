@@ -15,6 +15,10 @@ export class AuthService {
     return this.repos.auth.updateLastLoginAt(authUserId);
   }
 
+  syncEmailVerifiedFromAuth(authUserId: string, isEmailVerified: boolean) {
+    return this.repos.auth.syncEmailVerifiedFromAuth(authUserId, isEmailVerified);
+  }
+
   getPostAuthRedirect(authUserId: string) {
     return this.repos.auth.getPostAuthRedirect(authUserId);
   }

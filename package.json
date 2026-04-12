@@ -12,7 +12,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "supabase:patch-auth-redirects": "python3 scripts/patch_supabase_auth_redirect_urls.py"
   },
   "dependencies": {
     "@ericblade/quagga2": "^1.12.1",

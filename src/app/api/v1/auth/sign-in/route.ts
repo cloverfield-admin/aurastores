@@ -30,6 +30,21 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!data.user.email_confirmed_at) {
+    await supabase.auth.signOut();
+    return NextResponse.json(
+      {
+        error: "Please verify your email before signing in. Check your inbox for the confirmation link.",
+        code: "EMAIL_NOT_VERIFIED" as const,
+      },
+      { status: 403 },
+    );
+  }
+
+  await services.auth.syncEmailVerifiedFromAuth(
+    data.user.id,
+    Boolean(data.user.email_confirmed_at),
+  );
   await services.auth.updateLastLoginAt(data.user.id);
   const redirectTo = await services.auth.getPostAuthRedirect(data.user.id);
 
