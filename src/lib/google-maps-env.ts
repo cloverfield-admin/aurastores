@@ -8,10 +8,10 @@
  * `PlaceAutocompleteElement` / address search).
  */
 export function getGoogleMapsApiKey(): string {
-  return process.env.GOOGLE_MAPS_API_KEY?.trim() ?? "";
+  return process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
 }
 
 export function getGoogleMapsMapId(): string | undefined {
-  const id = process.env.GOOGLE_MAPS_MAP_ID?.trim();
+  const id = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID?.trim();
   return id || undefined;
 }
