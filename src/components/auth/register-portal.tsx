@@ -53,15 +53,17 @@ export function RegisterPortal() {
         }),
       );
 
-      if (payload.requiresEmailVerification) {
-        const message = "Account created. Check your email to verify your account, then sign in.";
+      if (!payload.emailVerified) {
+        const message =
+          "Account created. Check your email and tap the confirmation link before signing in or continuing to onboarding.";
         setInfo(message);
         notify({
           variant: "success",
-          title: "Account created",
+          title: "Verify your email",
           description: message,
         });
-        router.push(payload.redirectTo ?? ROUTES.auth.signIn);
+        router.push(payload.redirectTo ?? ROUTES.auth.verifyEmail);
+        router.refresh();
         return;
       }
 

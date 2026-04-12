@@ -8,7 +8,7 @@ import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { useCreateSaleMutation, useSalesCatalogQuery } from "@/lib/queries/sales";
 import { ROUTES } from "@/lib/routes";
 
-const TAX_RATE = 0.15;
+const TAX_RATE = 0;
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -45,7 +45,7 @@ export function NewSaleContent() {
   const [patientId, setPatientId] = useState("");
   const [mobile, setMobile] = useState("");
   const [items, setItems] = useState<LineItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState("aura-pay");
+  const [paymentMethod, setPaymentMethod] = useState("cash");
   const [reference, setReference] = useState("");
   const [discountCode, setDiscountCode] = useState("");
   const [notes] = useState("");
@@ -573,8 +573,10 @@ export function NewSaleContent() {
     return message;
   }
 
+  const sectionShell = "rounded-[20px] bg-white p-4 shadow-sm sm:p-6 lg:p-8";
+
   return (
-    <div className="px-4 pb-24 pt-2 sm:px-6 lg:px-8">
+    <div className="min-w-0 px-3 pb-24 pt-2 sm:px-6 lg:px-8">
       <BarcodeScannerModal
         open={scannerLineId !== null}
         onOpenChange={(open) => {
@@ -628,11 +630,11 @@ export function NewSaleContent() {
         }}
         title="Scan medication barcode"
       />
-      <div className="mx-auto max-w-[1280px]">
+      <div className="mx-auto min-w-0 max-w-[1280px]">
         {/* Header */}
-        <div className="mb-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-2">
-            <nav className="flex items-center gap-2" aria-label="Breadcrumb">
+        <div className="mb-6 flex flex-col gap-4 sm:mb-10 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
+          <div className="min-w-0 space-y-2">
+            <nav className="flex min-w-0 flex-wrap items-center gap-2" aria-label="Breadcrumb">
               <Link
                 href={salesHref}
                 className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#94a3b8] hover:text-[#006a65]"
@@ -646,33 +648,33 @@ export function NewSaleContent() {
                 New Sale
               </span>
             </nav>
-            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[#191c1e] sm:text-[30px] sm:leading-9">
+            <h1 className="font-[family-name:var(--font-manrope)] text-2xl font-extrabold tracking-tight text-[#191c1e] sm:text-3xl sm:leading-9 md:text-[30px]">
               New Sale
             </h1>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
             <button
               type="button"
               onClick={() => router.push(salesHref)}
-              className="rounded-xl px-6 py-2.5 text-base font-medium text-[#3c4948] transition hover:bg-[#f2f4f6]"
+              className="w-full rounded-xl px-6 py-2.5 text-sm font-medium text-[#3c4948] transition hover:bg-[#f2f4f6] sm:w-auto sm:text-base"
             >
               Cancel
             </button>
           </div>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-12 lg:items-start">
+        <div className="grid min-w-0 gap-6 sm:gap-8 lg:grid-cols-12 lg:items-start">
           {/* Left column */}
-          <div className="flex flex-col gap-8 lg:col-span-8">
+          <div className="flex min-w-0 flex-col gap-6 sm:gap-8 lg:col-span-8">
             {/* Customer Information */}
-            <section className="rounded-[20px] bg-white p-8 shadow-sm">
+            <section className={sectionShell}>
               <div className="mb-6 flex items-center gap-3">
                 <div className="flex size-10 items-center justify-center rounded-full bg-[rgba(0,106,101,0.1)]">
                   <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">
                     person
                   </span>
                 </div>
-                <h2 className="font-[family-name:var(--font-manrope)] text-lg font-bold text-[#191c1e]">
+                <h2 className="min-w-0 font-[family-name:var(--font-manrope)] text-base font-bold text-[#191c1e] sm:text-lg">
                   Customer Information
                 </h2>
               </div>
@@ -739,24 +741,24 @@ export function NewSaleContent() {
             </section>
 
             {/* Items & Prescription */}
-            <section className="rounded-[20px] bg-white p-8 shadow-sm">
-              <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 items-center justify-center rounded-full bg-[rgba(0,106,101,0.1)]">
+            <section className={sectionShell}>
+              <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[rgba(0,106,101,0.1)]">
                     <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">
                       medication_liquid
                     </span>
                   </div>
-                  <h2 className="font-[family-name:var(--font-manrope)] text-lg font-bold text-[#191c1e]">
+                  <h2 className="font-[family-name:var(--font-manrope)] text-base font-bold text-[#191c1e] sm:text-lg">
                     Items &amp; Prescription
                   </h2>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex w-full flex-col gap-2 min-[400px]:flex-row sm:w-auto sm:flex-wrap sm:items-center">
                   <button
                     type="button"
                     onClick={() => setScannerLineId("add")}
                     disabled={salesCatalogQuery.isLoading}
-                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#4648d4] transition hover:text-[#2f2ebe] disabled:cursor-not-allowed disabled:text-[#94a3b8]"
+                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#e2e8f0] py-2.5 text-xs font-semibold text-[#4648d4] transition hover:bg-[#f8fafc] hover:text-[#2f2ebe] disabled:cursor-not-allowed disabled:text-[#94a3b8] min-[400px]:w-auto min-[400px]:border-0 min-[400px]:py-0 sm:text-sm"
                   >
                     <span className="material-symbols-outlined notranslate text-lg">barcode_scanner</span>
                     Scan to add
@@ -765,7 +767,7 @@ export function NewSaleContent() {
                     type="button"
                     onClick={addItem}
                     disabled={salesCatalogQuery.isLoading}
-                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#006a65] transition hover:text-[#004d49] disabled:cursor-not-allowed disabled:text-[#94a3b8]"
+                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#e2e8f0] py-2.5 text-xs font-semibold text-[#006a65] transition hover:bg-[#f8fafc] hover:text-[#004d49] disabled:cursor-not-allowed disabled:text-[#94a3b8] min-[400px]:w-auto min-[400px]:border-0 min-[400px]:py-0 sm:text-sm"
                   >
                     <span className="material-symbols-outlined notranslate text-lg">add</span>
                     Add Item
@@ -773,7 +775,125 @@ export function NewSaleContent() {
                 </div>
               </div>
 
-              <div className="overflow-x-auto overscroll-x-contain rounded-xl border border-[#f1f5f9]">
+              {items.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-[#e2e8f0] bg-[#fafbfc] py-8 text-center text-sm leading-relaxed text-[#64748b] md:hidden">
+                  No medications yet. Use <span className="font-semibold text-[#191c1e]">Add Item</span> or{" "}
+                  <span className="font-semibold text-[#191c1e]">Scan to add</span>.
+                </p>
+              ) : null}
+
+              {/* Mobile: stacked line cards */}
+              <div className="space-y-4 md:hidden">
+                {items.map((row) => {
+                  const rowIssue = getLineItemIssue(row);
+                  return (
+                    <div
+                      key={row.id}
+                      className={`rounded-xl border p-4 ${
+                        rowIssue ? "border-[#fecaca] bg-[#fff7f7]" : "border-[#f1f5f9] bg-[#fafbfc]"
+                      }`}
+                    >
+                      <div className="space-y-2">
+                        <label className={fieldLabel} htmlFor={`med-select-${row.id}`}>
+                          Medication
+                        </label>
+                        <div className="flex gap-2">
+                          <select
+                            id={`med-select-${row.id}`}
+                            value={row.productId ?? ""}
+                            onChange={(event) => updateItemProduct(row.id, event.target.value)}
+                            className="min-w-0 flex-1 rounded-xl border-0 bg-[#f2f4f6] px-3 py-2 text-sm text-[#191c1e] outline-none focus:ring-2 focus:ring-[#006a65]/20"
+                          >
+                            <option value="" disabled>
+                              Select medication
+                            </option>
+                            {salesCatalogQuery.data?.products.map((product) => (
+                              <option key={product.id} value={product.id}>
+                                {product.name}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => setScannerLineId(row.id)}
+                            disabled={salesCatalogQuery.isLoading}
+                            className="inline-flex shrink-0 items-center justify-center rounded-xl border border-[#e2e8f0] bg-white px-2.5 py-2 text-[#006a65] transition hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-50"
+                            aria-label="Scan barcode for this line"
+                            title="Scan barcode"
+                          >
+                            <span className="material-symbols-outlined notranslate text-xl">
+                              barcode_scanner
+                            </span>
+                          </button>
+                        </div>
+                        {row.nameLines.filter(Boolean).map((line, i) => (
+                          <p
+                            key={`${row.id}-m-line-${i}`}
+                            className="text-sm font-medium leading-tight text-[#191c1e]"
+                          >
+                            {line}
+                          </p>
+                        ))}
+                        <p className="text-[11px] text-[#94a3b8]">
+                          Ref: {row.batch} | Exp: {row.expiry}
+                        </p>
+                        {rowIssue ? <p className="text-[11px] font-medium text-[#ba1a1a]">{rowIssue}</p> : null}
+                      </div>
+                      <div className="mt-4 grid grid-cols-2 gap-3 gap-y-4 border-t border-[#f1f5f9] pt-4">
+                        <div>
+                          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-[#94a3b8]">
+                            Qty
+                          </span>
+                          <input
+                            type="number"
+                            min={1}
+                            value={row.qty}
+                            onChange={(e) =>
+                              updateQty(row.id, Number.parseInt(e.target.value, 10) || 1)
+                            }
+                            className="w-full max-w-[5.5rem] rounded-2xl border-0 bg-[#f2f4f6] px-2 py-1.5 text-center text-sm text-[#191c1e] outline-none focus:ring-2 focus:ring-[#006a65]/20"
+                          />
+                        </div>
+                        <div className="text-right">
+                          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-[#94a3b8]">
+                            Unit price
+                          </span>
+                          <p className="text-sm font-medium text-[#191c1e]">
+                            {currencyFormatter.format(row.unitPrice)}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-[#94a3b8]">
+                            Tax
+                          </span>
+                          <p className="text-xs text-[#64748b]">{Math.round(TAX_RATE * 100)}%</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-[#94a3b8]">
+                            Line total
+                          </span>
+                          <p className="text-sm font-semibold text-[#006a65]">
+                            {currencyFormatter.format(lineSubtotal(row))}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex justify-end border-t border-[#f1f5f9] pt-3">
+                        <button
+                          type="button"
+                          onClick={() => removeItem(row.id)}
+                          className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-[#94a3b8] transition hover:bg-[#fef2f2] hover:text-[#e11d48]"
+                          aria-label={`Remove ${row.name}`}
+                        >
+                          <span className="material-symbols-outlined notranslate text-lg">close</span>
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="hidden overflow-x-auto overscroll-x-contain rounded-xl border border-[#f1f5f9] md:block">
                 <table className="w-full min-w-[640px] border-collapse text-left">
                   <thead>
                     <tr className="border-b border-[#f1f5f9]">
@@ -888,14 +1008,14 @@ export function NewSaleContent() {
             </section>
 
             {/* Payment Details */}
-            <section className="rounded-[20px] bg-white p-8 shadow-sm">
+            <section className={sectionShell}>
               <div className="mb-6 flex items-center gap-3">
                 <div className="flex size-10 items-center justify-center rounded-full bg-[rgba(0,106,101,0.1)]">
                   <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">
                     credit_card
                   </span>
                 </div>
-                <h2 className="font-[family-name:var(--font-manrope)] text-lg font-bold text-[#191c1e]">
+                <h2 className="min-w-0 font-[family-name:var(--font-manrope)] text-base font-bold text-[#191c1e] sm:text-lg">
                   Payment Details
                 </h2>
               </div>
@@ -940,13 +1060,13 @@ export function NewSaleContent() {
           </div>
 
           {/* Cart Summary */}
-          <aside className="lg:col-span-4 lg:sticky lg:top-28">
-            <div className="relative overflow-hidden rounded-[20px] border border-white/50 bg-[rgba(255,255,255,0.85)] p-8 shadow-[0_25px_50px_-12px_rgba(0,106,101,0.08)] backdrop-blur-md">
+          <aside className="min-w-0 lg:col-span-4 lg:sticky lg:top-28">
+            <div className="relative overflow-hidden rounded-[20px] border border-white/50 bg-[rgba(255,255,255,0.85)] p-4 shadow-[0_25px_50px_-12px_rgba(0,106,101,0.08)] backdrop-blur-md sm:p-6 lg:p-8">
               <div className="mb-8 flex items-center gap-2">
                 <span className="material-symbols-outlined notranslate text-2xl text-[#006a65]">
                   shopping_basket
                 </span>
-                <h2 className="font-[family-name:var(--font-manrope)] text-xl font-extrabold text-[#191c1e]">
+                <h2 className="min-w-0 font-[family-name:var(--font-manrope)] text-lg font-extrabold text-[#191c1e] sm:text-xl">
                   Cart Summary
                 </h2>
               </div>
@@ -1008,12 +1128,12 @@ export function NewSaleContent() {
                 </div>
 
                 <div className="space-y-4 border-t border-[#f1f5f9] pt-6">
-                  <div className="flex items-end justify-between gap-4">
-                    <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">
+                  <div className="flex min-w-0 items-end justify-between gap-3 sm:gap-4">
+                    <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">
                       Grand Total
                     </span>
-                    <div className="text-right">
-                      <p className="font-[family-name:var(--font-manrope)] text-4xl font-extrabold tracking-tight text-[#191c1e]">
+                    <div className="min-w-0 text-right">
+                      <p className="font-[family-name:var(--font-manrope)] text-2xl font-extrabold tracking-tight text-[#191c1e] sm:text-3xl md:text-4xl">
                         {currencyFormatter.format(grandTotal)}
                       </p>
                       <p className="text-[10px] font-semibold text-[#006a65]">
@@ -1050,13 +1170,13 @@ export function NewSaleContent() {
                         });
                       }
                     }}
-                    className="flex w-full items-center justify-center gap-2 rounded-[20px] bg-gradient-to-br from-[#0fb9b1] to-[#4648d4] py-4 text-base font-semibold text-white shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] transition hover:opacity-95"
+                    className="flex w-full items-center justify-center gap-2 rounded-[20px] bg-gradient-to-br from-[#0fb9b1] to-[#4648d4] px-3 py-3.5 text-sm font-semibold text-white shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] transition hover:opacity-95 sm:py-4 sm:text-base"
                   >
                     Complete Transaction
                     <span className="material-symbols-outlined notranslate text-lg">arrow_forward</span>
                   </button>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
                     <button
                       type="button"
                       onClick={async () => {
@@ -1101,11 +1221,11 @@ export function NewSaleContent() {
                 </div>
 
                 <div className="rounded-2xl border border-[rgba(0,106,101,0.1)] bg-[rgba(0,106,101,0.05)] p-4">
-                  <div className="flex gap-3">
+                  <div className="flex min-w-0 gap-3">
                     <span className="material-symbols-outlined notranslate shrink-0 text-[#006a65]">
                       auto_awesome
                     </span>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs font-semibold text-[#006a65]">Interaction Check</p>
                       <p className="mt-1 text-[10px] leading-relaxed text-[#3c4948]">
                         No contraindications detected between selected items for this patient

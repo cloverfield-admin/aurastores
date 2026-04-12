@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { services } from "@/lib/di";
+import { ROUTES } from "@/lib/routes";
+import { getSiteUrl } from "@/lib/site-url";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { signUpSchema } from "@/lib/validation/auth";
 
@@ -18,10 +20,14 @@ export async function POST(request: Request) {
   }
 
   const supabase = await createSupabaseServerClient();
+  const confirmNext = encodeURIComponent(ROUTES.dashboard.onboarding.root);
+  const emailRedirectTo = `${getSiteUrl()}/auth/callback?next=${confirmNext}`;
+
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
+      emailRedirectTo,
       data: {
         full_name: parsed.data.fullName,
         pharmacy_name: parsed.data.pharmacyName,
@@ -54,13 +60,32 @@ export async function POST(request: Request) {
     isEmailVerified: Boolean(data.user.email_confirmed_at),
   });
 
+  const emailVerified = Boolean(data.user.email_confirmed_at);
+  if (!emailVerified && data.session) {
+    await supabase.auth.signOut();
+  }
+
+  const verifyEmailUrl = `${ROUTES.auth.verifyEmail}?${new URLSearchParams({
+    email: parsed.data.email,
+  }).toString()}`;
+
+  let redirectTo: string;
+  if (!emailVerified) {
+    redirectTo = verifyEmailUrl;
+  } else if (data.session) {
+    redirectTo = ROUTES.dashboard.onboarding.root;
+  } else {
+    redirectTo = ROUTES.auth.signIn;
+  }
+
   return NextResponse.json({
     user: {
       id: context.user.id,
       email: context.user.email,
       fullName: context.user.fullName,
     },
+    emailVerified,
     requiresEmailVerification: !data.session,
-    redirectTo: data.session ? "/dashboard/onboarding" : "/auth/sign-in",
+    redirectTo,
   });
 }

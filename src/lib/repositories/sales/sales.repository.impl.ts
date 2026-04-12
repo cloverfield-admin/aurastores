@@ -481,7 +481,7 @@ export class SalesRepositoryImpl implements SalesRepository {
 
         const unitPriceCents = moneyToCents(item.unitPrice);
         const lineSubtotalCents = unitPriceCents * item.quantity;
-        const taxRateBps = 1500;
+        const taxRateBps = 0;
         const taxCents = Math.round((lineSubtotalCents * taxRateBps) / 10_000);
         const lineTotalCents = lineSubtotalCents + taxCents;
 
