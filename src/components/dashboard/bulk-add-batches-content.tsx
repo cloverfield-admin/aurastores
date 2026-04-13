@@ -126,6 +126,22 @@ export function BulkAddBatchesContent() {
   const rowCountLimit = 50;
 
   const canAddMore = rows.length < rowCountLimit;
+
+  const renderAddAnotherProductButton = useCallback(
+    () => (
+      <button
+        type="button"
+        onClick={addRow}
+        disabled={!canAddMore || isSaving}
+        className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#f2f4f6] px-5 py-2.5 text-sm font-semibold text-[#191c1e] transition hover:bg-[#e8eaed] disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <span className="material-symbols-outlined notranslate text-lg">add</span>
+        Add another product
+      </button>
+    ),
+    [addRow, canAddMore, isSaving],
+  );
+
   const completion = useMemo(() => {
     const totalRequired = rows.length * 6;
     const filled = rows.reduce((acc, row) => {
@@ -348,7 +364,9 @@ export function BulkAddBatchesContent() {
         ) : null}
 
         <section className="rounded-xl bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div
+            className="sticky top-[calc(max(5.5rem,env(safe-area-inset-top,0px))+0.5rem)] z-10 -mx-6 mb-4 flex flex-col gap-4 border-b border-[rgba(187,201,199,0.2)] bg-white/95 px-6 pb-4 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between"
+          >
             <div className="flex items-center gap-3">
               <div className="flex size-10 items-center justify-center rounded-lg bg-[rgba(0,106,101,0.1)]">
                 <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">
@@ -365,15 +383,7 @@ export function BulkAddBatchesContent() {
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={addRow}
-              disabled={!canAddMore || isSaving}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#f2f4f6] px-5 py-2.5 text-sm font-semibold text-[#191c1e] transition hover:bg-[#e8eaed] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <span className="material-symbols-outlined notranslate text-lg">add</span>
-              Add another product
-            </button>
+            {renderAddAnotherProductButton()}
           </div>
 
           {!canAddMore ? (
@@ -653,6 +663,13 @@ export function BulkAddBatchesContent() {
                 </div>
               );
             })}
+          </div>
+
+          <div className="mt-8 flex flex-col items-stretch gap-3 border-t border-[rgba(187,201,199,0.2)] pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-[#6c7a78] sm:max-w-md">
+              Finished a row? Add the next product here without scrolling back up.
+            </p>
+            {renderAddAnotherProductButton()}
           </div>
         </section>
       </div>
