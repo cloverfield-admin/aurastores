@@ -43,6 +43,13 @@
       "when": 1774368000000,
       "tag": "0005_stock_dashboard_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1776038676381,
+      "tag": "0006_harsh_revanche",
+      "breakpoints": true
     }
   ]
 }

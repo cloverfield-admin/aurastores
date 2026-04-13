@@ -15,6 +15,8 @@ import type { CreateSaleInput } from "@/lib/validation/sales";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 import type { SalesCatalogData, SalesDashboardData, SalesRepository } from "@/lib/repositories/sales/sales.repository";
 
+type ResolvedBranch = typeof branches.$inferSelect;
+
 function clampPageSize(value: number | undefined, fallback: number) {
   if (!value || value < 1) {
     return fallback;
@@ -45,6 +47,10 @@ function moneyToCents(value: number) {
   return Math.round(value * 100);
 }
 
+function uniqueStrings(values: string[]) {
+  return [...new Set(values)];
+}
+
 async function listOrganizationBranches(organizationId: string) {
   return db.query.branches.findMany({
     where: eq(branches.organizationId, organizationId),
@@ -55,9 +61,11 @@ async function listOrganizationBranches(organizationId: string) {
   });
 }
 
-async function resolveBranch(context: AuthContext, preferredBranchId?: string) {
-  const availableBranches = await listOrganizationBranches(context.organization.id);
-
+function pickResolvedBranch(
+  context: AuthContext,
+  preferredBranchId: string | undefined,
+  availableBranches: ResolvedBranch[],
+) {
   const branch =
     (preferredBranchId
       ? availableBranches.find((candidate) => candidate.id === preferredBranchId) ?? null
@@ -73,6 +81,18 @@ async function resolveBranch(context: AuthContext, preferredBranchId?: string) {
   }
 
   return branch;
+}
+
+async function resolveBranchContext(context: AuthContext, preferredBranchId?: string) {
+  const branchOptions = await listOrganizationBranches(context.organization.id);
+  return {
+    branch: pickResolvedBranch(context, preferredBranchId, branchOptions),
+    branchOptions,
+  };
+}
+
+async function resolveBranch(context: AuthContext, preferredBranchId?: string) {
+  return (await resolveBranchContext(context, preferredBranchId)).branch;
 }
 
 function buildSaleNumber() {
@@ -109,136 +129,159 @@ function deriveBatchStatus(
 
 export class SalesRepositoryImpl implements SalesRepository {
   async getDashboard(context: AuthContext, branchId?: string): Promise<SalesDashboardData> {
-    const branch = await resolveBranch(context, branchId);
-    const branchOptions = await listOrganizationBranches(context.organization.id);
+    const { branch, branchOptions } = await resolveBranchContext(context, branchId);
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 86_400_000);
     const sixtyDaysAgo = new Date(now.getTime() - 60 * 86_400_000);
+    const trendWindowStart = new Date(now.getTime() - 35 * 86_400_000);
+    const nowIso = now.toISOString();
+    const thirtyDaysAgoIso = thirtyDaysAgo.toISOString();
+    const sixtyDaysAgoIso = sixtyDaysAgo.toISOString();
+    const trendWindowStartIso = trendWindowStart.toISOString();
+    const trendWindowStartLiteral = sql.raw(`'${trendWindowStartIso}'::timestamptz`);
+    const trendBucketExpr =
+      sql<number>`floor(extract(epoch from (${sales.createdAt} - ${trendWindowStartLiteral})) / 604800)::int`;
 
-    const [salesRows, topProductsRows, recentRows, branchRevenueRows, soldUnitsRows, soldItemRows] =
+    const [metricsRows, topProductsRows, recentRows, branchRevenueRows, soldUnitsRows, trendRevenueRows, trendUnitsRows] =
       await Promise.all([
-      db
-        .select({
-          id: sales.id,
-          totalCents: sales.totalCents,
-          createdAt: sales.createdAt,
-        })
-        .from(sales)
-        .where(
-          and(
-            eq(sales.organizationId, context.organization.id),
-            eq(sales.branchId, branch.id),
-            eq(sales.status, "completed"),
-            sql`${sales.createdAt} >= ${sixtyDaysAgo.toISOString()}`,
+        db
+          .select({
+            totalRevenueCents:
+              sql<number>`coalesce(sum(${sales.totalCents}) filter (where ${sales.createdAt} >= ${thirtyDaysAgoIso}::timestamptz), 0)::int`,
+            previousRevenueCents:
+              sql<number>`coalesce(sum(${sales.totalCents}) filter (where ${sales.createdAt} >= ${sixtyDaysAgoIso}::timestamptz and ${sales.createdAt} < ${thirtyDaysAgoIso}::timestamptz), 0)::int`,
+            totalSalesCount:
+              sql<number>`coalesce(count(*) filter (where ${sales.createdAt} >= ${thirtyDaysAgoIso}::timestamptz), 0)::int`,
+            averageOrderValueCents:
+              sql<number>`coalesce(round(avg(${sales.totalCents}) filter (where ${sales.createdAt} >= ${thirtyDaysAgoIso}::timestamptz)), 0)::int`,
+          })
+          .from(sales)
+          .where(
+            and(
+              eq(sales.organizationId, context.organization.id),
+              eq(sales.branchId, branch.id),
+              eq(sales.status, "completed"),
+              sql`${sales.createdAt} >= ${sixtyDaysAgoIso}::timestamptz`,
+            ),
           ),
-        ),
-      db
-        .select({
-          productId: products.id,
-          productName: products.name,
-          amountCents: sql<number>`coalesce(sum(${saleItems.lineTotalCents}), 0)::int`,
-        })
-        .from(saleItems)
-        .innerJoin(sales, eq(saleItems.saleId, sales.id))
-        .innerJoin(products, eq(saleItems.productId, products.id))
-        .where(
-          and(
-            eq(sales.organizationId, context.organization.id),
-            eq(sales.branchId, branch.id),
-            eq(sales.status, "completed"),
+        db
+          .select({
+            productId: products.id,
+            productName: products.name,
+            amountCents: sql<number>`coalesce(sum(${saleItems.lineTotalCents}), 0)::int`,
+          })
+          .from(saleItems)
+          .innerJoin(sales, eq(saleItems.saleId, sales.id))
+          .innerJoin(products, eq(saleItems.productId, products.id))
+          .where(
+            and(
+              eq(sales.organizationId, context.organization.id),
+              eq(sales.branchId, branch.id),
+              eq(sales.status, "completed"),
+            ),
+          )
+          .groupBy(products.id, products.name)
+          .orderBy(desc(sql`coalesce(sum(${saleItems.lineTotalCents}), 0)`))
+          .limit(4),
+        db
+          .select({
+            id: sales.id,
+            saleNumber: sales.saleNumber,
+            totalCents: sales.totalCents,
+            createdAt: sales.createdAt,
+            patientName: patients.fullName,
+          })
+          .from(sales)
+          .leftJoin(patients, eq(sales.patientId, patients.id))
+          .where(
+            and(
+              eq(sales.organizationId, context.organization.id),
+              eq(sales.branchId, branch.id),
+              eq(sales.status, "completed"),
+            ),
+          )
+          .orderBy(desc(sales.createdAt))
+          .limit(5),
+        db
+          .select({
+            branchId: sales.branchId,
+            branchName: branches.name,
+            amountCents: sql<number>`coalesce(sum(${sales.totalCents}), 0)::int`,
+          })
+          .from(sales)
+          .innerJoin(branches, eq(sales.branchId, branches.id))
+          .where(
+            and(eq(sales.organizationId, context.organization.id), eq(sales.status, "completed")),
+          )
+          .groupBy(sales.branchId, branches.name),
+        db
+          .select({
+            unitsSold: sql<number>`coalesce(sum(abs(${inventoryTransactions.quantityDelta})), 0)::int`,
+          })
+          .from(inventoryTransactions)
+          .where(
+            and(
+              eq(inventoryTransactions.organizationId, context.organization.id),
+              eq(inventoryTransactions.branchId, branch.id),
+              eq(inventoryTransactions.transactionType, "sale"),
+              sql`${inventoryTransactions.occurredAt} >= ${thirtyDaysAgoIso}::timestamptz`,
+            ),
           ),
-        )
-        .groupBy(products.id, products.name)
-        .orderBy(desc(sql`coalesce(sum(${saleItems.lineTotalCents}), 0)`))
-        .limit(4),
-      db
-        .select({
-          id: sales.id,
-          saleNumber: sales.saleNumber,
-          totalCents: sales.totalCents,
-          createdAt: sales.createdAt,
-          patientName: patients.fullName,
-        })
-        .from(sales)
-        .leftJoin(patients, eq(sales.patientId, patients.id))
-        .where(
-          and(
-            eq(sales.organizationId, context.organization.id),
-            eq(sales.branchId, branch.id),
-            eq(sales.status, "completed"),
-          ),
-        )
-        .orderBy(desc(sales.createdAt))
-        .limit(5),
-      db
-        .select({
-          branchId: sales.branchId,
-          branchName: branches.name,
-          amountCents: sql<number>`coalesce(sum(${sales.totalCents}), 0)::int`,
-        })
-        .from(sales)
-        .innerJoin(branches, eq(sales.branchId, branches.id))
-        .where(
-          and(eq(sales.organizationId, context.organization.id), eq(sales.status, "completed")),
-        )
-        .groupBy(sales.branchId, branches.name),
-      db
-        .select({
-          unitsSold: sql<number>`coalesce(sum(abs(${inventoryTransactions.quantityDelta})), 0)::int`,
-        })
-        .from(inventoryTransactions)
-        .where(
-          and(
-            eq(inventoryTransactions.organizationId, context.organization.id),
-            eq(inventoryTransactions.branchId, branch.id),
-            eq(inventoryTransactions.transactionType, "sale"),
-            sql`${inventoryTransactions.occurredAt} >= ${thirtyDaysAgo.toISOString()}`,
-          ),
-        ),
-      db
-        .select({
-          createdAt: sales.createdAt,
-          quantity: sql<number>`coalesce(sum(${saleItems.quantity}), 0)::int`,
-        })
-        .from(saleItems)
-        .innerJoin(sales, eq(saleItems.saleId, sales.id))
-        .where(
-          and(
-            eq(sales.organizationId, context.organization.id),
-            eq(sales.branchId, branch.id),
-            eq(sales.status, "completed"),
-            sql`${sales.createdAt} >= ${new Date(now.getTime() - 35 * 86_400_000).toISOString()}`,
-          ),
-        )
-        .groupBy(sales.createdAt),
-    ]);
+        db
+          .select({
+            bucketIndex: trendBucketExpr,
+            revenueCents: sql<number>`coalesce(sum(${sales.totalCents}), 0)::int`,
+          })
+          .from(sales)
+          .where(
+            and(
+              eq(sales.organizationId, context.organization.id),
+              eq(sales.branchId, branch.id),
+              eq(sales.status, "completed"),
+              sql`${sales.createdAt} >= ${trendWindowStartIso}::timestamptz`,
+              sql`${sales.createdAt} < ${nowIso}::timestamptz`,
+            ),
+          )
+          .groupBy(trendBucketExpr)
+          .orderBy(asc(trendBucketExpr)),
+        db
+          .select({
+            bucketIndex: trendBucketExpr,
+            quantity: sql<number>`coalesce(sum(${saleItems.quantity}), 0)::int`,
+          })
+          .from(saleItems)
+          .innerJoin(sales, eq(saleItems.saleId, sales.id))
+          .where(
+            and(
+              eq(sales.organizationId, context.organization.id),
+              eq(sales.branchId, branch.id),
+              eq(sales.status, "completed"),
+              sql`${sales.createdAt} >= ${trendWindowStartIso}::timestamptz`,
+              sql`${sales.createdAt} < ${nowIso}::timestamptz`,
+            ),
+          )
+          .groupBy(trendBucketExpr)
+          .orderBy(asc(trendBucketExpr)),
+      ]);
 
-    const totalRevenueCents = salesRows
-      .filter((row) => row.createdAt >= thirtyDaysAgo)
-      .reduce((sum, row) => sum + row.totalCents, 0);
-    const previousRevenueCents = salesRows
-      .filter((row) => row.createdAt >= sixtyDaysAgo && row.createdAt < thirtyDaysAgo)
-      .reduce((sum, row) => sum + row.totalCents, 0);
-    const totalSalesCount = salesRows.filter((row) => row.createdAt >= thirtyDaysAgo).length;
-    const averageOrderValueCents = totalSalesCount > 0 ? Math.round(totalRevenueCents / totalSalesCount) : 0;
+    const metrics = metricsRows[0] ?? {
+      totalRevenueCents: 0,
+      previousRevenueCents: 0,
+      totalSalesCount: 0,
+      averageOrderValueCents: 0,
+    };
     const topTotal = topProductsRows.reduce((sum, row) => sum + row.amountCents, 0);
     const branchTotalRevenue = branchRevenueRows.reduce((sum, row) => sum + row.amountCents, 0);
-    const trendWindowStart = new Date(now.getTime() - 35 * 86_400_000);
     const dateLabelFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit" });
+    const trendRevenueMap = new Map(trendRevenueRows.map((row) => [row.bucketIndex, row.revenueCents]));
+    const trendUnitsMap = new Map(trendUnitsRows.map((row) => [row.bucketIndex, row.quantity]));
     const trend = Array.from({ length: 5 }, (_, index) => {
       const bucketStart = new Date(trendWindowStart.getTime() + index * 7 * 86_400_000);
-      const bucketEnd = new Date(bucketStart.getTime() + 7 * 86_400_000);
-      const revenueCents = salesRows
-        .filter((row) => row.createdAt >= bucketStart && row.createdAt < bucketEnd)
-        .reduce((sum, row) => sum + row.totalCents, 0);
-      const unitsSold = soldItemRows
-        .filter((row) => row.createdAt >= bucketStart && row.createdAt < bucketEnd)
-        .reduce((sum, row) => sum + row.quantity, 0);
 
       return {
         label: dateLabelFormatter.format(bucketStart),
-        revenueCents,
-        unitsSold,
+        revenueCents: trendRevenueMap.get(index) ?? 0,
+        unitsSold: trendUnitsMap.get(index) ?? 0,
       };
     });
 
@@ -253,10 +296,10 @@ export class SalesRepositoryImpl implements SalesRepository {
         isPrimary: branchOption.isPrimary,
       })),
       metrics: {
-        totalRevenueCents,
-        previousRevenueCents,
-        totalSalesCount,
-        averageOrderValueCents,
+        totalRevenueCents: metrics.totalRevenueCents,
+        previousRevenueCents: metrics.previousRevenueCents,
+        totalSalesCount: metrics.totalSalesCount,
+        averageOrderValueCents: metrics.averageOrderValueCents,
         unitsSoldLast30Days: soldUnitsRows[0]?.unitsSold ?? 0,
       },
       topProducts: topProductsRows.map((row) => ({
@@ -284,44 +327,46 @@ export class SalesRepositoryImpl implements SalesRepository {
   }
 
   async getCatalog(context: AuthContext, branchId?: string): Promise<SalesCatalogData> {
-    const branch = await resolveBranch(context, branchId);
-    const branchOptions = await listOrganizationBranches(context.organization.id);
+    const { branch, branchOptions } = await resolveBranchContext(context, branchId);
     const limit = clampPageSize(100, 100);
 
-    const [productRows, batchRows] = await Promise.all([
-      db
-        .select({
-          id: products.id,
-          name: products.name,
-          sku: products.sku,
-          barcode: products.barcode,
-          categoryName: sql<string>`coalesce(${productCategories.name}, 'Uncategorized')`,
-          defaultSellingPriceCents: products.defaultSellingPriceCents,
-        })
-        .from(products)
-        .leftJoin(productCategories, eq(products.categoryId, productCategories.id))
-        .where(eq(products.organizationId, context.organization.id))
-        .orderBy(asc(products.name))
-        .limit(limit),
-      db
-        .select({
-          id: inventoryBatches.id,
-          productId: inventoryBatches.productId,
-          batchNumber: inventoryBatches.batchNumber,
-          expiresAt: inventoryBatches.expiresAt,
-          quantityAvailable: inventoryBatches.quantityAvailable,
-        })
-        .from(inventoryBatches)
-        .where(
-          and(
-            eq(inventoryBatches.organizationId, context.organization.id),
-            eq(inventoryBatches.branchId, branch.id),
-            eq(inventoryBatches.status, "active"),
-            sql`${inventoryBatches.quantityAvailable} > 0`,
-          ),
-        )
-        .orderBy(asc(inventoryBatches.expiresAt)),
-    ]);
+    const productRows = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        sku: products.sku,
+        barcode: products.barcode,
+        categoryName: sql<string>`coalesce(${productCategories.name}, 'Uncategorized')`,
+        defaultSellingPriceCents: products.defaultSellingPriceCents,
+      })
+      .from(products)
+      .leftJoin(productCategories, eq(products.categoryId, productCategories.id))
+      .where(eq(products.organizationId, context.organization.id))
+      .orderBy(asc(products.name))
+      .limit(limit);
+    const productIds = productRows.map((row) => row.id);
+    const batchRows =
+      productIds.length > 0
+        ? await db
+            .select({
+              id: inventoryBatches.id,
+              productId: inventoryBatches.productId,
+              batchNumber: inventoryBatches.batchNumber,
+              expiresAt: inventoryBatches.expiresAt,
+              quantityAvailable: inventoryBatches.quantityAvailable,
+            })
+            .from(inventoryBatches)
+            .where(
+              and(
+                eq(inventoryBatches.organizationId, context.organization.id),
+                eq(inventoryBatches.branchId, branch.id),
+                eq(inventoryBatches.status, "active"),
+                sql`${inventoryBatches.quantityAvailable} > 0`,
+                inArray(inventoryBatches.productId, productIds),
+              ),
+            )
+            .orderBy(asc(inventoryBatches.expiresAt))
+        : [];
 
     const batchMap = new Map<string, SalesCatalogData["products"][number]["batches"]>();
     for (const row of batchRows) {
@@ -389,7 +434,7 @@ export class SalesRepositoryImpl implements SalesRepository {
         }
       }
 
-      const productIds = input.items.map((item) => item.productId);
+      const productIds = uniqueStrings(input.items.map((item) => item.productId));
       const productRows = await tx
         .select({
           id: products.id,
@@ -403,48 +448,57 @@ export class SalesRepositoryImpl implements SalesRepository {
       }
 
       const productMap = new Map(productRows.map((row) => [row.id, row]));
-      const requestedBatchIds = input.items.map((item) => item.batchId).filter(Boolean) as string[];
-
-      const batchRows = await tx
-        .select({
-          id: inventoryBatches.id,
-          productId: inventoryBatches.productId,
-          batchNumber: inventoryBatches.batchNumber,
-          quantityAvailable: inventoryBatches.quantityAvailable,
-          expiresAt: inventoryBatches.expiresAt,
-          status: inventoryBatches.status,
-        })
-        .from(inventoryBatches)
-        .where(
-          and(
-            eq(inventoryBatches.organizationId, context.organization.id),
-            eq(inventoryBatches.branchId, branch.id),
-            requestedBatchIds.length > 0
-              ? inArray(inventoryBatches.id, requestedBatchIds)
-              : sql`true`,
-          ),
-        );
-
-      const batchById = new Map(batchRows.map((row) => [row.id, row]));
-      const openBatchesByProduct = await tx
-        .select({
-          id: inventoryBatches.id,
-          productId: inventoryBatches.productId,
-          batchNumber: inventoryBatches.batchNumber,
-          quantityAvailable: inventoryBatches.quantityAvailable,
-          expiresAt: inventoryBatches.expiresAt,
-          status: inventoryBatches.status,
-        })
-        .from(inventoryBatches)
-        .where(
-          and(
-            eq(inventoryBatches.organizationId, context.organization.id),
-            eq(inventoryBatches.branchId, branch.id),
-            eq(inventoryBatches.status, "active"),
-            sql`${inventoryBatches.quantityAvailable} > 0`,
-          ),
-        )
-        .orderBy(asc(inventoryBatches.expiresAt));
+      const requestedBatchIds = uniqueStrings(
+        input.items
+          .map((item) => item.batchId)
+          .filter((batchId): batchId is string => Boolean(batchId)),
+      );
+      const autoAssignedProductIds = uniqueStrings(
+        input.items.filter((item) => !item.batchId).map((item) => item.productId),
+      );
+      const explicitBatchRows =
+        requestedBatchIds.length > 0
+          ? await tx
+              .select({
+                id: inventoryBatches.id,
+                productId: inventoryBatches.productId,
+                batchNumber: inventoryBatches.batchNumber,
+                quantityAvailable: inventoryBatches.quantityAvailable,
+                expiresAt: inventoryBatches.expiresAt,
+                status: inventoryBatches.status,
+              })
+              .from(inventoryBatches)
+              .where(
+                and(
+                  eq(inventoryBatches.organizationId, context.organization.id),
+                  eq(inventoryBatches.branchId, branch.id),
+                  inArray(inventoryBatches.id, requestedBatchIds),
+                ),
+              )
+          : [];
+      const openBatchesByProduct =
+        autoAssignedProductIds.length > 0
+          ? await tx
+              .select({
+                id: inventoryBatches.id,
+                productId: inventoryBatches.productId,
+                batchNumber: inventoryBatches.batchNumber,
+                quantityAvailable: inventoryBatches.quantityAvailable,
+                expiresAt: inventoryBatches.expiresAt,
+                status: inventoryBatches.status,
+              })
+              .from(inventoryBatches)
+              .where(
+                and(
+                  eq(inventoryBatches.organizationId, context.organization.id),
+                  eq(inventoryBatches.branchId, branch.id),
+                  eq(inventoryBatches.status, "active"),
+                  sql`${inventoryBatches.quantityAvailable} > 0`,
+                  inArray(inventoryBatches.productId, autoAssignedProductIds),
+                ),
+              )
+              .orderBy(asc(inventoryBatches.expiresAt))
+          : [];
 
       const openBatchMap = new Map<string, (typeof openBatchesByProduct)>();
       for (const row of openBatchesByProduct) {
@@ -453,9 +507,25 @@ export class SalesRepositoryImpl implements SalesRepository {
         openBatchMap.set(row.productId, list);
       }
 
-      const availableByBatch = new Map(
-        openBatchesByProduct.map((row) => [row.id, row.quantityAvailable]),
-      );
+      const batchById = new Map<string, (typeof explicitBatchRows)[number]>();
+      for (const row of explicitBatchRows) {
+        batchById.set(row.id, row);
+      }
+      for (const row of openBatchesByProduct) {
+        if (!batchById.has(row.id)) {
+          batchById.set(row.id, row);
+        }
+      }
+
+      const availableByBatch = new Map<string, number>();
+      for (const row of explicitBatchRows) {
+        availableByBatch.set(row.id, row.quantityAvailable);
+      }
+      for (const row of openBatchesByProduct) {
+        if (!availableByBatch.has(row.id)) {
+          availableByBatch.set(row.id, row.quantityAvailable);
+        }
+      }
 
       const preparedItems = input.items.map((item) => {
         const product = productMap.get(item.productId);
@@ -469,6 +539,10 @@ export class SalesRepositoryImpl implements SalesRepository {
 
         if (!batch) {
           throw new Error(`No available stock batch for ${product.name}.`);
+        }
+
+        if (batch.productId !== item.productId) {
+          throw new Error(`Selected batch ${batch.batchNumber} does not belong to ${product.name}.`);
         }
 
         const available = availableByBatch.get(batch.id) ?? batch.quantityAvailable;
@@ -565,33 +639,65 @@ export class SalesRepositoryImpl implements SalesRepository {
       });
 
       if (input.status === "completed") {
-        for (const item of preparedItems) {
-          const nextQuantity = availableByBatch.get(item.batchId) ?? 0;
-          const nextStatus = deriveBatchStatus(item.batchStatus, item.batchExpiresAt, nextQuantity, today);
+        const batchUpdates = Array.from(
+          preparedItems.reduce(
+            (map, item) =>
+              map.set(item.batchId, {
+                batchId: item.batchId,
+                batchStatus: item.batchStatus,
+                batchExpiresAt: item.batchExpiresAt,
+                nextQuantity: availableByBatch.get(item.batchId) ?? 0,
+              }),
+            new Map<
+              string,
+              {
+                batchId: string;
+                batchStatus: string;
+                batchExpiresAt: string | Date;
+                nextQuantity: number;
+              }
+            >(),
+          ).values(),
+        ).map((item) => ({
+          ...item,
+          nextStatus: deriveBatchStatus(item.batchStatus, item.batchExpiresAt, item.nextQuantity, today),
+        }));
+
+        if (batchUpdates.length > 0) {
+          const quantityCases = sql.join(
+            batchUpdates.map((item) => sql`when ${inventoryBatches.id} = ${item.batchId} then ${item.nextQuantity}`),
+            sql.raw(" "),
+          );
+          const statusCases = sql.join(
+            batchUpdates.map((item) => sql`when ${inventoryBatches.id} = ${item.batchId} then ${item.nextStatus}`),
+            sql.raw(" "),
+          );
 
           await tx
             .update(inventoryBatches)
             .set({
-              quantityAvailable: nextQuantity,
-              status: nextStatus,
+              quantityAvailable: sql`case ${quantityCases} else ${inventoryBatches.quantityAvailable} end`,
+              status: sql`case ${statusCases} else ${inventoryBatches.status} end`,
               updatedAt: new Date(),
             })
-            .where(eq(inventoryBatches.id, item.batchId));
+            .where(inArray(inventoryBatches.id, batchUpdates.map((item) => item.batchId)));
+        }
 
-          await tx.insert(inventoryTransactions).values({
+        await tx.insert(inventoryTransactions).values(
+          preparedItems.map((item) => ({
             organizationId: context.organization.id,
             branchId: branch.id,
             productId: item.productId,
             batchId: item.batchId,
             performedByUserId: context.user.id,
-            transactionType: "sale",
+            transactionType: "sale" as const,
             quantityDelta: -item.quantity,
             unitCostCents: item.unitPriceCents,
             referenceType: "sale",
             referenceId: sale.id,
             note: `Sale ${sale.saleNumber}`,
-          });
-        }
+          })),
+        );
       }
 
       return {

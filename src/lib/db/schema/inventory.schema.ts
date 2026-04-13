@@ -120,6 +120,7 @@ export const products = pgTable(
       table.barcode,
     ),
     organizationIdx: index("products_org_idx").on(table.organizationId),
+    orgNameIdx: index("products_org_name_idx").on(table.organizationId, table.name),
     categoryIdx: index("products_category_idx").on(table.categoryId),
   }),
 );
@@ -164,6 +165,13 @@ export const inventoryBatches = pgTable(
     orgBranchExpiryIdx: index("inventory_batches_org_branch_expiry_idx").on(
       table.organizationId,
       table.branchId,
+      table.expiresAt,
+    ),
+    orgBranchProductStatusExpiryIdx: index("inventory_batches_org_branch_product_status_expiry_idx").on(
+      table.organizationId,
+      table.branchId,
+      table.productId,
+      table.status,
       table.expiresAt,
     ),
   }),
