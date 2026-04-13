@@ -72,7 +72,7 @@ export function NetworkOverviewContent() {
         ) : null}
 
         {/* KPI row */}
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-4">
           <article className="relative rounded-xl border border-[rgba(187,201,199,0.15)] bg-white p-6 shadow-sm">
             <div className="flex items-start justify-between">
               <div className="flex size-[42px] items-center justify-center rounded-xl bg-[rgba(96,99,238,0.08)]">
@@ -113,6 +113,28 @@ export function NetworkOverviewContent() {
                 }}
               />
             </div>
+          </article>
+
+          <article className="relative rounded-xl border border-[rgba(187,201,199,0.15)] bg-white p-6 shadow-sm">
+            <div className="flex items-start justify-between">
+              <div className="flex size-[42px] items-center justify-center rounded-xl bg-[rgba(13,148,136,0.08)]">
+                <span className="material-symbols-outlined notranslate text-2xl text-[#0d9488]">
+                  trending_up
+                </span>
+              </div>
+              <span className="rounded-full bg-[rgba(15,185,177,0.12)] px-2 py-1 text-xs text-[#0d9488]">
+                30d
+              </span>
+            </div>
+            <p className="mt-4 text-base font-normal uppercase tracking-[0.1em] text-[#3c4948]">
+              Network Gross Profit
+            </p>
+            <p className="mt-1 font-[family-name:var(--font-manrope)] text-3xl font-bold text-[#191c1e]">
+              {networkQuery.isPending || !totals ? "—" : money.format(totals.totalGrossProfitCents30d / 100)}
+            </p>
+            <p className="mt-2 text-xs text-[#64748b]">
+              COGS {networkQuery.isPending || !totals ? "—" : money.format(totals.totalCogsCents30d / 100)}
+            </p>
           </article>
 
           <article className="relative rounded-xl border border-[rgba(187,201,199,0.15)] bg-white p-6 shadow-sm">

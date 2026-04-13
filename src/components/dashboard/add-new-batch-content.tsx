@@ -39,6 +39,12 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
 });
 
+function buildStockHref(branchId?: string) {
+  return branchId
+    ? `${ROUTES.dashboard.stock}?branch=${encodeURIComponent(branchId)}`
+    : ROUTES.dashboard.stock;
+}
+
 function formatRelativeEntry(isoString: string) {
   const diffMinutes = Math.round((Date.now() - new Date(isoString).getTime()) / 60_000);
 
@@ -59,21 +65,29 @@ export function AddNewBatchContent() {
   const searchParams = useSearchParams();
   const { withLoading, notify } = useAuraFeedback();
   const branchId = searchParams.get("branch") ?? undefined;
-  const stockCatalogQuery = useStockCatalogQuery({ branchId, includeProducts: false });
+  const stockCatalogQuery = useStockCatalogQuery({
+    branchId,
+    includeProducts: false,
+    suppressGlobalLoading: true,
+  });
   const createBatchMutation = useCreateStockBatchMutation();
   const productFieldRef = useRef<HTMLDivElement>(null);
+  const openedAtRef = useRef(typeof performance !== "undefined" ? performance.now() : 0);
+  const hasLoggedReadyRef = useRef(false);
   const [productName, setProductName] = useState("");
   const [debouncedProductSearch, setDebouncedProductSearch] = useState("");
   const [productSuggestOpen, setProductSuggestOpen] = useState(false);
   const [productBarcode, setProductBarcode] = useState<string | null>(null);
   /** True after a scan found no single product for this barcode; show dedicated Barcode row and require medication name separately. */
   const [barcodeLookupNeedsMedicationName, setBarcodeLookupNeedsMedicationName] = useState(false);
+  const [isBarcodeLookupPending, setIsBarcodeLookupPending] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [batchNumber, setBatchNumber] = useState(generateProductRef);
   const [category, setCategory] = useState("");
   const [expiry, setExpiry] = useState("");
   const [quantity, setQuantity] = useState("");
   const [unitPrice, setUnitPrice] = useState("");
+  const [sellingPrice, setSellingPrice] = useState("");
   const [supplier, setSupplier] = useState("");
   const [purchaseOrderNumber, setPurchaseOrderNumber] = useState("");
   const [notes, setNotes] = useState("");
@@ -97,6 +111,18 @@ export function AddNewBatchContent() {
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, []);
+
+  useEffect(() => {
+    if (!stockCatalogQuery.data || hasLoggedReadyRef.current || process.env.NODE_ENV === "production") {
+      return;
+    }
+
+    hasLoggedReadyRef.current = true;
+    console.info("[stock-add] form-ready", {
+      durationMs: Math.round(performance.now() - openedAtRef.current),
+      branchId: stockCatalogQuery.data.branch.id,
+    });
+  }, [stockCatalogQuery.data]);
 
   const showProductSuggestPanel =
     productSuggestOpen && debouncedProductSearch.trim().length >= 2;
@@ -125,18 +151,24 @@ export function AddNewBatchContent() {
 
   const q = Number.parseFloat(quantity) || 0;
   const p = Number.parseFloat(unitPrice) || 0;
+  const s = Number.parseFloat(sellingPrice) || 0;
   const totalValue = q * p;
+  const resolvedBranchId = branchId ?? stockCatalogQuery.data?.branch.id ?? undefined;
+  const backToStockHref = buildStockHref(resolvedBranchId);
+  const isCatalogPending = stockCatalogQuery.isLoading && !stockCatalogQuery.data;
+  const isSaving = createBatchMutation.isPending;
 
   const completion = useMemo(() => {
-    const fields = [productName, batchNumber, expiry, quantity, unitPrice];
+    const fields = [productName, batchNumber, expiry, quantity, unitPrice, sellingPrice];
     const filled = fields.filter((f) => String(f).trim().length > 0).length;
     return Math.round((filled / fields.length) * 100);
-  }, [productName, batchNumber, expiry, quantity, unitPrice]);
+  }, [productName, batchNumber, expiry, quantity, unitPrice, sellingPrice]);
 
   const previewMedication = productName.trim() || "";
   const recentEntries = stockCatalogQuery.data?.recentEntries ?? [];
   const isSaveDisabled =
-    !productName.trim() || !batchNumber.trim() || !expiry || q <= 0 || p <= 0;
+    !productName.trim() || !batchNumber.trim() || !expiry || q <= 0 || p <= 0 || s <= 0;
+  const isSaveBlocked = isSaveDisabled || isSaving || isBarcodeLookupPending || !resolvedBranchId;
 
   return (
     <div className="px-4 pb-16 pt-2 sm:px-6 lg:px-8">
@@ -165,6 +197,7 @@ export function AddNewBatchContent() {
           }
 
           try {
+            setIsBarcodeLookupPending(true);
             const res = await fetchJson<StockProductSuggestResponse>(
               `${apiUrl("/stock/products/suggest")}?q=${encodeURIComponent(trimmed)}`,
               { method: "GET" },
@@ -203,6 +236,8 @@ export function AddNewBatchContent() {
               title: "Barcode captured",
               description: "Could not look up this barcode. Enter the medication name above, then try again or save.",
             });
+          } finally {
+            setIsBarcodeLookupPending(false);
           }
         }}
         title="Scan product barcode"
@@ -213,11 +248,7 @@ export function AddNewBatchContent() {
           <div className="space-y-2">
             <nav className="flex items-center gap-2" aria-label="Breadcrumb">
               <Link
-                href={
-                  branchId
-                    ? `${ROUTES.dashboard.stock}?branch=${encodeURIComponent(branchId)}`
-                    : ROUTES.dashboard.stock
-                }
+                href={backToStockHref}
                 className="text-xs font-normal uppercase tracking-[0.1em] text-[#6c7a78] hover:text-[#006a65]"
               >
                 Aura Stock
@@ -236,30 +267,27 @@ export function AddNewBatchContent() {
           <div className="flex flex-wrap items-center gap-4">
             <button
               type="button"
-              onClick={() =>
-                router.push(
-                  branchId
-                    ? `${ROUTES.dashboard.stock}?branch=${encodeURIComponent(branchId)}`
-                    : ROUTES.dashboard.stock,
-                )
-              }
+              onClick={() => router.push(backToStockHref)}
               className="rounded-xl px-6 py-2.5 text-base font-medium text-[#3c4948] transition hover:bg-[#f2f4f6]"
             >
               Cancel
             </button>
             <button
               type="button"
+              disabled={isSaveBlocked}
               onClick={async () => {
                 if (isSaveDisabled) {
                   notify({
                     variant: "error",
                     title: "Complete the required fields",
-                    description: "Add the medication name, product ref, expiry date, quantity, and purchase price.",
+                    description:
+                      "Add the medication name, product ref, expiry date, quantity, order price, and selling price.",
                   });
                   return;
                 }
 
                 try {
+                  const saveStartedAt = typeof performance !== "undefined" ? performance.now() : 0;
                   await withLoading(
                     "dashboard-add-batch",
                     "Saving product to inventory...",
@@ -267,16 +295,17 @@ export function AddNewBatchContent() {
                       const trimmedMedication = productName.trim();
                       const trimmedBarcode = productBarcode?.trim() ?? "";
                       const result = await createBatchMutation.mutateAsync({
-                        branchId,
+                        branchId: resolvedBranchId,
                         productName: trimmedMedication,
                         ...(trimmedBarcode.length > 0 ? { productBarcode: trimmedBarcode } : {}),
                         batchNumber: batchNumber.trim(),
                         categoryName: category.trim() || undefined,
                         expiresAt: expiry,
                         quantityReceived: q,
-                        unitCost: p,
+                        unitOrderPrice: p,
                         supplierName: supplier.trim() || undefined,
                         purchaseOrderNumber: purchaseOrderNumber.trim() || undefined,
+                        unitSellingPrice: s,
                         notes: notes.trim() || undefined,
                       });
 
@@ -287,11 +316,13 @@ export function AddNewBatchContent() {
                           trimmedBarcode.length > 0 ? ` Barcode ${trimmedBarcode} stored on the product.` : ""
                         }`,
                       });
-                      router.push(
-                        branchId
-                          ? `${ROUTES.dashboard.stock}?branch=${encodeURIComponent(branchId)}`
-                          : ROUTES.dashboard.stock,
-                      );
+                      if (process.env.NODE_ENV !== "production") {
+                        console.info("[stock-add] save-complete", {
+                          durationMs: Math.round(performance.now() - saveStartedAt),
+                          batchId: result.id,
+                        });
+                      }
+                      router.push(backToStockHref);
                     },
                   );
                 } catch (err) {
@@ -302,13 +333,31 @@ export function AddNewBatchContent() {
                   });
                 }
               }}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-8 py-2.5 text-base font-semibold text-white shadow-[0_10px_15px_-3px_rgba(0,106,101,0.2),0_4px_6px_-4px_rgba(0,106,101,0.2)] transition hover:opacity-95"
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-8 py-2.5 text-base font-semibold text-white shadow-[0_10px_15px_-3px_rgba(0,106,101,0.2),0_4px_6px_-4px_rgba(0,106,101,0.2)] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Review &amp; Save
-              <span className="material-symbols-outlined notranslate text-lg">check</span>
+              {isSaving ? "Saving Product..." : "Save Product"}
+              <span className="material-symbols-outlined notranslate text-lg">
+                {isSaving ? "progress_activity" : "check"}
+              </span>
             </button>
           </div>
         </div>
+
+        {isCatalogPending ? (
+          <div className="mb-6 rounded-xl border border-[#dbeafe] bg-[#f8fbff] px-4 py-3 text-sm text-[#335c85]">
+            Loading branch and supplier details. You can start filling the form while we prepare the rest.
+          </div>
+        ) : null}
+
+        {stockCatalogQuery.isError ? (
+          <div className="mb-6 rounded-xl border border-[#fed7aa] bg-[#fff7ed] px-4 py-3 text-sm text-[#9a3412]">
+            {stockCatalogQuery.error instanceof Error
+              ? stockCatalogQuery.error.message
+              : resolvedBranchId
+                ? "Branch details could not be fully loaded right now. Supplier suggestions may be unavailable, but you can still save with the selected branch."
+                : "Branch details could not be loaded right now. Saving stays disabled until a branch is available."}
+          </div>
+        ) : null}
 
         <div className="grid gap-8 lg:grid-cols-12">
           {/* Left: forms */}
@@ -343,7 +392,7 @@ export function AddNewBatchContent() {
                       onFocus={() => setProductSuggestOpen(true)}
                       onKeyDown={onProductNameKeyDown}
                       placeholder="e.g. Amoxicillin 500mg Capsules"
-                      className={`${inputClass} pr-36`}
+                      className={`${inputClass} pr-40`}
                       autoComplete="off"
                       spellCheck={false}
                     />
@@ -382,12 +431,17 @@ export function AddNewBatchContent() {
                     <button
                       type="button"
                       onClick={() => setScannerOpen(true)}
-                      className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1.5 rounded-md bg-[rgba(15,185,177,0.2)] px-3 py-1 text-xs font-semibold text-[#004340] transition hover:bg-[rgba(15,185,177,0.3)]"
+                      disabled={isBarcodeLookupPending}
+                      className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1.5 rounded-md bg-[rgba(15,185,177,0.2)] px-3 py-1 text-xs font-semibold text-[#004340] transition hover:bg-[rgba(15,185,177,0.3)] disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      <span className="material-symbols-outlined notranslate text-base">
-                        barcode_scanner
+                      <span
+                        className={`material-symbols-outlined notranslate text-base ${
+                          isBarcodeLookupPending ? "animate-spin" : ""
+                        }`}
+                      >
+                        {isBarcodeLookupPending ? "progress_activity" : "barcode_scanner"}
                       </span>
-                      Scan Barcode
+                      {isBarcodeLookupPending ? "Looking up..." : ""}
                     </button>
                   </div>
                   <p className="mt-2 text-[11px] text-[#6c7a78]">
@@ -395,6 +449,11 @@ export function AddNewBatchContent() {
                     characters to search, or use Scan to look up by barcode—if nothing matches, enter
                     the name above and save to attach this barcode to a new product.
                   </p>
+                  {isBarcodeLookupPending ? (
+                    <p className="mt-2 text-[11px] font-medium text-[#006a65]">
+                      Looking up this barcode and checking existing products...
+                    </p>
+                  ) : null}
                   {productBarcode && barcodeLookupNeedsMedicationName ? (
                     <div className="mt-4 space-y-2 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -502,7 +561,7 @@ export function AddNewBatchContent() {
               </div>
 
               <div className="space-y-6">
-                <div className="grid gap-6 sm:grid-cols-2">
+                <div className="grid gap-6 sm:grid-cols-3">
                   <div>
                     <label className={fieldLabel} htmlFor="quantity">
                       Quantity (Units)
@@ -518,20 +577,40 @@ export function AddNewBatchContent() {
                     />
                   </div>
                   <div>
-                    <label className={fieldLabel} htmlFor="unitPrice">
-                      Purchase Price (Per Unit)
+                    <label className={fieldLabel} htmlFor="unitOrderPrice">
+                      Order Price (Per Unit)
                     </label>
                     <div className="relative">
                       <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-[#6c7a78]">
                         ZMW
                       </span>
                       <input
-                        id="unitPrice"
+                        id="unitOrderPrice"
                         type="number"
                         min={0}
                         step="0.01"
                         value={unitPrice}
                         onChange={(e) => setUnitPrice(e.target.value)}
+                        placeholder="0.00"
+                        className={`${inputClass} pl-14`}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={fieldLabel} htmlFor="unitSellingPrice">
+                      Selling Price (Per Unit)
+                    </label>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-[#6c7a78]">
+                        ZMW
+                      </span>
+                      <input
+                        id="unitSellingPrice"
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={sellingPrice}
+                        onChange={(e) => setSellingPrice(e.target.value)}
                         placeholder="0.00"
                         className={`${inputClass} pl-14`}
                       />
@@ -584,7 +663,10 @@ export function AddNewBatchContent() {
                     <input
                       id="branchContext"
                       type="text"
-                      value={stockCatalogQuery.data?.branch.name ?? "Loading branch..."}
+                      value={
+                        stockCatalogQuery.data?.branch.name ??
+                        (stockCatalogQuery.isError ? "Branch unavailable" : "Loading branch...")
+                      }
                       readOnly
                       className={`${inputClass} cursor-not-allowed text-[#6c7a78]`}
                     />

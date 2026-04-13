@@ -180,8 +180,8 @@ export function ItemsNearExpiryContent() {
 
       if (sortBy === "loss-desc") {
         return (
-          right.quantityAvailable * right.unitCostCents -
-          left.quantityAvailable * left.unitCostCents
+          right.quantityAvailable * right.unitOrderPriceCents -
+          left.quantityAvailable * left.unitOrderPriceCents
         );
       }
 
@@ -213,7 +213,7 @@ export function ItemsNearExpiryContent() {
   const criticalCount = filteredRows.filter((row) => getExpiryStage(row) === "critical").length;
   const nearExpiryCount = filteredRows.filter((row) => getExpiryStage(row) === "expiring").length;
   const potentialLoss = filteredRows.reduce(
-    (sum, row) => sum + row.quantityAvailable * row.unitCostCents,
+    (sum, row) => sum + row.quantityAvailable * row.unitOrderPriceCents,
     0,
   );
 

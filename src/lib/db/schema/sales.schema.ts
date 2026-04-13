@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   date,
@@ -71,6 +72,7 @@ export const patients = pgTable(
       table.patientCode,
     ),
     organizationIdx: index("patients_org_idx").on(table.organizationId),
+    orgPhoneIdx: index("patients_org_phone_idx").on(table.organizationId, table.phone),
   }),
 );
 
@@ -159,7 +161,21 @@ export const sales = pgTable(
       table.organizationId,
       table.saleNumber,
     ),
+    orgCompletedCreatedIdx: index("sales_org_completed_created_idx")
+      .on(table.organizationId, table.createdAt)
+      .where(sql`${table.status} = 'completed'`),
     branchCreatedIdx: index("sales_branch_created_idx").on(table.branchId, table.createdAt),
+    orgBranchStatusCreatedIdx: index("sales_org_branch_status_created_idx").on(
+      table.organizationId,
+      table.branchId,
+      table.status,
+      table.createdAt,
+    ),
+    orgStatusBranchIdx: index("sales_org_status_branch_idx").on(
+      table.organizationId,
+      table.status,
+      table.branchId,
+    ),
     patientIdx: index("sales_patient_idx").on(table.patientId),
   }),
 );

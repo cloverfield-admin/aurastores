@@ -31,13 +31,15 @@ export const createStockBatchSchema = z.object({
   batchNumber: z.string().trim().min(2).max(64),
   expiresAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD date format."),
   quantityReceived: z.coerce.number().int().min(1).max(1_000_000),
-  unitCost: z.coerce.number().positive().max(1_000_000),
+  unitOrderPrice: z.coerce.number().positive().max(1_000_000),
   supplierName: optionalText(160),
   categoryName: optionalText(120),
   purchaseOrderNumber: optionalText(64),
-  unitSalePrice: z.coerce.number().nonnegative().max(1_000_000).optional(),
+  unitSellingPrice: z.coerce.number().nonnegative().max(1_000_000),
   notes: optionalText(1_000),
 });
+
+export const createStockBatchesSchema = z.array(createStockBatchSchema).min(1).max(50);
 
 export const disposeStockBatchSchema = z.object({
   branchId: z.string().uuid().optional(),
@@ -54,5 +56,6 @@ export const stockAdjustmentSchema = z.object({
 });
 
 export type CreateStockBatchInput = z.infer<typeof createStockBatchSchema>;
+export type CreateStockBatchesInput = z.infer<typeof createStockBatchesSchema>;
 export type DisposeStockBatchInput = z.infer<typeof disposeStockBatchSchema>;
 export type StockAdjustmentInput = z.infer<typeof stockAdjustmentSchema>;

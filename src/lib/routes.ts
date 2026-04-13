@@ -17,6 +17,7 @@ export const ROUTES = {
     staffAddReview: "/dashboard/staff/add/review",
     stock: "/dashboard/stock",
     stockAdd: "/dashboard/stock/add",
+    stockBulkAdd: "/dashboard/stock/bulk-add",
     stockBatch: (batchId: string) => `/dashboard/stock/batches/${batchId}`,
     stockExpiring: "/dashboard/stock/expiring",
     sales: "/dashboard/sales",

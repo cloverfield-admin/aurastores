@@ -1,0 +1,3 @@
+CREATE INDEX "organization_memberships_active_org_idx" ON "organization_memberships" USING btree ("organization_id") WHERE "organization_memberships"."status" <> 'removed';--> statement-breakpoint
+CREATE INDEX "inventory_batches_org_branch_eligible_expiry_idx" ON "inventory_batches" USING btree ("organization_id","branch_id","expires_at") WHERE "inventory_batches"."status" <> 'disposed' and "inventory_batches"."quantity_available" > 0;--> statement-breakpoint
+CREATE INDEX "sales_org_completed_created_idx" ON "sales" USING btree ("organization_id","created_at") WHERE "sales"."status" = 'completed';
