@@ -33,6 +33,12 @@ export class StockService {
     return this.repos.stock.createBatch(...args);
   }
 
+  createBatches(
+    ...args: Parameters<StockRepository["createBatches"]>
+  ): ReturnType<StockRepository["createBatches"]> {
+    return this.repos.stock.createBatches(...args);
+  }
+
   getBatchById(
     ...args: Parameters<StockRepository["getBatchById"]>
   ): ReturnType<StockRepository["getBatchById"]> {

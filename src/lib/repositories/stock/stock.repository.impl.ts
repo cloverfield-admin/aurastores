@@ -21,10 +21,16 @@ import {
   users,
 } from "@/lib/db/schema";
 import { slugify } from "@/lib/utils/slug";
-import type { CreateStockBatchInput, StockAdjustmentInput } from "@/lib/validation/stock";
+import type {
+  CreateStockBatchInput,
+  CreateStockBatchesInput,
+  StockAdjustmentInput,
+} from "@/lib/validation/stock";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 import type {
   StockCatalogData,
+  StockCreateBatchResult,
+  StockCreateBatchesResult,
   StockDashboardData,
   StockGetCatalogOptions,
   StockGetDashboardOptions,
@@ -33,6 +39,7 @@ import type {
 
 type ResolvedBranch = typeof branches.$inferSelect;
 type QueryableDb = Pick<typeof db, "query">;
+type WritableDb = QueryableDb & Pick<typeof db, "select" | "insert" | "update">;
 
 type GetDashboardOptions = StockGetDashboardOptions;
 
@@ -373,6 +380,807 @@ async function findProductByName(
       sql`lower(${products.name}) = ${name.toLowerCase()}`,
     ),
   });
+}
+
+type BulkCreateBatchRow = {
+  input: CreateStockBatchInput;
+  productName: string;
+  productNameLower: string;
+  categoryName?: string;
+  categoryLower?: string;
+  supplierName?: string;
+  supplierLower?: string;
+  batchNumber: string;
+  batchLower: string;
+  barcodeNorm?: string;
+  quantityReceived: number;
+  unitOrderPriceCents: number;
+  unitSalePriceCents: number;
+};
+
+type BulkProductRecord = {
+  id: string;
+  name: string;
+  barcode: string | null;
+  categoryId: string | null;
+  defaultSellingPriceCents: number;
+};
+
+type BulkLookupState = {
+  categoryByLower: Map<string, string>;
+  supplierByLower: Map<string, string>;
+  productByLower: Map<string, BulkProductRecord>;
+  barcodeOwnerByCode: Map<string, { id: string; name: string }>;
+};
+
+type BulkBatchResultState =
+  | { status: "pending" }
+  | { status: "failed"; error: string }
+  | { status: "success"; data: StockCreateBatchResult };
+
+type ProductUpdatePlan = {
+  id: string;
+  categoryId: string | null;
+  defaultSellingPriceCents: number;
+  barcode: string | null;
+};
+
+const BULK_BRANCH_CONFLICT_ERROR = "Bulk batch creation can only target one branch per request.";
+const BULK_DUPLICATE_ROW_ERROR = "Duplicate row: same product name and batch number.";
+const BULK_BARCODE_UPLOAD_CONFLICT_ERROR = "This barcode is assigned to multiple products in this upload.";
+const BULK_BATCH_EXISTS_ERROR = "A batch with this number already exists for that product.";
+const BULK_BARCODE_MISMATCH_ERROR = "This medication already has a different barcode on file.";
+const BULK_RETRY_ERROR = "Bulk upload changed during save. Please retry.";
+
+function normalizeCreateBatchRows(inputs: CreateStockBatchesInput): BulkCreateBatchRow[] {
+  return inputs.map((input) => {
+    const productName = input.productName.trim();
+    const categoryName = normalizeLookupValue(input.categoryName);
+    const supplierName = normalizeLookupValue(input.supplierName);
+    const batchNumber = input.batchNumber.trim();
+    const barcodeNorm = normalizeLookupValue(input.productBarcode);
+
+    return {
+      input,
+      productName,
+      productNameLower: productName.toLowerCase(),
+      categoryName,
+      categoryLower: categoryName?.toLowerCase(),
+      supplierName,
+      supplierLower: supplierName?.toLowerCase(),
+      batchNumber,
+      batchLower: batchNumber.toLowerCase(),
+      barcodeNorm,
+      quantityReceived: input.quantityReceived,
+      unitOrderPriceCents: moneyToCents(input.unitOrderPrice),
+      unitSalePriceCents: moneyToCents(input.unitSellingPrice),
+    };
+  });
+}
+
+function createBulkBatchResultStates(length: number): BulkBatchResultState[] {
+  return Array.from({ length }, () => ({ status: "pending" as const }));
+}
+
+function getPendingBulkBatchIndexes(results: BulkBatchResultState[]) {
+  return results
+    .map((result, index) => (result.status === "pending" ? index : -1))
+    .filter((index) => index >= 0);
+}
+
+function failBulkBatchResult(results: BulkBatchResultState[], index: number, error: string) {
+  results[index] = { status: "failed", error };
+}
+
+function succeedBulkBatchResult(
+  results: BulkBatchResultState[],
+  index: number,
+  data: StockCreateBatchResult,
+) {
+  results[index] = { status: "success", data };
+}
+
+function finalizeBulkBatchResults(results: BulkBatchResultState[]): StockCreateBatchesResult[] {
+  return results.map((result) => {
+    if (result.status === "success") {
+      return { ok: true, data: result.data };
+    }
+
+    return { ok: false, error: result.status === "failed" ? result.error : "Not processed." };
+  });
+}
+
+function markInPayloadConflicts(rows: BulkCreateBatchRow[], results: BulkBatchResultState[]) {
+  const seenPairs = new Set<string>();
+  const barcodeOwners = new Map<string, { productNameLower: string; indexes: number[] }>();
+
+  for (const index of getPendingBulkBatchIndexes(results)) {
+    const row = rows[index];
+    const pairKey = `${row.productNameLower}::${row.batchLower}`;
+    if (seenPairs.has(pairKey)) {
+      failBulkBatchResult(results, index, BULK_DUPLICATE_ROW_ERROR);
+      continue;
+    }
+
+    seenPairs.add(pairKey);
+
+    if (!row.barcodeNorm) {
+      continue;
+    }
+
+    const owner = barcodeOwners.get(row.barcodeNorm);
+    if (!owner) {
+      barcodeOwners.set(row.barcodeNorm, {
+        productNameLower: row.productNameLower,
+        indexes: [index],
+      });
+      continue;
+    }
+
+    if (owner.productNameLower === row.productNameLower) {
+      owner.indexes.push(index);
+      continue;
+    }
+
+    for (const ownerIndex of owner.indexes) {
+      if (results[ownerIndex].status === "pending") {
+        failBulkBatchResult(results, ownerIndex, BULK_BARCODE_UPLOAD_CONFLICT_ERROR);
+      }
+    }
+    failBulkBatchResult(results, index, BULK_BARCODE_UPLOAD_CONFLICT_ERROR);
+  }
+}
+
+function getBulkBranchPreference(rows: BulkCreateBatchRow[]) {
+  return rows.find((row) => row.input.branchId)?.input.branchId;
+}
+
+async function resolveBulkBatchBranch(
+  tx: QueryableDb,
+  context: AuthContext,
+  rows: BulkCreateBatchRow[],
+  results: BulkBatchResultState[],
+) {
+  const branch = await resolveBranch(tx, context, getBulkBranchPreference(rows));
+
+  for (const index of getPendingBulkBatchIndexes(results)) {
+    const requestedBranchId = rows[index].input.branchId;
+    if (requestedBranchId && requestedBranchId !== branch.id) {
+      failBulkBatchResult(results, index, BULK_BRANCH_CONFLICT_ERROR);
+    }
+  }
+
+  return branch;
+}
+
+async function loadBulkBatchLookups(
+  tx: WritableDb,
+  organizationId: string,
+  rows: BulkCreateBatchRow[],
+  indexes: number[],
+): Promise<BulkLookupState> {
+  const categoryLower = Array.from(
+    new Set(indexes.map((index) => rows[index].categoryLower).filter((value): value is string => Boolean(value))),
+  );
+  const supplierLower = Array.from(
+    new Set(indexes.map((index) => rows[index].supplierLower).filter((value): value is string => Boolean(value))),
+  );
+  const productLower = Array.from(new Set(indexes.map((index) => rows[index].productNameLower)));
+  const barcodeValues = Array.from(
+    new Set(indexes.map((index) => rows[index].barcodeNorm).filter((value): value is string => Boolean(value))),
+  );
+
+  const [existingCategories, existingSuppliers, existingProducts, barcodeOwners] = await Promise.all([
+    categoryLower.length === 0
+      ? Promise.resolve([])
+      : tx
+          .select({ id: productCategories.id, name: productCategories.name })
+          .from(productCategories)
+          .where(
+            and(
+              eq(productCategories.organizationId, organizationId),
+              inArray(sql`lower(${productCategories.name})`, categoryLower),
+            ),
+          ),
+    supplierLower.length === 0
+      ? Promise.resolve([])
+      : tx
+          .select({ id: suppliers.id, name: suppliers.name })
+          .from(suppliers)
+          .where(
+            and(eq(suppliers.organizationId, organizationId), inArray(sql`lower(${suppliers.name})`, supplierLower)),
+          ),
+    productLower.length === 0
+      ? Promise.resolve([])
+      : tx
+          .select({
+            id: products.id,
+            name: products.name,
+            barcode: products.barcode,
+            categoryId: products.categoryId,
+            defaultSellingPriceCents: products.defaultSellingPriceCents,
+          })
+          .from(products)
+          .where(and(eq(products.organizationId, organizationId), inArray(sql`lower(${products.name})`, productLower))),
+    barcodeValues.length === 0
+      ? Promise.resolve([])
+      : tx
+          .select({ id: products.id, name: products.name, barcode: products.barcode })
+          .from(products)
+          .where(and(eq(products.organizationId, organizationId), inArray(products.barcode, barcodeValues))),
+  ]);
+
+  return {
+    categoryByLower: new Map(existingCategories.map((category) => [category.name.toLowerCase(), category.id])),
+    supplierByLower: new Map(existingSuppliers.map((supplier) => [supplier.name.toLowerCase(), supplier.id])),
+    productByLower: new Map(
+      existingProducts.map((product) => [
+        product.name.toLowerCase(),
+        {
+          id: product.id,
+          name: product.name,
+          barcode: product.barcode,
+          categoryId: product.categoryId,
+          defaultSellingPriceCents: product.defaultSellingPriceCents,
+        },
+      ]),
+    ),
+    barcodeOwnerByCode: new Map(
+      barcodeOwners
+        .filter((product) => product.barcode)
+        .map((product) => [String(product.barcode), { id: product.id, name: product.name }]),
+    ),
+  };
+}
+
+function markPersistedBarcodeConflicts(
+  rows: BulkCreateBatchRow[],
+  lookups: BulkLookupState,
+  indexes: number[],
+  results: BulkBatchResultState[],
+) {
+  for (const index of indexes) {
+    const row = rows[index];
+    if (!row.barcodeNorm) {
+      continue;
+    }
+
+    const owner = lookups.barcodeOwnerByCode.get(row.barcodeNorm);
+    const product = lookups.productByLower.get(row.productNameLower);
+    if (owner && (!product || owner.id !== product.id)) {
+      failBulkBatchResult(results, index, `This barcode is already assigned to “${owner.name}”.`);
+    }
+  }
+}
+
+async function createMissingCategories(
+  tx: WritableDb,
+  organizationId: string,
+  rows: BulkCreateBatchRow[],
+  indexes: number[],
+  lookups: BulkLookupState,
+) {
+  const missingCategoryNames = Array.from(
+    new Set(
+      indexes
+        .map((index) => rows[index].categoryName)
+        .filter((value): value is string => Boolean(value))
+        .filter((name) => !lookups.categoryByLower.has(name.toLowerCase())),
+    ),
+  );
+
+  if (missingCategoryNames.length === 0) {
+    return;
+  }
+
+  const created = await tx
+    .insert(productCategories)
+    .values(missingCategoryNames.map((name) => ({ organizationId, name })))
+    .returning({ id: productCategories.id, name: productCategories.name });
+
+  for (const category of created) {
+    lookups.categoryByLower.set(category.name.toLowerCase(), category.id);
+  }
+}
+
+async function createMissingSuppliers(
+  tx: WritableDb,
+  organizationId: string,
+  rows: BulkCreateBatchRow[],
+  indexes: number[],
+  lookups: BulkLookupState,
+) {
+  const missingSupplierNames = Array.from(
+    new Set(
+      indexes
+        .map((index) => rows[index].supplierName)
+        .filter((value): value is string => Boolean(value))
+        .filter((name) => !lookups.supplierByLower.has(name.toLowerCase())),
+    ),
+  );
+
+  if (missingSupplierNames.length === 0) {
+    return;
+  }
+
+  const created = await tx
+    .insert(suppliers)
+    .values(missingSupplierNames.map((name) => ({ organizationId, name })))
+    .returning({ id: suppliers.id, name: suppliers.name });
+
+  for (const supplier of created) {
+    lookups.supplierByLower.set(supplier.name.toLowerCase(), supplier.id);
+  }
+}
+
+async function createMissingProducts(
+  tx: WritableDb,
+  organizationId: string,
+  rows: BulkCreateBatchRow[],
+  indexes: number[],
+  lookups: BulkLookupState,
+  results: BulkBatchResultState[],
+) {
+  const missingProductNames = Array.from(
+    new Set(
+      indexes
+        .map((index) => rows[index].productName)
+        .filter((name) => !lookups.productByLower.has(name.toLowerCase())),
+    ),
+  );
+
+  if (missingProductNames.length === 0) {
+    return;
+  }
+
+  const firstByLower = new Map<string, number>();
+  for (const index of indexes) {
+    if (!firstByLower.has(rows[index].productNameLower)) {
+      firstByLower.set(rows[index].productNameLower, index);
+    }
+  }
+
+  const created = await tx
+    .insert(products)
+    .values(
+      missingProductNames.map((name) => {
+        const row = rows[firstByLower.get(name.toLowerCase()) ?? indexes[0]];
+        return {
+          organizationId,
+          categoryId: row.categoryLower ? lookups.categoryByLower.get(row.categoryLower) ?? null : null,
+          name,
+          sku: buildSku(name),
+          barcode: row.barcodeNorm ?? null,
+          defaultSellingPriceCents: row.unitSalePriceCents,
+        };
+      }),
+    )
+    .onConflictDoNothing({
+      target: [products.organizationId, products.barcode],
+    })
+    .returning({
+      id: products.id,
+      name: products.name,
+      barcode: products.barcode,
+      categoryId: products.categoryId,
+      defaultSellingPriceCents: products.defaultSellingPriceCents,
+    });
+
+  for (const product of created) {
+    lookups.productByLower.set(product.name.toLowerCase(), product);
+    if (product.barcode) {
+      lookups.barcodeOwnerByCode.set(product.barcode, { id: product.id, name: product.name });
+    }
+  }
+
+  const unresolvedProductLower = missingProductNames
+    .map((name) => name.toLowerCase())
+    .filter((nameLower) => !lookups.productByLower.has(nameLower));
+
+  if (unresolvedProductLower.length === 0) {
+    return;
+  }
+
+  const fetchedProducts = await tx
+    .select({
+      id: products.id,
+      name: products.name,
+      barcode: products.barcode,
+      categoryId: products.categoryId,
+      defaultSellingPriceCents: products.defaultSellingPriceCents,
+    })
+    .from(products)
+    .where(and(eq(products.organizationId, organizationId), inArray(sql`lower(${products.name})`, unresolvedProductLower)));
+
+  for (const product of fetchedProducts) {
+    lookups.productByLower.set(product.name.toLowerCase(), product);
+    if (product.barcode) {
+      lookups.barcodeOwnerByCode.set(product.barcode, { id: product.id, name: product.name });
+    }
+  }
+
+  for (const index of indexes) {
+    const row = rows[index];
+    if (lookups.productByLower.has(row.productNameLower)) {
+      continue;
+    }
+
+    if (row.barcodeNorm) {
+      const owner = lookups.barcodeOwnerByCode.get(row.barcodeNorm);
+      if (owner) {
+        failBulkBatchResult(results, index, `This barcode is already assigned to “${owner.name}”.`);
+        continue;
+      }
+    }
+
+    failBulkBatchResult(results, index, BULK_RETRY_ERROR);
+  }
+}
+
+async function reconcileProducts(
+  tx: WritableDb,
+  organizationId: string,
+  rows: BulkCreateBatchRow[],
+  indexes: number[],
+  lookups: BulkLookupState,
+  results: BulkBatchResultState[],
+) {
+  await createMissingCategories(tx, organizationId, rows, indexes, lookups);
+  await createMissingSuppliers(tx, organizationId, rows, indexes, lookups);
+  await createMissingProducts(tx, organizationId, rows, indexes, lookups, results);
+
+  const stagedProducts = new Map(
+    Array.from(lookups.productByLower.entries()).map(([nameLower, product]) => [nameLower, { ...product }]),
+  );
+
+  for (const index of getPendingBulkBatchIndexes(results)) {
+    const row = rows[index];
+    const product = stagedProducts.get(row.productNameLower);
+    if (!product) {
+      failBulkBatchResult(results, index, BULK_RETRY_ERROR);
+      continue;
+    }
+
+    if (row.barcodeNorm && product.barcode && product.barcode !== row.barcodeNorm) {
+      failBulkBatchResult(results, index, BULK_BARCODE_MISMATCH_ERROR);
+      continue;
+    }
+
+    product.categoryId = row.categoryLower ? lookups.categoryByLower.get(row.categoryLower) ?? product.categoryId : product.categoryId;
+    product.defaultSellingPriceCents = row.unitSalePriceCents ?? product.defaultSellingPriceCents;
+    product.barcode = product.barcode ?? row.barcodeNorm ?? null;
+  }
+
+  const updates = new Map<string, ProductUpdatePlan>();
+  for (const [nameLower, stagedProduct] of stagedProducts) {
+    const currentProduct = lookups.productByLower.get(nameLower);
+    if (!currentProduct) {
+      continue;
+    }
+
+    if (
+      stagedProduct.categoryId === currentProduct.categoryId &&
+      stagedProduct.defaultSellingPriceCents === currentProduct.defaultSellingPriceCents &&
+      stagedProduct.barcode === currentProduct.barcode
+    ) {
+      continue;
+    }
+
+    updates.set(stagedProduct.id, {
+      id: stagedProduct.id,
+      categoryId: stagedProduct.categoryId,
+      defaultSellingPriceCents: stagedProduct.defaultSellingPriceCents,
+      barcode: stagedProduct.barcode,
+    });
+  }
+
+  for (const update of updates.values()) {
+    const [product] = await tx
+      .update(products)
+      .set({
+        categoryId: update.categoryId,
+        defaultSellingPriceCents: update.defaultSellingPriceCents,
+        barcode: update.barcode,
+        updatedAt: new Date(),
+      })
+      .where(eq(products.id, update.id))
+      .returning({
+        id: products.id,
+        name: products.name,
+        barcode: products.barcode,
+        categoryId: products.categoryId,
+        defaultSellingPriceCents: products.defaultSellingPriceCents,
+      });
+
+    lookups.productByLower.set(product.name.toLowerCase(), product);
+    if (product.barcode) {
+      lookups.barcodeOwnerByCode.set(product.barcode, { id: product.id, name: product.name });
+    }
+  }
+}
+
+async function detectExistingBatchConflicts(
+  tx: WritableDb,
+  organizationId: string,
+  branchId: string,
+  rows: BulkCreateBatchRow[],
+  lookups: BulkLookupState,
+  indexes: number[],
+  results: BulkBatchResultState[],
+) {
+  const desiredProductIds = indexes
+    .map((index) => lookups.productByLower.get(rows[index].productNameLower)?.id)
+    .filter((value): value is string => Boolean(value));
+  const desiredBatchLower = Array.from(new Set(indexes.map((index) => rows[index].batchLower)));
+
+  if (desiredProductIds.length === 0 || desiredBatchLower.length === 0) {
+    return;
+  }
+
+  const existing = await tx
+    .select({
+      productId: inventoryBatches.productId,
+      batchLower: sql`lower(${inventoryBatches.batchNumber})`.as("batchLower"),
+    })
+    .from(inventoryBatches)
+    .where(
+      and(
+        eq(inventoryBatches.organizationId, organizationId),
+        eq(inventoryBatches.branchId, branchId),
+        inArray(inventoryBatches.productId, desiredProductIds),
+        inArray(sql`lower(${inventoryBatches.batchNumber})`, desiredBatchLower),
+      ),
+    );
+
+  const existingPairs = new Set(existing.map((batch) => `${batch.productId}::${String(batch.batchLower)}`));
+  for (const index of indexes) {
+    const product = lookups.productByLower.get(rows[index].productNameLower);
+    if (!product) {
+      continue;
+    }
+
+    if (existingPairs.has(`${product.id}::${rows[index].batchLower}`)) {
+      failBulkBatchResult(results, index, BULK_BATCH_EXISTS_ERROR);
+    }
+  }
+}
+
+async function insertBatchesAndTransactions(
+  tx: WritableDb,
+  context: AuthContext,
+  branchId: string,
+  rows: BulkCreateBatchRow[],
+  lookups: BulkLookupState,
+  indexes: number[],
+  results: BulkBatchResultState[],
+) {
+  const batchRows = indexes.map((index) => {
+    const row = rows[index];
+    const product = lookups.productByLower.get(row.productNameLower);
+    if (!product) {
+      failBulkBatchResult(results, index, BULK_RETRY_ERROR);
+      return null;
+    }
+
+    return {
+      index,
+      row,
+      values: {
+        organizationId: context.organization.id,
+        branchId,
+        productId: product.id,
+        supplierId: row.supplierLower ? lookups.supplierByLower.get(row.supplierLower) ?? null : null,
+        batchNumber: row.batchNumber,
+        purchaseOrderNumber: row.input.purchaseOrderNumber,
+        expiresAt: row.input.expiresAt,
+        quantityReceived: row.quantityReceived,
+        quantityAvailable: row.quantityReceived,
+        unitOrderPriceCents: row.unitOrderPriceCents,
+        unitSalePriceCents: row.unitSalePriceCents,
+        notes: row.input.notes,
+        status: "active" as const,
+      },
+    };
+  });
+
+  const readyBatchRows = batchRows.filter((row): row is NonNullable<typeof row> => Boolean(row));
+  if (readyBatchRows.length === 0) {
+    return;
+  }
+
+  const insertedBatches = await tx
+    .insert(inventoryBatches)
+    .values(readyBatchRows.map((row) => row.values))
+    .onConflictDoNothing()
+    .returning({
+      id: inventoryBatches.id,
+      batchNumber: inventoryBatches.batchNumber,
+      productId: inventoryBatches.productId,
+    });
+
+  const batchIdByProductAndLower = new Map<string, { id: string; batchNumber: string }>();
+  for (const batch of insertedBatches) {
+    batchIdByProductAndLower.set(`${batch.productId}::${batch.batchNumber.toLowerCase()}`, {
+      id: batch.id,
+      batchNumber: batch.batchNumber,
+    });
+  }
+
+  const insertedIndexes: number[] = [];
+  for (const { index, row } of readyBatchRows) {
+    const product = lookups.productByLower.get(row.productNameLower);
+    if (!product) {
+      failBulkBatchResult(results, index, BULK_RETRY_ERROR);
+      continue;
+    }
+
+    const batch = batchIdByProductAndLower.get(`${product.id}::${row.batchLower}`);
+    if (!batch) {
+      failBulkBatchResult(results, index, BULK_BATCH_EXISTS_ERROR);
+      continue;
+    }
+
+    insertedIndexes.push(index);
+  }
+
+  if (insertedIndexes.length === 0) {
+    return;
+  }
+
+  const transactionRows = insertedIndexes.flatMap((index) => {
+    const row = rows[index];
+    const product = lookups.productByLower.get(row.productNameLower);
+    if (!product) {
+      failBulkBatchResult(results, index, BULK_RETRY_ERROR);
+      return [];
+    }
+
+    const batch = batchIdByProductAndLower.get(`${product.id}::${row.batchLower}`);
+    if (!batch) {
+      failBulkBatchResult(results, index, BULK_RETRY_ERROR);
+      return [];
+    }
+
+    return [
+      {
+        organizationId: context.organization.id,
+        branchId,
+        productId: product.id,
+        batchId: batch.id,
+        performedByUserId: context.user.id,
+        transactionType: "receipt" as const,
+        quantityDelta: row.quantityReceived,
+        unitOrderPriceCents: row.unitOrderPriceCents,
+        referenceType: "inventory_batch" as const,
+        referenceId: batch.id,
+        note: row.input.notes ?? "Initial batch receipt",
+      },
+    ];
+  });
+
+  if (transactionRows.length > 0) {
+    await tx.insert(inventoryTransactions).values(transactionRows);
+  }
+
+  for (const index of insertedIndexes) {
+    const row = rows[index];
+    const product = lookups.productByLower.get(row.productNameLower);
+    const batch = product
+      ? batchIdByProductAndLower.get(`${product.id}::${row.batchLower}`)
+      : undefined;
+
+    if (!product || !batch) {
+      failBulkBatchResult(results, index, BULK_RETRY_ERROR);
+      continue;
+    }
+
+    succeedBulkBatchResult(results, index, {
+      id: batch.id,
+      batchNumber: batch.batchNumber,
+      productName: product.name,
+    });
+  }
+}
+
+function getUniqueViolationConstraint(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return undefined;
+  }
+
+  const constraint =
+    "constraint" in error && typeof error.constraint === "string"
+      ? error.constraint
+      : "constraint_name" in error && typeof error.constraint_name === "string"
+        ? error.constraint_name
+        : undefined;
+
+  const code = "code" in error && typeof error.code === "string" ? error.code : undefined;
+  return code === "23505" ? constraint : undefined;
+}
+
+async function mapBulkUniqueViolationToResults(
+  context: AuthContext,
+  rows: BulkCreateBatchRow[],
+  error: unknown,
+): Promise<StockCreateBatchesResult[] | null> {
+  const constraint = getUniqueViolationConstraint(error);
+  if (!constraint) {
+    return null;
+  }
+
+  if (constraint === "products_org_barcode_unique") {
+    const barcodeValues = Array.from(
+      new Set(rows.map((row) => row.barcodeNorm).filter((value): value is string => Boolean(value))),
+    );
+    if (barcodeValues.length === 0) {
+      return rows.map(() => ({ ok: false, error: BULK_RETRY_ERROR }));
+    }
+
+    const owners = await db
+      .select({ id: products.id, name: products.name, barcode: products.barcode })
+      .from(products)
+      .where(and(eq(products.organizationId, context.organization.id), inArray(products.barcode, barcodeValues)));
+
+    const ownerByBarcode = new Map(
+      owners
+        .filter((product) => product.barcode)
+        .map((product) => [String(product.barcode), { id: product.id, name: product.name.toLowerCase(), label: product.name }]),
+    );
+
+    return rows.map((row) => {
+      const owner = row.barcodeNorm ? ownerByBarcode.get(row.barcodeNorm) : undefined;
+      if (owner && owner.name !== row.productNameLower) {
+        return { ok: false, error: `This barcode is already assigned to “${owner.label}”.` };
+      }
+
+      return { ok: false, error: BULK_RETRY_ERROR };
+    });
+  }
+
+  if (
+    constraint === "inventory_batches_branch_product_batch_unique" ||
+    constraint === "inventory_batches_branch_product_lower_batch_idx"
+  ) {
+    const branch = await resolveBranch(db, context, getBulkBranchPreference(rows));
+    const productLower = Array.from(new Set(rows.map((row) => row.productNameLower)));
+    const productsByName = await db
+      .select({ id: products.id, name: products.name })
+      .from(products)
+      .where(and(eq(products.organizationId, context.organization.id), inArray(sql`lower(${products.name})`, productLower)));
+
+    const productIdByLower = new Map(productsByName.map((product) => [product.name.toLowerCase(), product.id]));
+    const desiredProductIds = Array.from(new Set(productIdByLower.values()));
+    const desiredBatchLower = Array.from(new Set(rows.map((row) => row.batchLower)));
+
+    const existing = desiredProductIds.length
+      ? await db
+          .select({
+            productId: inventoryBatches.productId,
+            batchLower: sql`lower(${inventoryBatches.batchNumber})`.as("batchLower"),
+          })
+          .from(inventoryBatches)
+          .where(
+            and(
+              eq(inventoryBatches.organizationId, context.organization.id),
+              eq(inventoryBatches.branchId, branch.id),
+              inArray(inventoryBatches.productId, desiredProductIds),
+              inArray(sql`lower(${inventoryBatches.batchNumber})`, desiredBatchLower),
+            ),
+          )
+      : [];
+
+    const existingPairs = new Set(existing.map((batch) => `${batch.productId}::${String(batch.batchLower)}`));
+    return rows.map((row) => {
+      const productId = productIdByLower.get(row.productNameLower);
+      if (productId && existingPairs.has(`${productId}::${row.batchLower}`)) {
+        return { ok: false, error: BULK_BATCH_EXISTS_ERROR };
+      }
+
+      return { ok: false, error: BULK_RETRY_ERROR };
+    });
+  }
+
+  return null;
 }
 
 export class StockRepositoryImpl implements StockRepository {
@@ -903,6 +1711,82 @@ export class StockRepositoryImpl implements StockRepository {
 
       return result;
     });
+  }
+
+  async createBatches(context: AuthContext, inputs: CreateStockBatchesInput) {
+    if (inputs.length === 0) {
+      return [];
+    }
+
+    const normalized = normalizeCreateBatchRows(inputs);
+    const results = createBulkBatchResultStates(normalized.length);
+    markInPayloadConflicts(normalized, results);
+
+    try {
+      return await db.transaction(async (tx) => {
+        const branch = await resolveBulkBatchBranch(tx, context, normalized, results);
+        const initialIndexes = getPendingBulkBatchIndexes(results);
+        if (initialIndexes.length === 0) {
+          return finalizeBulkBatchResults(results);
+        }
+
+        const lookups = await loadBulkBatchLookups(tx, context.organization.id, normalized, initialIndexes);
+        markPersistedBarcodeConflicts(normalized, lookups, initialIndexes, results);
+
+        const reconciliationIndexes = getPendingBulkBatchIndexes(results);
+        if (reconciliationIndexes.length === 0) {
+          return finalizeBulkBatchResults(results);
+        }
+
+        await reconcileProducts(
+          tx,
+          context.organization.id,
+          normalized,
+          reconciliationIndexes,
+          lookups,
+          results,
+        );
+
+        const duplicateCheckIndexes = getPendingBulkBatchIndexes(results);
+        if (duplicateCheckIndexes.length === 0) {
+          return finalizeBulkBatchResults(results);
+        }
+
+        await detectExistingBatchConflicts(
+          tx,
+          context.organization.id,
+          branch.id,
+          normalized,
+          lookups,
+          duplicateCheckIndexes,
+          results,
+        );
+
+        const insertIndexes = getPendingBulkBatchIndexes(results);
+        if (insertIndexes.length === 0) {
+          return finalizeBulkBatchResults(results);
+        }
+
+        await insertBatchesAndTransactions(
+          tx,
+          context,
+          branch.id,
+          normalized,
+          lookups,
+          insertIndexes,
+          results,
+        );
+
+        return finalizeBulkBatchResults(results);
+      });
+    } catch (error) {
+      const mapped = await mapBulkUniqueViolationToResults(context, normalized, error);
+      if (mapped) {
+        return mapped;
+      }
+
+      throw error;
+    }
   }
 
   async getBatchById(

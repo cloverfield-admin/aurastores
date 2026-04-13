@@ -819,7 +819,7 @@ export function NewSaleContent() {
                             disabled={salesCatalogQuery.isLoading}
                             className="inline-flex shrink-0 items-center justify-center rounded-xl border border-[#e2e8f0] bg-white px-2.5 py-2 text-[#006a65] transition hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-50"
                             aria-label="Scan barcode for this line"
-                            title="Scan barcode"
+                            title=""
                           >
                             <span className="material-symbols-outlined notranslate text-xl">
                               barcode_scanner

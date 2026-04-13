@@ -39,6 +39,8 @@ export const createStockBatchSchema = z.object({
   notes: optionalText(1_000),
 });
 
+export const createStockBatchesSchema = z.array(createStockBatchSchema).min(1).max(50);
+
 export const disposeStockBatchSchema = z.object({
   branchId: z.string().uuid().optional(),
   note: optionalText(500),
@@ -54,5 +56,6 @@ export const stockAdjustmentSchema = z.object({
 });
 
 export type CreateStockBatchInput = z.infer<typeof createStockBatchSchema>;
+export type CreateStockBatchesInput = z.infer<typeof createStockBatchesSchema>;
 export type DisposeStockBatchInput = z.infer<typeof disposeStockBatchSchema>;
 export type StockAdjustmentInput = z.infer<typeof stockAdjustmentSchema>;

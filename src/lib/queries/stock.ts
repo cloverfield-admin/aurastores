@@ -147,12 +147,21 @@ export type CreateStockBatchPayload = {
   notes?: string;
 };
 
+export type CreateStockBatchResult =
+  | { ok: true; data: { id: string; batchNumber: string; productName: string } }
+  | { ok: false; error: string };
+
 export type StockAdjustmentPayload = {
   branchId?: string;
   batchIds: string[];
   quantityDelta: number;
   note?: string;
 };
+
+function toErrorMessage(err: unknown) {
+  return err instanceof Error ? err.message : "Request failed.";
+}
+
 
 type StockDashboardQueryOptions = {
   branchId?: string;
@@ -285,6 +294,50 @@ export function useCreateStockBatchMutation() {
         },
         body: JSON.stringify(payload),
       }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: stockDashboardQueryKey });
+      void queryClient.invalidateQueries({
+        queryKey: stockCatalogQueryKey,
+        refetchType: "none",
+      });
+      void queryClient.invalidateQueries({
+        queryKey: stockBranchesQueryKey,
+        refetchType: "none",
+      });
+      void queryClient.invalidateQueries({
+        queryKey: stockProductSuggestQueryKey,
+        refetchType: "none",
+      });
+    },
+    meta: {
+      suppressGlobalLoading: true,
+    },
+  });
+}
+
+export function useCreateStockBatchesMutation(options?: { concurrency?: number }) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payloads: CreateStockBatchPayload[]) => {
+      try {
+        const response = await fetchJson<{
+          results: CreateStockBatchResult[];
+          okCount: number;
+          failCount: number;
+        }>(apiUrl("/stock/batches/bulk"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payloads),
+        });
+        return response.results;
+      } catch (err) {
+        const message = toErrorMessage(err);
+        return payloads.map(() => ({ ok: false, error: message }) satisfies CreateStockBatchResult);
+      }
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: stockDashboardQueryKey });
       void queryClient.invalidateQueries({

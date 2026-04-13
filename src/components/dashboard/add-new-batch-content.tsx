@@ -441,7 +441,7 @@ export function AddNewBatchContent() {
                       >
                         {isBarcodeLookupPending ? "progress_activity" : "barcode_scanner"}
                       </span>
-                      {isBarcodeLookupPending ? "Looking up..." : "Scan Barcode"}
+                      {isBarcodeLookupPending ? "Looking up..." : ""}
                     </button>
                   </div>
                   <p className="mt-2 text-[11px] text-[#6c7a78]">
