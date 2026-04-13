@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   date,
@@ -160,6 +161,9 @@ export const sales = pgTable(
       table.organizationId,
       table.saleNumber,
     ),
+    orgCompletedCreatedIdx: index("sales_org_completed_created_idx")
+      .on(table.organizationId, table.createdAt)
+      .where(sql`${table.status} = 'completed'`),
     branchCreatedIdx: index("sales_branch_created_idx").on(table.branchId, table.createdAt),
     orgBranchStatusCreatedIdx: index("sales_org_branch_status_created_idx").on(
       table.organizationId,

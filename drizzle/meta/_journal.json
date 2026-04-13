@@ -50,6 +50,13 @@
       "when": 1776038676381,
       "tag": "0006_harsh_revanche",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1776040671434,
+      "tag": "0007_redundant_johnny_storm",
+      "breakpoints": true
     }
   ]
 }

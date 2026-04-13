@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   date,
@@ -167,6 +168,9 @@ export const inventoryBatches = pgTable(
       table.branchId,
       table.expiresAt,
     ),
+    orgBranchEligibleExpiryIdx: index("inventory_batches_org_branch_eligible_expiry_idx")
+      .on(table.organizationId, table.branchId, table.expiresAt)
+      .where(sql`${table.status} <> 'disposed' and ${table.quantityAvailable} > 0`),
     orgBranchProductStatusExpiryIdx: index("inventory_batches_org_branch_product_status_expiry_idx").on(
       table.organizationId,
       table.branchId,

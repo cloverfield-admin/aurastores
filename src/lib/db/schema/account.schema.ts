@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   index,
@@ -113,6 +114,9 @@ export const organizationMemberships = pgTable(
       table.organizationId,
       table.userId,
     ),
+    activeOrganizationIdx: index("organization_memberships_active_org_idx")
+      .on(table.organizationId)
+      .where(sql`${table.status} <> 'removed'`),
     organizationIdx: index("organization_memberships_org_idx").on(table.organizationId),
     userIdx: index("organization_memberships_user_idx").on(table.userId),
   }),
