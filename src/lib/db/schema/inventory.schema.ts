@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   date,
@@ -55,6 +56,10 @@ export const productCategories = pgTable(
       table.organizationId,
       table.name,
     ),
+    orgLowerNameIdx: index("product_categories_org_lower_name_idx").on(
+      table.organizationId,
+      sql`lower(${table.name})`,
+    ),
   }),
 );
 
@@ -85,6 +90,10 @@ export const suppliers = pgTable(
   (table) => ({
     orgNameUnique: uniqueIndex("suppliers_org_name_unique").on(table.organizationId, table.name),
     organizationIdx: index("suppliers_org_idx").on(table.organizationId),
+    orgLowerNameIdx: index("suppliers_org_lower_name_idx").on(
+      table.organizationId,
+      sql`lower(${table.name})`,
+    ),
   }),
 );
 
@@ -120,6 +129,11 @@ export const products = pgTable(
       table.barcode,
     ),
     organizationIdx: index("products_org_idx").on(table.organizationId),
+    orgNameIdx: index("products_org_name_idx").on(table.organizationId, table.name),
+    orgLowerNameIdx: index("products_org_lower_name_idx").on(
+      table.organizationId,
+      sql`lower(${table.name})`,
+    ),
     categoryIdx: index("products_category_idx").on(table.categoryId),
   }),
 );
@@ -145,7 +159,7 @@ export const inventoryBatches = pgTable(
     expiresAt: date("expires_at").notNull(),
     quantityReceived: integer("quantity_received").notNull(),
     quantityAvailable: integer("quantity_available").notNull(),
-    unitCostCents: integer("unit_cost_cents").notNull(),
+    unitOrderPriceCents: integer("unit_order_price_cents").notNull(),
     unitSalePriceCents: integer("unit_sale_price_cents"),
     status: batchStatusEnum("status").notNull().default("active"),
     notes: text("notes"),
@@ -161,10 +175,30 @@ export const inventoryBatches = pgTable(
     branchStatusIdx: index("inventory_batches_branch_status_idx").on(table.branchId, table.status),
     productIdx: index("inventory_batches_product_idx").on(table.productId),
     expiryIdx: index("inventory_batches_expiry_idx").on(table.expiresAt),
+    orgBranchCreatedIdx: index("inventory_batches_org_branch_created_idx").on(
+      table.organizationId,
+      table.branchId,
+      table.createdAt,
+    ),
     orgBranchExpiryIdx: index("inventory_batches_org_branch_expiry_idx").on(
       table.organizationId,
       table.branchId,
       table.expiresAt,
+    ),
+    orgBranchEligibleExpiryIdx: index("inventory_batches_org_branch_eligible_expiry_idx")
+      .on(table.organizationId, table.branchId, table.expiresAt)
+      .where(sql`${table.status} <> 'disposed' and ${table.quantityAvailable} > 0`),
+    orgBranchProductStatusExpiryIdx: index("inventory_batches_org_branch_product_status_expiry_idx").on(
+      table.organizationId,
+      table.branchId,
+      table.productId,
+      table.status,
+      table.expiresAt,
+    ),
+    branchProductLowerBatchIdx: uniqueIndex("inventory_batches_branch_product_lower_batch_idx").on(
+      table.branchId,
+      table.productId,
+      sql`lower(${table.batchNumber})`,
     ),
   }),
 );
@@ -188,7 +222,7 @@ export const inventoryTransactions = pgTable(
     }),
     transactionType: inventoryTransactionTypeEnum("transaction_type").notNull(),
     quantityDelta: integer("quantity_delta").notNull(),
-    unitCostCents: integer("unit_cost_cents"),
+    unitOrderPriceCents: integer("unit_order_price_cents"),
     referenceType: varchar("reference_type", { length: 32 }),
     referenceId: uuid("reference_id"),
     note: text("note"),

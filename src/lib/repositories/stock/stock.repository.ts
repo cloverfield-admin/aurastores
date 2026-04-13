@@ -1,5 +1,9 @@
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
-import type { CreateStockBatchInput, StockAdjustmentInput } from "@/lib/validation/stock";
+import type {
+  CreateStockBatchInput,
+  CreateStockBatchesInput,
+  StockAdjustmentInput,
+} from "@/lib/validation/stock";
 
 type StockBranchContext = {
   id: string;
@@ -49,7 +53,7 @@ export type StockDashboardData = {
     quantityAvailable: number;
     quantityReceived: number;
     stockProgressPercent: number;
-    unitCostCents: number;
+    unitOrderPriceCents: number;
     unitSalePriceCents: number | null;
     status: "active" | "expiring_soon" | "expired" | "disposed" | "depleted";
     canDispose: boolean;
@@ -115,7 +119,7 @@ export type StockBatchDetail = {
   expiresAt: string;
   quantityReceived: number;
   quantityAvailable: number;
-  unitCostCents: number;
+  unitOrderPriceCents: number;
   unitSalePriceCents: number | null;
   status: string;
   notes: string | null;
@@ -145,6 +149,12 @@ export type StockAdjustBatchesResult = {
   }>;
 };
 
+export type StockCreateBatchResult = { id: string; batchNumber: string; productName: string };
+
+export type StockCreateBatchesResult =
+  | { ok: true; data: StockCreateBatchResult }
+  | { ok: false; error: string };
+
 export interface StockRepository {
   getDashboard(
     context: AuthContext,
@@ -163,7 +173,11 @@ export interface StockRepository {
   createBatch(
     context: AuthContext,
     input: CreateStockBatchInput,
-  ): Promise<{ id: string; batchNumber: string; productName: string }>;
+  ): Promise<StockCreateBatchResult>;
+  createBatches(
+    context: AuthContext,
+    inputs: CreateStockBatchesInput,
+  ): Promise<StockCreateBatchesResult[]>;
   getBatchById(context: AuthContext, batchId: string): Promise<StockBatchDetail | null>;
   disposeBatch(
     context: AuthContext,

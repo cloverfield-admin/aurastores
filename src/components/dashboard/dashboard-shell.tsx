@@ -173,9 +173,6 @@ export function DashboardShell({ children }: DashboardShellProps) {
     router.replace(next ? `${pathname}?${next}` : pathname);
   }
 
-  const SALES_TABS = ["Overview", "Analytics", "Reports"] as const;
-  const [salesTab, setSalesTab] = useState<(typeof SALES_TABS)[number]>("Overview");
-
   const preservedBranch = searchParams.get("branch") ?? undefined;
 
   function navHref(base: string) {
@@ -494,28 +491,6 @@ export function DashboardShell({ children }: DashboardShellProps) {
                     ariaLabel: "Active branch context",
                     onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
                   })}
-                  <nav
-                    className="flex min-w-0 max-w-full items-center gap-4 overflow-x-auto overscroll-x-contain pb-0.5 sm:gap-6"
-                    aria-label="Sales sections"
-                  >
-                    {SALES_TABS.map((tab) => {
-                      const active = tab === salesTab;
-                      return (
-                        <button
-                          key={tab}
-                          type="button"
-                          onClick={() => setSalesTab(tab)}
-                          className={`pb-1.5 pt-1 font-[family-name:var(--font-manrope)] text-sm ${
-                            active
-                              ? "border-b-2 border-[#14b8a6] font-semibold text-[#0d9488]"
-                              : "font-normal text-[#64748b] hover:text-[#0f172a]"
-                          }`}
-                        >
-                          {tab}
-                        </button>
-                      );
-                    })}
-                  </nav>
                   <label className="relative block w-full min-w-0">
                     <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
                       search
@@ -621,28 +596,6 @@ export function DashboardShell({ children }: DashboardShellProps) {
                     ariaLabel: "Active branch context",
                     onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
                   })}
-                  <nav
-                    className="flex min-w-0 max-w-full items-center gap-4 overflow-x-auto overscroll-x-contain pb-0.5 sm:gap-6"
-                    aria-label="Sales sections"
-                  >
-                    {SALES_TABS.map((tab) => {
-                      const active = tab === salesTab;
-                      return (
-                        <button
-                          key={tab}
-                          type="button"
-                          onClick={() => setSalesTab(tab)}
-                          className={`pb-1.5 pt-1 font-[family-name:var(--font-manrope)] text-sm ${
-                            active
-                              ? "border-b-2 border-[#14b8a6] font-semibold text-[#0d9488]"
-                              : "font-normal text-[#64748b] hover:text-[#0f172a]"
-                          }`}
-                        >
-                          {tab}
-                        </button>
-                      );
-                    })}
-                  </nav>
                 </>
               ) : (
                 <>

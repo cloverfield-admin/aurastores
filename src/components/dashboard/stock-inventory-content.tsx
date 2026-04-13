@@ -516,6 +516,13 @@ export function StockInventoryContent() {
               Refresh Inventory
             </button>
             <Link
+              href={ROUTES.dashboard.stockBulkAdd}
+              className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-base font-semibold text-[#191c1e] shadow-sm ring-1 ring-[rgba(187,201,199,0.25)] transition hover:bg-[#f8fafc]"
+            >
+              <span className="material-symbols-outlined notranslate text-lg">playlist_add</span>
+              Bulk Add
+            </Link>
+            <Link
               href={ROUTES.dashboard.stockAdd}
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-5 py-2.5 text-base font-semibold text-white shadow-sm transition hover:opacity-95"
             >
