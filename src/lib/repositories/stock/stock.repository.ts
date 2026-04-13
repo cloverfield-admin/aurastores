@@ -49,7 +49,7 @@ export type StockDashboardData = {
     quantityAvailable: number;
     quantityReceived: number;
     stockProgressPercent: number;
-    unitCostCents: number;
+    unitOrderPriceCents: number;
     unitSalePriceCents: number | null;
     status: "active" | "expiring_soon" | "expired" | "disposed" | "depleted";
     canDispose: boolean;
@@ -115,7 +115,7 @@ export type StockBatchDetail = {
   expiresAt: string;
   quantityReceived: number;
   quantityAvailable: number;
-  unitCostCents: number;
+  unitOrderPriceCents: number;
   unitSalePriceCents: number | null;
   status: string;
   notes: string | null;

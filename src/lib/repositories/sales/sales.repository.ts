@@ -16,6 +16,10 @@ export type SalesDashboardData = {
   metrics: {
     totalRevenueCents: number;
     previousRevenueCents: number;
+    totalCogsCents: number;
+    previousCogsCents: number;
+    grossProfitCents: number;
+    previousGrossProfitCents: number;
     totalSalesCount: number;
     averageOrderValueCents: number;
     unitsSoldLast30Days: number;

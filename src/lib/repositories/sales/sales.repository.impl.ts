@@ -142,7 +142,16 @@ export class SalesRepositoryImpl implements SalesRepository {
     const trendBucketExpr =
       sql<number>`floor(extract(epoch from (${sales.createdAt} - ${trendWindowStartLiteral})) / 604800)::int`;
 
-    const [metricsRows, topProductsRows, recentRows, branchRevenueRows, soldUnitsRows, trendRevenueRows, trendUnitsRows] =
+    const [
+      metricsRows,
+      cogsRows,
+      topProductsRows,
+      recentRows,
+      branchRevenueRows,
+      soldUnitsRows,
+      trendRevenueRows,
+      trendUnitsRows,
+    ] =
       await Promise.all([
         db
           .select({
@@ -156,6 +165,24 @@ export class SalesRepositoryImpl implements SalesRepository {
               sql<number>`coalesce(round(avg(${sales.totalCents}) filter (where ${sales.createdAt} >= ${thirtyDaysAgoIso}::timestamptz)), 0)::int`,
           })
           .from(sales)
+          .where(
+            and(
+              eq(sales.organizationId, context.organization.id),
+              eq(sales.branchId, branch.id),
+              eq(sales.status, "completed"),
+              sql`${sales.createdAt} >= ${sixtyDaysAgoIso}::timestamptz`,
+            ),
+          ),
+        db
+          .select({
+            totalCogsCents:
+              sql<number>`coalesce(sum(${saleItems.quantity} * ${inventoryBatches.unitOrderPriceCents}) filter (where ${sales.createdAt} >= ${thirtyDaysAgoIso}::timestamptz), 0)::int`,
+            previousCogsCents:
+              sql<number>`coalesce(sum(${saleItems.quantity} * ${inventoryBatches.unitOrderPriceCents}) filter (where ${sales.createdAt} >= ${sixtyDaysAgoIso}::timestamptz and ${sales.createdAt} < ${thirtyDaysAgoIso}::timestamptz), 0)::int`,
+          })
+          .from(saleItems)
+          .innerJoin(sales, eq(saleItems.saleId, sales.id))
+          .innerJoin(inventoryBatches, eq(saleItems.batchId, inventoryBatches.id))
           .where(
             and(
               eq(sales.organizationId, context.organization.id),
@@ -270,6 +297,10 @@ export class SalesRepositoryImpl implements SalesRepository {
       totalSalesCount: 0,
       averageOrderValueCents: 0,
     };
+    const cogsMetrics = cogsRows[0] ?? {
+      totalCogsCents: 0,
+      previousCogsCents: 0,
+    };
     const topTotal = topProductsRows.reduce((sum, row) => sum + row.amountCents, 0);
     const branchTotalRevenue = branchRevenueRows.reduce((sum, row) => sum + row.amountCents, 0);
     const dateLabelFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit" });
@@ -298,6 +329,10 @@ export class SalesRepositoryImpl implements SalesRepository {
       metrics: {
         totalRevenueCents: metrics.totalRevenueCents,
         previousRevenueCents: metrics.previousRevenueCents,
+        totalCogsCents: cogsMetrics.totalCogsCents,
+        previousCogsCents: cogsMetrics.previousCogsCents,
+        grossProfitCents: metrics.totalRevenueCents - cogsMetrics.totalCogsCents,
+        previousGrossProfitCents: metrics.previousRevenueCents - cogsMetrics.previousCogsCents,
         totalSalesCount: metrics.totalSalesCount,
         averageOrderValueCents: metrics.averageOrderValueCents,
         unitsSoldLast30Days: soldUnitsRows[0]?.unitsSold ?? 0,
@@ -466,6 +501,7 @@ export class SalesRepositoryImpl implements SalesRepository {
                 quantityAvailable: inventoryBatches.quantityAvailable,
                 expiresAt: inventoryBatches.expiresAt,
                 status: inventoryBatches.status,
+                unitOrderPriceCents: inventoryBatches.unitOrderPriceCents,
               })
               .from(inventoryBatches)
               .where(
@@ -486,6 +522,7 @@ export class SalesRepositoryImpl implements SalesRepository {
                 quantityAvailable: inventoryBatches.quantityAvailable,
                 expiresAt: inventoryBatches.expiresAt,
                 status: inventoryBatches.status,
+                unitOrderPriceCents: inventoryBatches.unitOrderPriceCents,
               })
               .from(inventoryBatches)
               .where(
@@ -570,6 +607,7 @@ export class SalesRepositoryImpl implements SalesRepository {
           batchNumber: batch.batchNumber,
           quantity: item.quantity,
           unitPriceCents,
+          unitOrderPriceCents: batch.unitOrderPriceCents,
           taxRateBps,
           lineSubtotalCents,
           lineTaxCents: taxCents,
@@ -692,7 +730,7 @@ export class SalesRepositoryImpl implements SalesRepository {
             performedByUserId: context.user.id,
             transactionType: "sale" as const,
             quantityDelta: -item.quantity,
-            unitCostCents: item.unitPriceCents,
+            unitOrderPriceCents: item.unitOrderPriceCents,
             referenceType: "sale",
             referenceId: sale.id,
             note: `Sale ${sale.saleNumber}`,

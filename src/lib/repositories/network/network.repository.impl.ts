@@ -1,6 +1,15 @@
 import { and, asc, desc, eq, gt, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { branches, inventoryBatches, inventoryTransactions, organizationMemberships, products, sales, users } from "@/lib/db/schema";
+import {
+  branches,
+  inventoryBatches,
+  inventoryTransactions,
+  organizationMemberships,
+  products,
+  saleItems,
+  sales,
+  users,
+} from "@/lib/db/schema";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 import type {
   NetworkBranchSummary,
@@ -65,9 +74,11 @@ export class NetworkRepositoryImpl implements NetworkRepository {
 
     const [
       salesTotalsRows,
+      cogsTotalsRows,
       staffMetricRows,
       staffPreviewRows,
       branchRevenueRows,
+      branchCogsRows,
       branchUnitsRows,
       branchLowStockRows,
       branchHealthRows,
@@ -85,6 +96,21 @@ export class NetworkRepositoryImpl implements NetworkRepository {
             eq(sales.organizationId, orgId),
             eq(sales.status, "completed"),
             sql`${sales.createdAt} >= ${sixtyDaysAgoIso}::timestamptz`,
+          ),
+        ),
+      db
+        .select({
+          totalCogsCents30d:
+            sql<number>`coalesce(sum(${saleItems.quantity} * ${inventoryBatches.unitOrderPriceCents}), 0)::int`,
+        })
+        .from(saleItems)
+        .innerJoin(sales, eq(saleItems.saleId, sales.id))
+        .innerJoin(inventoryBatches, eq(saleItems.batchId, inventoryBatches.id))
+        .where(
+          and(
+            eq(sales.organizationId, orgId),
+            eq(sales.status, "completed"),
+            sql`${sales.createdAt} >= ${thirtyDaysAgoIso}::timestamptz`,
           ),
         ),
       db
@@ -119,6 +145,23 @@ export class NetworkRepositoryImpl implements NetworkRepository {
           revenueCents30d: sql<number>`coalesce(sum(${sales.totalCents}), 0)::int`,
         })
         .from(sales)
+        .where(
+          and(
+            eq(sales.organizationId, orgId),
+            eq(sales.status, "completed"),
+            sql`${sales.createdAt} >= ${thirtyDaysAgoIso}::timestamptz`,
+          ),
+        )
+        .groupBy(sales.branchId),
+      db
+        .select({
+          branchId: sales.branchId,
+          cogsCents30d:
+            sql<number>`coalesce(sum(${saleItems.quantity} * ${inventoryBatches.unitOrderPriceCents}), 0)::int`,
+        })
+        .from(saleItems)
+        .innerJoin(sales, eq(saleItems.saleId, sales.id))
+        .innerJoin(inventoryBatches, eq(saleItems.batchId, inventoryBatches.id))
         .where(
           and(
             eq(sales.organizationId, orgId),
@@ -171,10 +214,15 @@ export class NetworkRepositoryImpl implements NetworkRepository {
     ]);
 
     const salesTotals = salesTotalsRows[0];
+    const cogsTotals = cogsTotalsRows[0];
     const staffMetrics = staffMetricRows[0];
     const revenueByBranchId = numberByBranchId(
       branchRevenueRows,
       (row) => Number(row.revenueCents30d ?? 0),
+    );
+    const cogsByBranchId = numberByBranchId(
+      branchCogsRows,
+      (row) => Number(row.cogsCents30d ?? 0),
     );
     const unitsByBranchId = numberByBranchId(
       branchUnitsRows,
@@ -201,21 +249,30 @@ export class NetworkRepositoryImpl implements NetworkRepository {
 
     const totalRevenueCents30d = Number(salesTotals?.totalRevenueCents30d ?? 0);
     const previousRevenueCents30d = Number(salesTotals?.previousRevenueCents30d ?? 0);
+    const totalCogsCents30d = Number(cogsTotals?.totalCogsCents30d ?? 0);
+    const totalGrossProfitCents30d = totalRevenueCents30d - totalCogsCents30d;
     const activeStaffCount = Number(staffMetrics?.activeStaffCount ?? 0);
     const totalStaffCount = Number(staffMetrics?.totalStaffCount ?? 0);
     const staffPreviewNames = staffPreviewRows.map((row) => row.fullName);
 
-    const branchSummaries: NetworkBranchSummary[] = branchRows.map((branch) => ({
-      id: branch.id,
-      name: branch.name,
-      isPrimary: branch.isPrimary,
-      branchStatus: branch.status,
-      revenueCents30d: revenueByBranchId.get(branch.id) ?? 0,
-      lowStockSkuCount: lowStockByBranchId.get(branch.id) ?? 0,
-      healthyBatchRatio: healthByBranchId.get(branch.id)?.healthyBatchRatio ?? 0,
-      unitsSold30d: unitsByBranchId.get(branch.id) ?? 0,
-      leadPharmacistName: branch.leadPharmacistName ?? null,
-    }));
+    const branchSummaries: NetworkBranchSummary[] = branchRows.map((branch) => {
+      const revenueCents30d = revenueByBranchId.get(branch.id) ?? 0;
+      const cogsCents30d = cogsByBranchId.get(branch.id) ?? 0;
+
+      return {
+        id: branch.id,
+        name: branch.name,
+        isPrimary: branch.isPrimary,
+        branchStatus: branch.status,
+        revenueCents30d,
+        cogsCents30d,
+        grossProfitCents30d: revenueCents30d - cogsCents30d,
+        lowStockSkuCount: lowStockByBranchId.get(branch.id) ?? 0,
+        healthyBatchRatio: healthByBranchId.get(branch.id)?.healthyBatchRatio ?? 0,
+        unitsSold30d: unitsByBranchId.get(branch.id) ?? 0,
+        leadPharmacistName: branch.leadPharmacistName ?? null,
+      };
+    });
 
     const totalLowStockSkuCount = branchSummaries.reduce((s, b) => s + b.lowStockSkuCount, 0);
     const healthyBatchRatioAvg =
@@ -229,6 +286,8 @@ export class NetworkRepositoryImpl implements NetworkRepository {
       totals: {
         totalRevenueCents30d,
         previousRevenueCents30d,
+        totalCogsCents30d,
+        totalGrossProfitCents30d,
         totalLowStockSkuCount,
         healthyBatchRatioAvg,
         activeStaffCount,

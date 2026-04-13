@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/api/client";
 import { apiUrl } from "@/lib/api/version";
 
@@ -25,7 +25,7 @@ export type StockBatchDetailResponse = {
   expiresAt: string;
   quantityReceived: number;
   quantityAvailable: number;
-  unitCostCents: number;
+  unitOrderPriceCents: number;
   unitSalePriceCents: number | null;
   status: string;
   notes: string | null;
@@ -92,7 +92,7 @@ export type StockDashboardResponse = {
     quantityAvailable: number;
     quantityReceived: number;
     stockProgressPercent: number;
-    unitCostCents: number;
+    unitOrderPriceCents: number;
     unitSalePriceCents: number | null;
     status: "active" | "expiring_soon" | "expired" | "disposed" | "depleted";
     canDispose: boolean;
@@ -139,11 +139,11 @@ export type CreateStockBatchPayload = {
   batchNumber: string;
   expiresAt: string;
   quantityReceived: number;
-  unitCost: number;
+  unitOrderPrice: number;
   supplierName?: string;
   categoryName?: string;
   purchaseOrderNumber?: string;
-  unitSalePrice?: number;
+  unitSellingPrice: number;
   notes?: string;
 };
 
@@ -166,6 +166,7 @@ type StockCatalogQueryOptions = {
   branchId?: string;
   /** Omit full product list; use suggest endpoint for autocomplete. */
   includeProducts?: boolean;
+  suppressGlobalLoading?: boolean;
 };
 
 export type StockProductSuggestResponse = {
@@ -201,16 +202,34 @@ export function useStockDashboardQuery({
   });
 }
 
-export function useStockCatalogQuery({ branchId, includeProducts = true }: StockCatalogQueryOptions = {}) {
+export function getStockCatalogQueryOptions({
+  branchId,
+  includeProducts = true,
+  suppressGlobalLoading = false,
+}: StockCatalogQueryOptions = {}) {
   const includeProductsParam = includeProducts ? "1" : "0";
-  return useQuery({
+  return {
     queryKey: [...stockCatalogQueryKey, { branchId, includeProducts }],
     queryFn: () =>
       fetchJson<StockCatalogResponse>(
         `${apiUrl("/stock/catalog")}?branch=${encodeURIComponent(branchId ?? "")}&includeProducts=${includeProductsParam}`,
         { method: "GET" },
       ),
-  });
+    staleTime: 60_000,
+    meta: suppressGlobalLoading
+      ? {
+          suppressGlobalLoading: true,
+        }
+      : undefined,
+  } as const;
+}
+
+export function prefetchStockCatalog(queryClient: QueryClient, options: StockCatalogQueryOptions = {}) {
+  return queryClient.prefetchQuery(getStockCatalogQueryOptions(options));
+}
+
+export function useStockCatalogQuery(options: StockCatalogQueryOptions = {}) {
+  return useQuery(getStockCatalogQueryOptions(options));
 }
 
 export function useStockProductSuggestQuery(q: string) {
@@ -280,6 +299,9 @@ export function useCreateStockBatchMutation() {
         queryKey: stockProductSuggestQueryKey,
         refetchType: "none",
       });
+    },
+    meta: {
+      suppressGlobalLoading: true,
     },
   });
 }

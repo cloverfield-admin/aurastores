@@ -52,6 +52,14 @@ export function SalesPerformanceContent() {
       icon: "payments",
     },
     {
+      label: "Gross Profit",
+      value: currencyFormatter.format((metrics?.grossProfitCents ?? 0) / 100),
+      sub: `COGS ${currencyFormatter.format((metrics?.totalCogsCents ?? 0) / 100)} (30d)`,
+      badge: "30d",
+      badgeClass: "bg-[#eff6ff] text-[#2563eb]",
+      icon: "trending_up",
+    },
+    {
       label: "Total Orders",
       value: (metrics?.totalSalesCount ?? 0).toLocaleString(),
       sub: `Avg. order ${currencyFormatter.format((metrics?.averageOrderValueCents ?? 0) / 100)}`,
@@ -66,14 +74,6 @@ export function SalesPerformanceContent() {
       badge: "Rolling 30d",
       badgeClass: "bg-[#eff6ff] text-[#2563eb]",
       icon: "inventory_2",
-    },
-    {
-      label: "Branch",
-      value: salesDashboardQuery.data?.branch.name ?? "Loading...",
-      sub: "Current sales context",
-      badge: "Scoped",
-      badgeClass: "bg-[#eff6ff] text-[#2563eb]",
-      icon: "storefront",
     },
   ] as const;
 
