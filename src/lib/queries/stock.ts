@@ -2,7 +2,13 @@
 
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/api/client";
+import { postStockAdjustment } from "@/lib/api/offline-requests";
 import { apiUrl } from "@/lib/api/version";
+import { enqueueOutboxEntry } from "@/lib/offline/outbox";
+import { OUTBOX_KIND_STOCK_ADJUSTMENT } from "@/lib/offline/outbox-kinds";
+import { OfflineQueuedError } from "@/lib/offline/offline-queued-error";
+import { isLikelyNetworkError } from "@/lib/offline/network-error";
+import type { StockAdjustmentInput } from "@/lib/validation/stock";
 
 export const stockDashboardQueryKey = ["stock", "dashboard"] as const;
 export const stockCatalogQueryKey = ["stock", "catalog"] as const;
@@ -157,6 +163,8 @@ export type StockAdjustmentPayload = {
   quantityDelta: number;
   note?: string;
 };
+
+export type StockAdjustmentMutationInput = StockAdjustmentPayload & { idempotencyKey?: string };
 
 function toErrorMessage(err: unknown) {
   return err instanceof Error ? err.message : "Request failed.";
@@ -431,26 +439,38 @@ export function useAdjustStockMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: StockAdjustmentPayload) =>
-      fetchJson<{
-        adjustedCount: number;
-        batchIds: string[];
-        productNames: string[];
-        updatedBatches: Array<{
-          id: string;
-          quantityAvailable: number;
-          status: "active" | "expiring_soon" | "expired" | "disposed" | "depleted";
-        }>;
-      }>(
-        apiUrl("/stock/adjustments"),
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        },
-      ),
+    mutationFn: async (input: StockAdjustmentMutationInput) => {
+      const { idempotencyKey: explicitKey, ...payload } = input;
+      const idempotencyKey = explicitKey ?? crypto.randomUUID();
+      const body = payload as StockAdjustmentInput;
+
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        await enqueueOutboxEntry({
+          id: crypto.randomUUID(),
+          feature: "stock",
+          kind: OUTBOX_KIND_STOCK_ADJUSTMENT,
+          payload: body,
+          idempotencyKey,
+        });
+        throw new OfflineQueuedError();
+      }
+
+      try {
+        return await postStockAdjustment(body, { idempotencyKey });
+      } catch (err) {
+        if (isLikelyNetworkError(err)) {
+          await enqueueOutboxEntry({
+            id: crypto.randomUUID(),
+            feature: "stock",
+            kind: OUTBOX_KIND_STOCK_ADJUSTMENT,
+            payload: body,
+            idempotencyKey,
+          });
+          throw new OfflineQueuedError();
+        }
+        throw err;
+      }
+    },
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: stockDashboardQueryKey }),

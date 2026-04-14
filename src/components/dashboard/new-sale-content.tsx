@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BarcodeScannerModal } from "@/components/dashboard/barcode-scanner-modal";
+import { OutboxFeatureStatus } from "@/components/outbox/outbox-detail-dialog";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
+import { isOfflineQueuedError } from "@/lib/offline/offline-queued-error";
 import { useCreateSaleMutation, useSalesCatalogQuery } from "@/lib/queries/sales";
 import { ROUTES } from "@/lib/routes";
 
@@ -339,7 +341,10 @@ export function NewSaleContent() {
       throw new Error("Add at least one valid medication line item.");
     }
 
+    const idempotencyKey = crypto.randomUUID();
+
     return createSaleMutation.mutateAsync({
+      idempotencyKey,
       branchId: branch,
       customerName: customerSearch || undefined,
       patientCode: patientId || undefined,
@@ -648,9 +653,12 @@ export function NewSaleContent() {
                 New Sale
               </span>
             </nav>
-            <h1 className="font-[family-name:var(--font-manrope)] text-2xl font-extrabold tracking-tight text-[#191c1e] sm:text-3xl sm:leading-9 md:text-[30px]">
-              New Sale
-            </h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="font-[family-name:var(--font-manrope)] text-2xl font-extrabold tracking-tight text-[#191c1e] sm:text-3xl sm:leading-9 md:text-[30px]">
+                New Sale
+              </h1>
+              <OutboxFeatureStatus feature="sales" />
+            </div>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
             <button
@@ -1163,6 +1171,15 @@ export function NewSaleContent() {
                           },
                         );
                       } catch (error) {
+                        if (isOfflineQueuedError(error)) {
+                          notify({
+                            variant: "info",
+                            title: "Sale queued for sync",
+                            description:
+                              "You appear to be offline or the network dropped. This sale will upload when you are back online.",
+                          });
+                          return;
+                        }
                         notify({
                           variant: "error",
                           title: "Unable to complete transaction",
@@ -1197,6 +1214,15 @@ export function NewSaleContent() {
                             },
                           );
                         } catch (error) {
+                          if (isOfflineQueuedError(error)) {
+                            notify({
+                              variant: "info",
+                              title: "Draft queued for sync",
+                              description:
+                                "You appear to be offline or the network dropped. This draft will upload when you are back online.",
+                            });
+                            return;
+                          }
                           notify({
                             variant: "error",
                             title: "Unable to save draft",

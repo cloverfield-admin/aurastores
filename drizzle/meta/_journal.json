@@ -71,6 +71,13 @@
       "when": 1776073202752,
       "tag": "0009_rename_unit_cost_to_unit_order_price",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1778000000000,
+      "tag": "0010_idempotency_requests",
+      "breakpoints": true
     }
   ]
 }
