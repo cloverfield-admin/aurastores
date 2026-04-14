@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { OutboxFeatureStatus } from "@/components/outbox/outbox-detail-dialog";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
+import { isOfflineQueuedError } from "@/lib/offline/offline-queued-error";
 import { ROUTES } from "@/lib/routes";
 import {
   useAdjustStockMutation,
@@ -225,6 +227,11 @@ const StockAdjustDialog = memo(function StockAdjustDialog({
                 );
                 window.setTimeout(() => onClose(), 900);
               } catch (submitError) {
+                if (isOfflineQueuedError(submitError)) {
+                  setSuccessMessage("Adjustment queued — it will sync when you are back online.");
+                  window.setTimeout(() => onClose(), 900);
+                  return;
+                }
                 setError(
                   submitError instanceof Error
                     ? submitError.message
@@ -408,7 +415,9 @@ export function StockInventoryContent() {
     }
 
     return withLoading("dashboard-adjust-stock", "Applying stock adjustment...", async () => {
+      const idempotencyKey = crypto.randomUUID();
       const result = await adjustStockMutation.mutateAsync({
+        idempotencyKey,
         branchId,
         batchIds,
         quantityDelta,
@@ -448,9 +457,12 @@ export function StockInventoryContent() {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#006a65]">
               Inventory Management
             </p>
-            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[#191c1e] sm:text-4xl">
-              Stock Inventory
-            </h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[#191c1e] sm:text-4xl">
+                Stock Inventory
+              </h1>
+              <OutboxFeatureStatus feature="stock" />
+            </div>
             <div className="flex items-center gap-2 pt-1">
               <span className="size-2 rounded-full bg-[#22c55e]" aria-hidden />
               <span className="text-xs font-medium text-[#94a3b8]">

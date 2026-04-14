@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withIdempotentMutation } from "@/lib/api/idempotency";
 import { getCurrentAppContext } from "@/lib/auth/session";
 import { services } from "@/lib/di";
 import { createSaleSchema } from "@/lib/validation/sales";
@@ -36,15 +37,17 @@ export async function POST(request: Request) {
     );
   }
 
-  try {
-    const sale = await services.sales.createSale(context, parsed.data);
-    return NextResponse.json(sale, { status: 201 });
-  } catch (error) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Unable to create sale.",
-      },
-      { status: 400 },
-    );
-  }
+  return withIdempotentMutation(request, context.organization.id, "sales:create", parsed.data, async () => {
+    try {
+      const sale = await services.sales.createSale(context, parsed.data);
+      return { status: 201, body: sale };
+    } catch (error) {
+      return {
+        status: 400,
+        body: {
+          error: error instanceof Error ? error.message : "Unable to create sale.",
+        },
+      };
+    }
+  });
 }
