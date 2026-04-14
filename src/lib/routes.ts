@@ -23,6 +23,7 @@ export const ROUTES = {
     sales: "/dashboard/sales",
     salesAdd: "/dashboard/sales/add",
     insights: "/dashboard/insights",
+    productCategories: "/dashboard/product-categories",
     pay: "/dashboard/pay",
     onboarding: {
       root: "/dashboard/onboarding",

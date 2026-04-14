@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { getCurrentAppContext } from "@/lib/auth/session";
 import { services } from "@/lib/di";
-import { addStaffByEmailSchema, listStaffDirectorySchema } from "@/lib/validation/staff";
+import {
+  createProductCategorySchema,
+  listProductCategoriesSchema,
+} from "@/lib/validation/product-categories";
 
 export async function GET(request: Request) {
   const context = await getCurrentAppContext();
@@ -10,8 +13,8 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
-  const parsed = listStaffDirectorySchema.safeParse({
-    q: url.searchParams.get("q") ?? undefined,
+  const parsed = listProductCategoriesSchema.safeParse({
+    includeArchived: url.searchParams.get("includeArchived") ?? undefined,
     page: url.searchParams.get("page") ?? undefined,
     pageSize: url.searchParams.get("pageSize") ?? undefined,
   });
@@ -20,8 +23,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Invalid query.", issues: parsed.error.flatten() }, { status: 400 });
   }
 
-  const result = await services.staff.listDirectory(context, {
-    q: parsed.data.q,
+  const result = await services.productCategories.list(context, {
+    includeArchived: parsed.data.includeArchived,
     page: parsed.data.page,
     pageSize: parsed.data.pageSize,
   });
@@ -35,27 +38,18 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null);
-  const parsed = addStaffByEmailSchema.safeParse(body);
+  const parsed = createProductCategorySchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid payload.", issues: parsed.error.flatten() },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid payload.", issues: parsed.error.flatten() }, { status: 400 });
   }
 
   try {
-    const result = await services.staff.addMemberByEmail(context, {
-      email: parsed.data.email,
-      fullName: parsed.data.fullName,
-      phone: parsed.data.phone ?? null,
-      jobTitle: parsed.data.jobTitle ?? null,
-      appRole: parsed.data.appRole,
-      branchId: parsed.data.branchId ?? null,
-    });
-    return NextResponse.json(result, { status: 201 });
+    const category = await services.productCategories.create(context, parsed.data);
+    return NextResponse.json(category, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not add staff member.";
-    const status = message.includes("No AuraPharma account") || message.includes("already") ? 400 : 500;
+    const message = error instanceof Error ? error.message : "Unable to create category.";
+    const status = message.includes("already exists") ? 409 : 400;
     return NextResponse.json({ error: message }, { status });
   }
 }
+

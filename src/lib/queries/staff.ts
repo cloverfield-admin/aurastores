@@ -21,12 +21,28 @@ export type StaffDirectoryMemberDto = {
 
 type StaffDirectoryResponse = {
   members: StaffDirectoryMemberDto[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+  summary: {
+    total: number;
+    active: number;
+    invited: number;
+    other: number;
+  };
 };
 
-export function useStaffDirectoryQuery() {
+export function useStaffDirectoryQuery(options?: { q?: string; page?: number; pageSize?: number }) {
+  const q = options?.q?.trim() ?? "";
+  const page = Math.max(1, Math.floor(options?.page ?? 1));
+  const pageSize = Math.min(50, Math.max(1, Math.floor(options?.pageSize ?? 10)));
+  const queryString = `q=${encodeURIComponent(q)}&page=${page}&pageSize=${pageSize}`;
   return useQuery({
-    queryKey: staffDirectoryQueryKey,
-    queryFn: () => fetchJson<StaffDirectoryResponse>(apiUrl("/staff"), { method: "GET" }),
+    queryKey: [...staffDirectoryQueryKey, { q, page, pageSize }] as const,
+    queryFn: () => fetchJson<StaffDirectoryResponse>(`${apiUrl("/staff")}?${queryString}`, { method: "GET" }),
   });
 }
 

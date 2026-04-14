@@ -17,6 +17,7 @@ const MODULE_NAV: { label: string; icon: string; href: string }[] = [
   { label: "Aura Sales", icon: "trending_up", href: ROUTES.dashboard.sales },
   { label: "Aura Pay", icon: "payments", href: ROUTES.dashboard.pay },
   { label: "Aura Insights", icon: "insights", href: ROUTES.dashboard.insights },
+  { label: "Product Categories", icon: "category", href: ROUTES.dashboard.productCategories },
   { label: "Staff", icon: "groups", href: ROUTES.dashboard.staff },
 ];
 
@@ -138,6 +139,9 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const isSales = pathname === ROUTES.dashboard.sales || pathname.startsWith(`${ROUTES.dashboard.sales}/`);
   const isInsights =
     pathname === ROUTES.dashboard.insights || pathname.startsWith(`${ROUTES.dashboard.insights}/`);
+  const isProductCategories =
+    pathname === ROUTES.dashboard.productCategories ||
+    pathname.startsWith(`${ROUTES.dashboard.productCategories}/`);
   const isSettings = pathname === ROUTES.settings;
   const isStaff = pathname === ROUTES.dashboard.staff || pathname.startsWith(`${ROUTES.dashboard.staff}/`);
   const isStaffAdd = pathname === ROUTES.dashboard.staffAdd;
@@ -182,6 +186,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const hasMobileToolsPanel =
     !isSettings
     && !isStaffAdd
+    && !isProductCategories
     && (isStaff
       || isInsights
       || isSales
@@ -193,6 +198,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
     ? "Profile & Settings"
     : isStaffAdd
       ? "Add New Staff"
+      : isProductCategories
+        ? "Product Categories"
       : isInsights
         ? "Insights"
         : isSales
@@ -209,7 +216,14 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
   function branchSwitcherNav(opts: { ariaLabel: string; onSelectBranch: (branchId: string) => void }) {
     if (branchesQuery.isPending) {
-      return <span className="text-sm text-[#94a3b8]">Loading branches…</span>;
+      return (
+        <nav
+          className="flex min-w-0 max-w-full flex-wrap items-center gap-x-4 gap-y-2 overflow-x-auto overscroll-x-contain sm:gap-x-6"
+          aria-label={opts.ariaLabel}
+        >
+          <span className="text-sm text-[#94a3b8]">Loading branches…</span>
+        </nav>
+      );
     }
     if (sectionBranchTabs.length === 0) {
       return (
@@ -318,7 +332,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 item.href === ROUTES.dashboard.stock ||
                 item.href === ROUTES.dashboard.sales ||
                 item.href === ROUTES.dashboard.insights ||
-                item.href === ROUTES.dashboard.staff
+                item.href === ROUTES.dashboard.staff ||
+                item.href === ROUTES.dashboard.productCategories
                   ? navHref(item.href)
                   : item.href;
               return (
@@ -569,6 +584,10 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#0f172a] sm:text-lg">
                   Profile & Settings
                 </h1>
+              ) : isProductCategories ? (
+                <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#0f172a] sm:text-lg">
+                  Product Categories
+                </h1>
               ) : isStaffAdd ? (
                 <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#0f172a] sm:text-lg">
                   Add New Staff
@@ -630,7 +649,13 @@ export function DashboardShell({ children }: DashboardShellProps) {
               )}
             </div>
             <div className="flex flex-wrap items-center justify-end gap-3 border-t border-transparent pt-2 sm:border-t-0 sm:pt-0">
-              {!isSales && !isInsights && !isSettings && !isStaff && !isStaffAdd && !isDashboardMain && (
+              {!isSales &&
+                !isInsights &&
+                !isSettings &&
+                !isProductCategories &&
+                !isStaff &&
+                !isStaffAdd &&
+                !isDashboardMain && (
                 <button
                   type="button"
                   onClick={async () => {

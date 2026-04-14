@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BarcodeScannerModal } from "@/components/dashboard/barcode-scanner-modal";
 import { OutboxFeatureStatus } from "@/components/outbox/outbox-detail-dialog";
@@ -34,6 +34,289 @@ const fieldLabel =
   "mb-2 block text-xs font-semibold uppercase tracking-[0.06em] text-[#64748b]";
 const inputClass =
   "w-full rounded-2xl border-0 bg-[#f2f4f6] px-4 py-3.5 text-sm text-[#191c1e] outline-none placeholder:text-[#6b7280] focus:ring-2 focus:ring-[#006a65]/20";
+
+type ProductOption = {
+  id: string;
+  name: string;
+  categoryName?: string;
+};
+
+type MedicationComboboxProps = {
+  id?: string;
+  value: string;
+  products: ProductOption[];
+  disabled?: boolean;
+  placeholder?: string;
+  className?: string;
+  onChange: (nextProductId: string) => void;
+};
+
+function MedicationCombobox({
+  id,
+  value,
+  products,
+  disabled,
+  placeholder = "Select medication",
+  className,
+  onChange,
+}: MedicationComboboxProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listboxId = useId();
+  const selectedName = useMemo(
+    () => products.find((p) => p.id === value)?.name ?? "",
+    [products, value],
+  );
+
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [panelStyle, setPanelStyle] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+  } | null>(null);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return products.slice(0, 75);
+    return products
+      .filter((p) => {
+        const name = p.name.toLowerCase();
+        const category = (p.categoryName ?? "").toLowerCase();
+        return name.includes(q) || category.includes(q);
+      })
+      .slice(0, 75);
+  }, [products, query]);
+
+  const selectProduct = useCallback(
+    (productId: string) => {
+      onChange(productId);
+      setOpen(false);
+      setHighlightedIndex(-1);
+      setPanelStyle(null);
+      inputRef.current?.blur();
+    },
+    [onChange],
+  );
+
+  const updatePanelPosition = useCallback(() => {
+    const inputEl = inputRef.current;
+    if (!inputEl) return;
+
+    const rect = inputEl.getBoundingClientRect();
+    const margin = 8;
+    const minHeight = 180;
+    const preferredMax = 288; // 72 * 4
+    const viewportHeight = window.innerHeight;
+
+    const spaceBelow = viewportHeight - rect.bottom - margin;
+    const spaceAbove = rect.top - margin;
+
+    const openDown = spaceBelow >= Math.min(minHeight, preferredMax) || spaceBelow >= spaceAbove;
+    const maxHeight = Math.max(
+      140,
+      Math.min(preferredMax, openDown ? spaceBelow - margin : spaceAbove - margin),
+    );
+
+    const top = openDown ? rect.bottom + margin : rect.top - margin - maxHeight;
+
+    setPanelStyle({
+      top: Math.max(margin, top),
+      left: Math.max(margin, rect.left),
+      width: rect.width,
+      maxHeight,
+    });
+  }, []);
+
+  useEffect(() => {
+    function onPointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+        setHighlightedIndex(-1);
+        setQuery("");
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [selectedName]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onResizeOrScroll = () => updatePanelPosition();
+    window.addEventListener("resize", onResizeOrScroll);
+    // capture scroll from any scroll container
+    window.addEventListener("scroll", onResizeOrScroll, true);
+    return () => {
+      window.removeEventListener("resize", onResizeOrScroll);
+      window.removeEventListener("scroll", onResizeOrScroll, true);
+    };
+  }, [open, updatePanelPosition]);
+
+  const listActiveIndex =
+    !open || filtered.length === 0
+      ? -1
+      : highlightedIndex < 0
+        ? 0
+        : Math.min(highlightedIndex, filtered.length - 1);
+
+  const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (!open) {
+      if (event.key === "ArrowDown" && !disabled) {
+        event.preventDefault();
+        setOpen(true);
+        setQuery("");
+        setHighlightedIndex(0);
+        updatePanelPosition();
+      }
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setOpen(false);
+      setHighlightedIndex(-1);
+      setQuery("");
+      setPanelStyle(null);
+      inputRef.current?.blur();
+      return;
+    }
+
+    if (filtered.length === 0) {
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setHighlightedIndex((i) => {
+        const base = i < 0 ? -1 : i;
+        return base < filtered.length - 1 ? base + 1 : 0;
+      });
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setHighlightedIndex((i) => {
+        const base = i < 0 ? 0 : i;
+        return base <= 0 ? filtered.length - 1 : base - 1;
+      });
+      return;
+    }
+
+    if (event.key === "Enter" && listActiveIndex >= 0 && listActiveIndex < filtered.length) {
+      event.preventDefault();
+      const hit = filtered[listActiveIndex];
+      if (hit) {
+        selectProduct(hit.id);
+      }
+    }
+  };
+
+  return (
+    <div ref={rootRef} className={`relative min-w-0 ${open ? "z-50" : ""} ${className ?? ""}`}>
+      <div className="relative">
+        <input
+          id={id}
+          ref={inputRef}
+          type="search"
+          value={open ? query : selectedName}
+          disabled={disabled}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+            setHighlightedIndex(0);
+            updatePanelPosition();
+          }}
+          onFocus={() => {
+            if (!disabled) {
+              setOpen(true);
+              setQuery("");
+              setHighlightedIndex(0);
+              updatePanelPosition();
+            }
+          }}
+          onKeyDown={onKeyDown}
+          onBlur={() => {
+            // Defer close to allow option click to register.
+            window.setTimeout(() => {
+              setOpen(false);
+              setHighlightedIndex(-1);
+              setQuery("");
+              setPanelStyle(null);
+            }, 0);
+          }}
+          placeholder={placeholder}
+          autoComplete="off"
+          spellCheck={false}
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listboxId}
+          aria-autocomplete="list"
+          className="min-w-0 w-full rounded-xl border-0 bg-[#f2f4f6] px-3 py-2 pr-10 text-sm text-[#191c1e] outline-none focus:ring-2 focus:ring-[#006a65]/20 disabled:cursor-not-allowed disabled:opacity-60"
+        />
+        <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#64748b]">
+          search
+        </span>
+      </div>
+
+      {open && panelStyle ? (
+        <div
+          id={listboxId}
+          role="listbox"
+          style={{
+            top: panelStyle.top,
+            left: panelStyle.left,
+            width: panelStyle.width,
+            maxHeight: panelStyle.maxHeight,
+          }}
+          className="fixed z-[1000] overflow-auto rounded-xl border border-[#e2e8f0] bg-white py-1 shadow-lg"
+        >
+          {filtered.length === 0 ? (
+            <p className="px-3 py-2.5 text-sm text-[#64748b]">No matches.</p>
+          ) : (
+            filtered.map((product, index) => {
+              const active = index === listActiveIndex;
+              const selected = product.id === value;
+              return (
+                <button
+                  key={product.id}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition ${
+                    active ? "bg-[#f0fdfa]" : "hover:bg-[#f8fafc]"
+                  }`}
+                  onMouseEnter={() => setHighlightedIndex(index)}
+                  onMouseDown={(e) => {
+                    // Prevent input blur from closing before click.
+                    e.preventDefault();
+                  }}
+                  onClick={() => selectProduct(product.id)}
+                >
+                  <span className="min-w-0 flex-1 truncate font-medium text-[#0f172a]">
+                    {product.name}
+                    {product.categoryName ? (
+                      <span className="ml-2 align-middle text-xs font-medium text-[#64748b]">
+                        ({product.categoryName})
+                      </span>
+                    ) : null}
+                  </span>
+                  {selected ? (
+                    <span className="material-symbols-outlined notranslate text-base text-[#006a65]">
+                      check
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export function NewSaleContent() {
   const router = useRouter();
@@ -108,6 +391,14 @@ export function NewSaleContent() {
   const productById = useMemo(() => {
     const entries = (salesCatalogQuery.data?.products ?? []).map((product) => [product.id, product] as const);
     return new Map(entries);
+  }, [salesCatalogQuery.data?.products]);
+
+  const productOptions: ProductOption[] = useMemo(() => {
+    return (salesCatalogQuery.data?.products ?? []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      categoryName: p.categoryName,
+    }));
   }, [salesCatalogQuery.data?.products]);
 
   function getPreferredBatch<T extends { quantityAvailable: number }>(batches: T[]) {
@@ -806,21 +1097,14 @@ export function NewSaleContent() {
                           Medication
                         </label>
                         <div className="flex gap-2">
-                          <select
+                          <MedicationCombobox
                             id={`med-select-${row.id}`}
                             value={row.productId ?? ""}
-                            onChange={(event) => updateItemProduct(row.id, event.target.value)}
-                            className="min-w-0 flex-1 rounded-xl border-0 bg-[#f2f4f6] px-3 py-2 text-sm text-[#191c1e] outline-none focus:ring-2 focus:ring-[#006a65]/20"
-                          >
-                            <option value="" disabled>
-                              Select medication
-                            </option>
-                            {salesCatalogQuery.data?.products.map((product) => (
-                              <option key={product.id} value={product.id}>
-                                {product.name}
-                              </option>
-                            ))}
-                          </select>
+                            products={productOptions}
+                            disabled={salesCatalogQuery.isLoading || salesCatalogQuery.isError}
+                            onChange={(nextId) => updateItemProduct(row.id, nextId)}
+                            className="min-w-0 flex-1"
+                          />
                           <button
                             type="button"
                             onClick={() => setScannerLineId(row.id)}
@@ -901,7 +1185,7 @@ export function NewSaleContent() {
                 })}
               </div>
 
-              <div className="hidden overflow-x-auto overscroll-x-contain rounded-xl border border-[#f1f5f9] md:block">
+              <div className="hidden overflow-x-auto overflow-y-visible overscroll-x-contain rounded-xl border border-[#f1f5f9] md:block">
                 <table className="w-full min-w-[640px] border-collapse text-left">
                   <thead>
                     <tr className="border-b border-[#f1f5f9]">
@@ -934,20 +1218,13 @@ export function NewSaleContent() {
                         <td className="px-4 py-5 align-top">
                           <div className="space-y-2">
                             <div className="flex gap-2">
-                            <select
+                            <MedicationCombobox
                               value={row.productId ?? ""}
-                              onChange={(event) => updateItemProduct(row.id, event.target.value)}
-                              className="min-w-0 flex-1 rounded-xl border-0 bg-[#f2f4f6] px-3 py-2 text-sm text-[#191c1e] outline-none focus:ring-2 focus:ring-[#006a65]/20"
-                            >
-                              <option value="" disabled>
-                                Select medication
-                              </option>
-                              {salesCatalogQuery.data?.products.map((product) => (
-                                <option key={product.id} value={product.id}>
-                                  {product.name}
-                                </option>
-                              ))}
-                            </select>
+                              products={productOptions}
+                              disabled={salesCatalogQuery.isLoading || salesCatalogQuery.isError}
+                              onChange={(nextId) => updateItemProduct(row.id, nextId)}
+                              className="min-w-0 flex-1"
+                            />
                             <button
                               type="button"
                               onClick={() => setScannerLineId(row.id)}

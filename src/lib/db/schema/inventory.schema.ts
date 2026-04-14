@@ -48,16 +48,18 @@ export const productCategories = pgTable(
       .references(() => organizations.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     description: text("description"),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({
-    orgNameUnique: uniqueIndex("product_categories_org_name_unique").on(
-      table.organizationId,
-      table.name,
-    ),
     orgLowerNameIdx: index("product_categories_org_lower_name_idx").on(
       table.organizationId,
+      sql`lower(${table.name})`,
+    ),
+    orgArchivedLowerNameIdx: index("product_categories_org_archived_lower_name_idx").on(
+      table.organizationId,
+      table.archivedAt,
       sql`lower(${table.name})`,
     ),
   }),
