@@ -20,8 +20,25 @@ export type AddStaffByEmailInput = {
   branchId: string | null;
 };
 
+export type Pagination = {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+};
+
+export type StaffDirectorySummary = {
+  total: number;
+  active: number;
+  invited: number;
+  other: number;
+};
+
 export interface StaffRepository {
-  listDirectory(context: AuthContext): Promise<StaffDirectoryMember[]>;
+  listDirectory(
+    context: AuthContext,
+    options?: { q?: string; page?: number; pageSize?: number },
+  ): Promise<{ members: StaffDirectoryMember[]; pagination: Pagination; summary: StaffDirectorySummary }>;
   /** Typeahead search; returns up to `limit` rows matching name or email (case-insensitive). */
   searchDirectory(context: AuthContext, query: string, limit: number): Promise<StaffDirectoryMember[]>;
   addMemberByEmail(context: AuthContext, input: AddStaffByEmailInput): Promise<{ membershipId: string }>;

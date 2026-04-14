@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { OutboxFeatureStatus } from "@/components/outbox/outbox-detail-dialog";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
@@ -255,6 +255,7 @@ const StockAdjustDialog = memo(function StockAdjustDialog({
 });
 
 export function StockInventoryContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { withLoading, notify } = useAuraFeedback();
   const [selectedBatchIds, setSelectedBatchIds] = useState<string[]>([]);
@@ -268,6 +269,9 @@ export function StockInventoryContent() {
   );
   const [search, setSearch] = useState(searchParams.get("q") ?? "");
   const [page, setPage] = useState(Math.max(1, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1));
+  const [pageSize, setPageSize] = useState(
+    Math.min(50, Math.max(1, Number.parseInt(searchParams.get("pageSize") ?? "10", 10) || 10)),
+  );
   const [adjustDialog, setAdjustDialog] = useState<{
     open: boolean;
     batchIds: string[];
@@ -277,7 +281,7 @@ export function StockInventoryContent() {
     batchIds: [],
     label: "",
   });
-  const stockQuery = useStockDashboardQuery({ branchId, search, view: filter, page, pageSize: 10 });
+  const stockQuery = useStockDashboardQuery({ branchId, search, view: filter, page, pageSize });
   const adjustStockMutation = useAdjustStockMutation();
   const disposeBatchMutation = useDisposeStockBatchMutation();
   const restoreBatchMutation = useRestoreStockBatchMutation();
@@ -342,8 +346,12 @@ export function StockInventoryContent() {
     (q: string) => {
       setSearch(q);
       setPage(1);
+      const params = new URLSearchParams(window.location.search);
+      params.set("q", q);
+      params.delete("page");
+      router.replace(params.toString() ? `${window.location.pathname}?${params}` : window.location.pathname);
     },
-    [],
+    [router],
   );
 
   const metrics = stockQuery.data?.metrics ?? {
@@ -606,12 +614,37 @@ export function StockInventoryContent() {
               </h2>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <StockSearchField urlQ={search} onDebouncedChange={handleSearchDebounced} />
+                <label className="inline-flex items-center gap-2 rounded-lg bg-[#f2f4f6] px-3 py-2 text-xs font-semibold text-[#64748b]">
+                  Rows
+                  <select
+                    value={pageSize}
+                    onChange={(event) => {
+                      const next = Number.parseInt(event.target.value, 10);
+                      const resolved = Number.isFinite(next) ? next : 10;
+                      setPageSize(resolved);
+                      setPage(1);
+                      const params = new URLSearchParams(window.location.search);
+                      params.set("pageSize", String(resolved));
+                      params.set("page", "1");
+                      router.replace(params.toString() ? `${window.location.pathname}?${params}` : window.location.pathname);
+                    }}
+                    className="rounded-md border border-[#e2e8f0] bg-white px-2 py-1 text-xs font-semibold text-[#0f172a]"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </label>
                 <div className="flex rounded-lg bg-[#f2f4f6] p-1">
                   <button
                     type="button"
                     onClick={() => {
                       setFilter("all");
                       setPage(1);
+                      const params = new URLSearchParams(window.location.search);
+                      params.set("view", "all");
+                      params.set("page", "1");
+                      router.replace(params.toString() ? `${window.location.pathname}?${params}` : window.location.pathname);
                     }}
                     className={`rounded-md px-4 py-1.5 text-xs font-semibold transition ${
                       filter === "all"
@@ -626,6 +659,10 @@ export function StockInventoryContent() {
                     onClick={() => {
                       setFilter("expiring");
                       setPage(1);
+                      const params = new URLSearchParams(window.location.search);
+                      params.set("view", "expiring");
+                      params.set("page", "1");
+                      router.replace(params.toString() ? `${window.location.pathname}?${params}` : window.location.pathname);
                     }}
                     className={`rounded-md px-4 py-1.5 text-xs transition ${
                       filter === "expiring"
@@ -933,11 +970,41 @@ export function StockInventoryContent() {
               Showing page {pagination.page.toLocaleString()} of {pagination.totalPages.toLocaleString()} •{" "}
               {pagination.totalItems.toLocaleString()} tracked products
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <label className="inline-flex items-center gap-2 text-xs font-semibold text-[#64748b]">
+                Rows
+                <select
+                  value={pageSize}
+                  onChange={(event) => {
+                    const next = Number.parseInt(event.target.value, 10);
+                    const resolved = Number.isFinite(next) ? next : 10;
+                    setPageSize(resolved);
+                    setPage(1);
+                    const params = new URLSearchParams(window.location.search);
+                    params.set("pageSize", String(resolved));
+                    params.set("page", "1");
+                    router.replace(
+                      params.toString()
+                        ? `${window.location.pathname}?${params}`
+                        : window.location.pathname,
+                    );
+                  }}
+                  className="rounded-md border border-[#e2e8f0] bg-white px-2 py-1 text-xs font-semibold text-[#0f172a]"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </label>
               <button
                 type="button"
                 disabled={pagination.page <= 1 || isPageLoading}
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                onClick={() => {
+                  setPage((current) => Math.max(1, current - 1));
+                  const params = new URLSearchParams(window.location.search);
+                  params.set("page", String(Math.max(1, pagination.page - 1)));
+                  router.replace(params.toString() ? `${window.location.pathname}?${params}` : window.location.pathname);
+                }}
                 className="flex size-8 items-center justify-center rounded border border-[#e2e8f0] text-[#64748b] hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <span className="material-symbols-outlined notranslate text-lg">chevron_left</span>
@@ -951,7 +1018,12 @@ export function StockInventoryContent() {
               <button
                 type="button"
                 disabled={pagination.page >= pagination.totalPages || isPageLoading}
-                onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
+                onClick={() => {
+                  setPage((current) => Math.min(pagination.totalPages, current + 1));
+                  const params = new URLSearchParams(window.location.search);
+                  params.set("page", String(Math.min(pagination.totalPages, pagination.page + 1)));
+                  router.replace(params.toString() ? `${window.location.pathname}?${params}` : window.location.pathname);
+                }}
                 className="flex size-8 items-center justify-center rounded border border-[#e2e8f0] text-[#64748b] hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <span className="material-symbols-outlined notranslate text-lg">chevron_right</span>

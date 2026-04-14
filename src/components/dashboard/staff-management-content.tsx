@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef } from "react";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
 import { useStaffDirectoryQuery } from "@/lib/queries/staff";
@@ -39,32 +39,44 @@ function formatAppRole(role: string): string {
 }
 
 export function StaffManagementContent() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const urlQ = searchParams.get("q")?.trim() ?? "";
   const firstMatchRef = useRef<HTMLTableRowElement>(null);
+  const page = Math.max(1, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1);
+  const pageSize = Math.min(50, Math.max(1, Number.parseInt(searchParams.get("pageSize") ?? "10", 10) || 10));
 
-  const staffQuery = useStaffDirectoryQuery();
+  function replaceParams(next: URLSearchParams) {
+    const query = next.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname);
+  }
+
+  const staffQuery = useStaffDirectoryQuery({ q: urlQ, page, pageSize });
   const members = useMemo(() => staffQuery.data?.members ?? [], [staffQuery.data]);
-  const visibleMembers = useMemo(() => {
-    if (!urlQ) {
-      return members;
-    }
-    const lower = urlQ.toLowerCase();
-    return members.filter(
-      (m) => m.fullName.toLowerCase().includes(lower) || m.email.toLowerCase().includes(lower),
-    );
-  }, [members, urlQ]);
+  const pagination = staffQuery.data?.pagination ?? {
+    page: 1,
+    pageSize,
+    totalItems: 0,
+    totalPages: 1,
+  };
+  const summary = staffQuery.data?.summary ?? {
+    total: 0,
+    active: 0,
+    invited: 0,
+    other: 0,
+  };
 
-  const total = members.length;
-  const active = members.filter((m) => m.membershipStatus === "active").length;
-  const invited = members.filter((m) => m.membershipStatus === "invited").length;
-  const other = total - active - invited;
+  const total = summary.total;
+  const active = summary.active;
+  const invited = summary.invited;
+  const other = summary.other;
 
   useEffect(() => {
     if (urlQ && firstMatchRef.current) {
       firstMatchRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
     }
-  }, [urlQ, visibleMembers.length]);
+  }, [urlQ, members.length]);
 
   return (
     <div className="px-4 pb-16 sm:px-6 lg:px-8">
@@ -209,17 +221,8 @@ export function StaffManagementContent() {
                           once they have an AuraPharma account.
                         </td>
                       </tr>
-                    ) : visibleMembers.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="px-6 py-10 text-center text-sm text-[#64748b]">
-                          No team members match &ldquo;{urlQ}&rdquo;.{" "}
-                          <Link href={ROUTES.dashboard.staff} className="font-semibold text-[#0d9488] underline">
-                            Clear search
-                          </Link>
-                        </td>
-                      </tr>
                     ) : (
-                      visibleMembers.map((member, rowIndex) => {
+                      members.map((member, rowIndex) => {
                         const licenseStatus = membershipStatusToLicense(member.membershipStatus);
                         const licenseStyle = LICENSE_STYLES[licenseStatus];
                         const roleClass = ROLE_STYLES[member.role] ?? "bg-[#f1f5f9] text-[#334155]";
@@ -292,10 +295,64 @@ export function StaffManagementContent() {
                 <p className="text-xs font-medium text-[#64748b]">
                   {staffQuery.isPending
                     ? "Loading…"
-                    : urlQ
-                      ? `Showing ${visibleMembers.length} of ${members.length} team member${members.length === 1 ? "" : "s"}`
-                      : `Showing ${members.length} team member${members.length === 1 ? "" : "s"}`}
+                    : `Showing page ${pagination.page.toLocaleString()} of ${pagination.totalPages.toLocaleString()} • ${pagination.totalItems.toLocaleString()} total`}
                 </p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-col items-center justify-between gap-4 sm:flex-row">
+              <label className="inline-flex items-center gap-2 text-xs font-semibold text-[#64748b]">
+                Rows
+                <select
+                  value={pageSize}
+                  onChange={(event) => {
+                    const next = Number.parseInt(event.target.value, 10);
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.set("pageSize", String(Number.isFinite(next) ? next : 10));
+                    params.set("page", "1");
+                    replaceParams(params);
+                  }}
+                  className="rounded-md border border-[#e2e8f0] bg-white px-2 py-1 text-xs font-semibold text-[#0f172a]"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </label>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={pagination.page <= 1 || staffQuery.isFetching}
+                  onClick={() => {
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.set("page", String(Math.max(1, pagination.page - 1)));
+                    replaceParams(params);
+                  }}
+                  className="flex size-8 items-center justify-center rounded border border-[#e2e8f0] text-[#64748b] hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <span className="material-symbols-outlined notranslate text-lg">chevron_left</span>
+                </button>
+                <span className="inline-flex min-w-14 items-center justify-center gap-1 rounded border border-[#006a65] bg-white px-3 py-1 text-xs font-semibold text-[#006a65]">
+                  {staffQuery.isFetching ? (
+                    <span className="material-symbols-outlined notranslate animate-spin text-sm">
+                      progress_activity
+                    </span>
+                  ) : null}
+                  {pagination.page}
+                </span>
+                <button
+                  type="button"
+                  disabled={pagination.page >= pagination.totalPages || staffQuery.isFetching}
+                  onClick={() => {
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.set("page", String(Math.min(pagination.totalPages, pagination.page + 1)));
+                    replaceParams(params);
+                  }}
+                  className="flex size-8 items-center justify-center rounded border border-[#e2e8f0] text-[#64748b] hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <span className="material-symbols-outlined notranslate text-lg">chevron_right</span>
+                </button>
               </div>
             </div>
           </div>
