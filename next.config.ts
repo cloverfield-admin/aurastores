@@ -1,7 +1,25 @@
+import { spawnSync } from "node:child_process";
+import withSerwistInit from "@serwist/next";
 import type { NextConfig } from "next";
 
+function getSerwistRevision(): string {
+  const vercel = process.env.VERCEL_GIT_COMMIT_SHA?.trim();
+  if (vercel) return vercel;
+  const result = spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf-8" });
+  const hash = result.stdout?.trim();
+  if (hash) return hash;
+  return `dev-${Date.now()}`;
+}
+
+const withSerwist = withSerwistInit({
+  swSrc: "src/sw.ts",
+  swDest: "public/sw.js",
+  disable: process.env.NODE_ENV === "development",
+  additionalPrecacheEntries: [{ url: "/offline", revision: getSerwistRevision() }],
+});
+
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ['192.168.1.52'],
+  allowedDevOrigins: ["192.168.1.52"],
   images: {
     remotePatterns: [
       {
@@ -11,6 +29,23 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Content-Type",
+            value: "application/javascript; charset=utf-8",
+          },
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+        ],
+      },
+    ];
+  },
 };
 
-export default nextConfig;
+export default withSerwist(nextConfig);

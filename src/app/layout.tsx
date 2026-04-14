@@ -33,15 +33,25 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#0fb9b1",
 };
 
 export const metadata: Metadata = {
   metadataBase: getMetadataBase(),
+  applicationName: "AuraPharma",
   title: {
     default: defaultTitle,
     template: "%s | AuraPharma",
   },
   description: defaultDescription,
+  appleWebApp: {
+    capable: true,
+    title: defaultTitle,
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   openGraph: {
     type: "website",
     locale: "en_US",

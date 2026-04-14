@@ -2,7 +2,13 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/api/client";
+import { postCreateSale } from "@/lib/api/offline-requests";
 import { apiUrl } from "@/lib/api/version";
+import { enqueueOutboxEntry } from "@/lib/offline/outbox";
+import { OUTBOX_KIND_SALE_CREATE } from "@/lib/offline/outbox-kinds";
+import { OfflineQueuedError } from "@/lib/offline/offline-queued-error";
+import { isLikelyNetworkError } from "@/lib/offline/network-error";
+import type { CreateSaleInput } from "@/lib/validation/sales";
 
 export const salesDashboardQueryKey = ["sales", "dashboard"] as const;
 export const salesCatalogQueryKey = ["sales", "catalog"] as const;
@@ -97,6 +103,8 @@ export type CreateSalePayload = {
   }>;
 };
 
+export type CreateSaleMutationInput = CreateSalePayload & { idempotencyKey?: string };
+
 export function useSalesDashboardQuery(branchId?: string, enabled = true) {
   return useQuery({
     queryKey: [...salesDashboardQueryKey, { branchId }],
@@ -126,14 +134,38 @@ export function useCreateSaleMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: CreateSalePayload) =>
-      fetchJson<{ id: string; saleNumber: string; status: string; totalCents: number }>(apiUrl("/sales"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      }),
+    mutationFn: async (input: CreateSaleMutationInput) => {
+      const { idempotencyKey: explicitKey, ...payload } = input;
+      const idempotencyKey = explicitKey ?? crypto.randomUUID();
+      const body = payload as CreateSaleInput;
+
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        await enqueueOutboxEntry({
+          id: crypto.randomUUID(),
+          feature: "sales",
+          kind: OUTBOX_KIND_SALE_CREATE,
+          payload: body,
+          idempotencyKey,
+        });
+        throw new OfflineQueuedError();
+      }
+
+      try {
+        return await postCreateSale(body, { idempotencyKey });
+      } catch (err) {
+        if (isLikelyNetworkError(err)) {
+          await enqueueOutboxEntry({
+            id: crypto.randomUUID(),
+            feature: "sales",
+            kind: OUTBOX_KIND_SALE_CREATE,
+            payload: body,
+            idempotencyKey,
+          });
+          throw new OfflineQueuedError();
+        }
+        throw err;
+      }
+    },
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: salesDashboardQueryKey }),
