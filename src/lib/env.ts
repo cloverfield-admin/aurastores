@@ -10,4 +10,6 @@ export const env = {
   databaseUrl: requireEnv("DATABASE_URL"),
   supabaseUrl: requireEnv("SUPABASE_URL"),
   supabaseAnonKey: requireEnv("SUPABASE_ANON_KEY"),
+  /** Service role: server-only (e.g. staff invites). Never expose to the client. */
+  supabaseServiceRoleKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
 } as const;

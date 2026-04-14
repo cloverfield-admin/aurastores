@@ -285,9 +285,6 @@ export function NetworkOverviewContent() {
               <Link href="#" className="underline decoration-[rgba(20,184,166,0.3)] hover:text-[#64748b]">
                 System Status
               </Link>
-              <Link href="#" className="underline decoration-[rgba(20,184,166,0.3)] hover:text-[#64748b]">
-                Pharmacy API
-              </Link>
             </div>
           </div>
           <p className="text-right sm:text-left">

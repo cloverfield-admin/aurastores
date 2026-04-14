@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentAppContext } from "@/lib/auth/session";
+import { requireAppApiCapability } from "@/lib/auth/require-api-context";
 import { services } from "@/lib/di";
 import {
   createProductCategorySchema,
@@ -7,10 +7,11 @@ import {
 } from "@/lib/validation/product-categories";
 
 export async function GET(request: Request) {
-  const context = await getCurrentAppContext();
-  if (!context) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const gate = await requireAppApiCapability("catalog");
+  if (!gate.ok) {
+    return gate.response;
   }
+  const context = gate.context;
 
   const url = new URL(request.url);
   const parsed = listProductCategoriesSchema.safeParse({
@@ -32,10 +33,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const context = await getCurrentAppContext();
-  if (!context) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const gate = await requireAppApiCapability("catalog");
+  if (!gate.ok) {
+    return gate.response;
   }
+  const context = gate.context;
 
   const body = await request.json().catch(() => null);
   const parsed = createProductCategorySchema.safeParse(body);

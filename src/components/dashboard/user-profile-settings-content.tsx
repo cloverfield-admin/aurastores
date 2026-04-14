@@ -5,15 +5,12 @@ import { useState } from "react";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
 import { apiUrl } from "@/lib/api/version";
 import { ROUTES } from "@/lib/routes";
+import { formatMembershipRole } from "@/lib/membership-display";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 
 type UserProfileSettingsContentProps = {
   context: AuthContext;
 };
-
-function formatRole(role: string) {
-  return role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, " ");
-}
 
 type Theme = "light" | "dark" | "system";
 
@@ -94,7 +91,7 @@ export function UserProfileSettingsContent({ context }: UserProfileSettingsConte
                     </label>
                     <div className="mt-[19px] rounded-lg bg-[rgba(230,232,234,0.5)] px-3 py-3">
                       <p className="text-base font-medium leading-6 text-[#3c4948]">
-                        {formatRole(membership.role)}
+                        {formatMembershipRole(membership.role)}
                       </p>
                     </div>
                   </div>

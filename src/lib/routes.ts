@@ -15,6 +15,7 @@ export const ROUTES = {
     staff: "/dashboard/staff",
     staffAdd: "/dashboard/staff/add",
     staffAddReview: "/dashboard/staff/add/review",
+    staffEdit: (membershipId: string) => `/dashboard/staff/${membershipId}/edit`,
     stock: "/dashboard/stock",
     stockAdd: "/dashboard/stock/add",
     stockBulkAdd: "/dashboard/stock/bulk-add",

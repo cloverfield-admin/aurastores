@@ -4,6 +4,7 @@ import type {
   DocumentStorageUploadResult,
 } from "@/lib/repositories/document-storage/document-storage.repository";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const ONBOARDING_BUCKET = "compliance-documents";
 
@@ -31,6 +32,17 @@ export class DocumentStorageRepositoryImpl implements DocumentStorageRepository 
       mimeType: params.file.type || "application/octet-stream",
       sizeBytes: params.file.size,
     };
+  }
+
+  async remove(storageKey: string): Promise<void> {
+    const supabase = createSupabaseAdminClient();
+    const { error } = await supabase.storage.from(ONBOARDING_BUCKET).remove([storageKey]);
+    if (error) {
+      const msg = error.message?.toLowerCase() ?? "";
+      if (!msg.includes("not found") && !msg.includes("no such")) {
+        throw new Error(error.message);
+      }
+    }
   }
 }
 

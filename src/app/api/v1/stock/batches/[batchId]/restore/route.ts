@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentAppContext } from "@/lib/auth/session";
+import { requireAppApiCapability } from "@/lib/auth/require-api-context";
 import { services } from "@/lib/di";
 import { disposeStockBatchSchema } from "@/lib/validation/stock";
 
@@ -10,11 +10,11 @@ type RouteContext = {
 };
 
 export async function POST(request: Request, context: RouteContext) {
-  const appContext = await getCurrentAppContext();
-
-  if (!appContext) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const gate = await requireAppApiCapability("stock");
+  if (!gate.ok) {
+    return gate.response;
   }
+  const appContext = gate.context;
 
   const body = await request.json().catch(() => null);
   const parsed = disposeStockBatchSchema.safeParse(body);

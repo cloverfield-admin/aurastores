@@ -2,30 +2,39 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { DashboardWorkspaceAccess } from "@/components/dashboard/dashboard-layout-shell";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
-import { useStockBranchesQuery } from "@/lib/queries/stock";
+import { apiUrl } from "@/lib/api/version";
 import { ROUTES } from "@/lib/routes";
 import { PharmacySearchField } from "@/components/dashboard/pharmacy-search-field";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
+import type { MembershipCapability } from "@/lib/rbac/capabilities";
+import { hasCapability } from "@/lib/rbac/capabilities";
 
 /** Breathing room between fixed header and main scroll area (px). */
 const MAIN_BELOW_HEADER_GAP_PX = 8;
 
-const MODULE_NAV: { label: string; icon: string; href: string }[] = [
-  { label: "Aura Stock", icon: "inventory_2", href: ROUTES.dashboard.stock },
-  { label: "Aura Sales", icon: "trending_up", href: ROUTES.dashboard.sales },
-  { label: "Aura Pay", icon: "payments", href: ROUTES.dashboard.pay },
-  { label: "Aura Insights", icon: "insights", href: ROUTES.dashboard.insights },
-  { label: "Product Categories", icon: "category", href: ROUTES.dashboard.productCategories },
-  { label: "Staff", icon: "groups", href: ROUTES.dashboard.staff },
+const MODULE_NAV: { label: string; icon: string; href: string; capability: MembershipCapability }[] = [
+  { label: "Aura Stock", icon: "inventory_2", href: ROUTES.dashboard.stock, capability: "stock" },
+  { label: "Aura Sales", icon: "trending_up", href: ROUTES.dashboard.sales, capability: "sales" },
+  { label: "Aura Pay", icon: "payments", href: ROUTES.dashboard.pay, capability: "pay" },
+  { label: "Aura Insights", icon: "insights", href: ROUTES.dashboard.insights, capability: "insights" },
+  {
+    label: "Product Categories",
+    icon: "category",
+    href: ROUTES.dashboard.productCategories,
+    capability: "catalog",
+  },
+  { label: "Staff", icon: "groups", href: ROUTES.dashboard.staff, capability: "staff" },
 ];
 
 type DashboardShellProps = {
   children: ReactNode;
+  workspaceAccess: DashboardWorkspaceAccess;
 };
 
-export function DashboardShell({ children }: DashboardShellProps) {
+export function DashboardShell({ children, workspaceAccess }: DashboardShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -47,6 +56,17 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const closeMobileTools = useCallback(() => {
     setMobileToolsOpen(false);
   }, []);
+
+  const moduleNavItems = useMemo(
+    () => MODULE_NAV.filter((item) => hasCapability(workspaceAccess.capabilities, item.capability)),
+    [workspaceAccess.capabilities],
+  );
+
+  const canAccessSettings = hasCapability(workspaceAccess.capabilities, "settings");
+  const canUsePharmacySearch =
+    hasCapability(workspaceAccess.capabilities, "stock") ||
+    hasCapability(workspaceAccess.capabilities, "staff") ||
+    hasCapability(workspaceAccess.capabilities, "catalog");
 
   useEffect(() => {
     const id = requestAnimationFrame(() => {
@@ -158,14 +178,26 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const topActionLabel = isStock ? "Aura Sync" : "Branch Toggle";
   const topActionIcon = isStock ? "sync" : "shuffle";
   const topActionVariant = isStock ? "outline" : "primary";
-  const stockBranchId = isStock ? searchParams.get("branch") ?? undefined : undefined;
-  const salesBranchId = isSales ? searchParams.get("branch") ?? undefined : undefined;
-  const insightsBranchId = isInsights ? searchParams.get("branch") ?? undefined : undefined;
-  const staffBranchId = isStaff ? searchParams.get("branch") ?? undefined : undefined;
-  const sectionBranchId = isStock ? stockBranchId : isSales ? salesBranchId : isInsights ? insightsBranchId : isStaff ? staffBranchId : undefined;
-  const branchesQuery = useStockBranchesQuery(sectionBranchId, !isDashboardMain);
-  const sectionBranchTabs = branchesQuery.data?.branches ?? [];
-  const activeSectionBranchId = branchesQuery.data?.branch.id ?? sectionBranchId;
+  const sectionBranchTabs = workspaceAccess.accessibleBranches;
+  const branchParam = searchParams.get("branch");
+  const activeSectionBranchId =
+    branchParam && sectionBranchTabs.some((t) => t.id === branchParam)
+      ? branchParam
+      : sectionBranchTabs[0]?.id;
+
+  useEffect(() => {
+    if (!branchParam || sectionBranchTabs.length === 0) {
+      return;
+    }
+    if (sectionBranchTabs.some((t) => t.id === branchParam)) {
+      return;
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("branch", sectionBranchTabs[0]!.id);
+    params.delete("page");
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname);
+  }, [branchParam, pathname, router, searchParams, sectionBranchTabs]);
 
   function replaceBranchInUrl(branchId: string, opts?: { resetPage?: boolean }) {
     const params = new URLSearchParams(searchParams.toString());
@@ -215,16 +247,6 @@ export function DashboardShell({ children }: DashboardShellProps) {
                   : "Dashboard";
 
   function branchSwitcherNav(opts: { ariaLabel: string; onSelectBranch: (branchId: string) => void }) {
-    if (branchesQuery.isPending) {
-      return (
-        <nav
-          className="flex min-w-0 max-w-full flex-wrap items-center gap-x-4 gap-y-2 overflow-x-auto overscroll-x-contain sm:gap-x-6"
-          aria-label={opts.ariaLabel}
-        >
-          <span className="text-sm text-[#94a3b8]">Loading branches…</span>
-        </nav>
-      );
-    }
     if (sectionBranchTabs.length === 0) {
       return (
         <div className="flex flex-wrap items-center gap-2 text-sm text-[#64748b]">
@@ -326,7 +348,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
           </Link>
 
           <nav className="flex flex-col gap-1" aria-label="Product modules">
-            {MODULE_NAV.map((item) => {
+            {moduleNavItems.map((item) => {
               const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
               const href =
                 item.href === ROUTES.dashboard.stock ||
@@ -361,6 +383,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
         <div className="mt-auto shrink-0 border-t border-[rgba(226,232,240,0.5)] pt-4">
           <nav className="flex flex-col gap-1" aria-label="Account">
+            {canAccessSettings ? (
             <Link
               href={ROUTES.settings}
               onClick={closeMobileNav}
@@ -377,6 +400,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
               </span>
               Settings
             </Link>
+            ) : null}
             <Link
               href={ROUTES.features}
               onClick={closeMobileNav}
@@ -385,23 +409,32 @@ export function DashboardShell({ children }: DashboardShellProps) {
               <span className="material-symbols-outlined notranslate text-xl">support_agent</span>
               Support
             </Link>
+            <Link
+              href={apiUrl("/auth/sign-out")}
+              prefetch={false}
+              onClick={closeMobileNav}
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#64748b] transition hover:bg-slate-100/80 hover:text-[#dc2626]"
+            >
+              <span className="material-symbols-outlined notranslate text-xl">logout</span>
+              Log out
+            </Link>
           </nav>
           <Link
-            href={ROUTES.settings}
+            href={canAccessSettings ? ROUTES.settings : ROUTES.dashboard.main}
             onClick={closeMobileNav}
             className="mt-3 block rounded-xl bg-[#f1f5f9] p-3 transition hover:bg-[#e2e8f0]"
           >
             <div className="flex items-center gap-3">
               <AuraAvatar
-                name="Pharmacy Manager"
+                name={workspaceAccess.userDisplayName}
                 decorative
                 className="size-8 shrink-0 rounded-full text-[11px] ring-2 ring-white"
               />
               <div className="min-w-0">
                 <p className="truncate font-[family-name:var(--font-manrope)] text-xs font-bold text-[#191c1e]">
-                  Pharmacy Manager
+                  {workspaceAccess.userDisplayName}
                 </p>
-                <p className="text-[10px] font-medium text-[#64748b]">Admin Access</p>
+                <p className="text-[10px] font-medium text-[#64748b]">{workspaceAccess.membershipRoleLabel}</p>
               </div>
             </div>
           </Link>
@@ -460,17 +493,27 @@ export function DashboardShell({ children }: DashboardShellProps) {
                     notifications
                   </span>
                 </button>
+                {canAccessSettings ? (
                 <Link
                   href={ROUTES.settings}
                   className="block shadow-[0_0_0_2px_rgba(20,184,166,0.2)] transition hover:opacity-90"
                   aria-label="Profile and settings"
                 >
                   <AuraAvatar
-                    name="Pharmacy Manager"
+                    name={workspaceAccess.userDisplayName}
                     decorative
                     className="size-8 rounded-full text-[11px]"
                   />
                 </Link>
+                ) : (
+                  <span className="block shadow-[0_0_0_2px_rgba(20,184,166,0.2)]">
+                    <AuraAvatar
+                      name={workspaceAccess.userDisplayName}
+                      decorative
+                      className="size-8 rounded-full text-[11px]"
+                    />
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -518,7 +561,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
                   </label>
                 </div>
               ) : isDashboardMain ? (
-                <PharmacySearchField />
+                canUsePharmacySearch ? <PharmacySearchField /> : null
               ) : (
                 <div className="flex flex-col gap-4">
                   {!isStock && !isSettings ? (
@@ -620,7 +663,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 <>
                   {!isStock && !isSettings ? (
                     isDashboardMain ? (
-                      <PharmacySearchField />
+                      canUsePharmacySearch ? <PharmacySearchField /> : null
                     ) : (
                       <label className="relative block w-full sm:w-64">
                         <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
@@ -704,17 +747,27 @@ export function DashboardShell({ children }: DashboardShellProps) {
                     notifications
                   </span>
                 </button>
+                {canAccessSettings ? (
                 <Link
                   href={ROUTES.settings}
                   className="block shadow-[0_0_0_2px_rgba(20,184,166,0.2)] transition hover:opacity-90"
                   aria-label="Profile and settings"
                 >
                   <AuraAvatar
-                    name="Pharmacy Manager"
+                    name={workspaceAccess.userDisplayName}
                     decorative
                     className="size-8 rounded-full text-[11px]"
                   />
                 </Link>
+                ) : (
+                  <span className="block shadow-[0_0_0_2px_rgba(20,184,166,0.2)]">
+                    <AuraAvatar
+                      name={workspaceAccess.userDisplayName}
+                      decorative
+                      className="size-8 rounded-full text-[11px]"
+                    />
+                  </span>
+                )}
               </div>
             </div>
           </div>

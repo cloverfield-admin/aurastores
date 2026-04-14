@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
 import { useStaffDirectoryQuery } from "@/lib/queries/staff";
 import { ROUTES } from "@/lib/routes";
@@ -42,6 +42,7 @@ export function StaffManagementContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [openActionsMenuId, setOpenActionsMenuId] = useState<string | null>(null);
   const urlQ = searchParams.get("q")?.trim() ?? "";
   const firstMatchRef = useRef<HTMLTableRowElement>(null);
   const page = Math.max(1, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1);
@@ -178,17 +179,17 @@ export function StaffManagementContent() {
                 </div>
               </div>
               <div className="overflow-x-auto overscroll-x-contain">
-                <table className="w-full min-w-[520px]">
+                <table className="w-full min-w-[560px]">
                   <thead>
                     <tr className="bg-[#f2f4f6]">
                       <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[1px] text-[#64748b]">
                         Name
                       </th>
                       <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[1px] text-[#64748b]">
-                        Role
+                        Staff ID
                       </th>
                       <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[1px] text-[#64748b]">
-                        Branch
+                        Role
                       </th>
                       <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[1px] text-[#64748b]">
                         License
@@ -247,15 +248,15 @@ export function StaffManagementContent() {
                                 </div>
                               </div>
                             </td>
+                            <td className="px-6 py-4 text-sm font-medium text-[#475569]">
+                              {member.staffEmployeeCode ?? "—"}
+                            </td>
                             <td className="px-6 py-4">
                               <span
                                 className={`inline-flex rounded-full px-2.5 py-1.5 text-xs font-semibold ${roleClass}`}
                               >
                                 {formatAppRole(member.role)}
                               </span>
-                            </td>
-                            <td className="px-6 py-4 text-sm font-medium text-[#191c1e]">
-                              {member.branchName ?? "—"}
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-1.5">
@@ -273,16 +274,41 @@ export function StaffManagementContent() {
                                 </span>
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-right">
+                            <td className="relative px-6 py-4 text-right">
                               <button
                                 type="button"
                                 className="rounded-lg p-2 text-[#64748b] hover:bg-[#f1f5f9]"
                                 aria-label="Actions"
+                                aria-expanded={openActionsMenuId === member.membershipId}
+                                onClick={() =>
+                                  setOpenActionsMenuId((id) =>
+                                    id === member.membershipId ? null : member.membershipId,
+                                  )
+                                }
                               >
                                 <span className="material-symbols-outlined notranslate text-base">
                                   more_vert
                                 </span>
                               </button>
+                              {openActionsMenuId === member.membershipId ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="fixed inset-0 z-10 cursor-default bg-transparent"
+                                    aria-label="Close menu"
+                                    onClick={() => setOpenActionsMenuId(null)}
+                                  />
+                                  <div className="absolute right-4 top-full z-20 mt-1 min-w-[160px] rounded-lg border border-[#e2e8f0] bg-white py-1 shadow-lg">
+                                    <Link
+                                      href={ROUTES.dashboard.staffEdit(member.membershipId)}
+                                      className="block px-4 py-2.5 text-left text-sm font-semibold text-[#334155] hover:bg-[#f8fafc]"
+                                      onClick={() => setOpenActionsMenuId(null)}
+                                    >
+                                      Edit member
+                                    </Link>
+                                  </div>
+                                </>
+                              ) : null}
                             </td>
                           </tr>
                         );

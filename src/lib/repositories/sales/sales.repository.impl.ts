@@ -13,6 +13,7 @@ import {
 } from "@/lib/db/schema";
 import type { CreateSaleInput } from "@/lib/validation/sales";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
+import { filterBranchesForContext } from "@/lib/rbac/branch-access";
 import type { SalesCatalogData, SalesDashboardData, SalesRepository } from "@/lib/repositories/sales/sales.repository";
 
 type ResolvedBranch = typeof branches.$inferSelect;
@@ -51,7 +52,7 @@ function uniqueStrings(values: string[]) {
   return [...new Set(values)];
 }
 
-async function listOrganizationBranches(organizationId: string) {
+async function loadBranchesForOrg(organizationId: string) {
   return db.query.branches.findMany({
     where: eq(branches.organizationId, organizationId),
     orderBy: (branchTable, { desc: orderDesc, asc: orderAsc }) => [
@@ -59,6 +60,11 @@ async function listOrganizationBranches(organizationId: string) {
       orderAsc(branchTable.name),
     ],
   });
+}
+
+async function branchesVisibleInContext(context: AuthContext) {
+  const all = await loadBranchesForOrg(context.organization.id);
+  return filterBranchesForContext(context, all);
 }
 
 function pickResolvedBranch(
@@ -84,7 +90,10 @@ function pickResolvedBranch(
 }
 
 async function resolveBranchContext(context: AuthContext, preferredBranchId?: string) {
-  const branchOptions = await listOrganizationBranches(context.organization.id);
+  const branchOptions = await branchesVisibleInContext(context);
+  if (!branchOptions.length) {
+    throw new Error("No branch access assigned for your account.");
+  }
   return {
     branch: pickResolvedBranch(context, preferredBranchId, branchOptions),
     branchOptions,

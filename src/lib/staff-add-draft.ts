@@ -7,11 +7,13 @@ export type StaffAddDraftFile = {
   icon: "description" | "badge";
 };
 
+/** Subset of app roles exposed on the add-staff form. */
+export type StaffAddDraftAppRole = "owner" | "admin" | "pharmacist" | "cashier";
+
 export type StaffAddDraft = {
   fullName: string;
-  staffId: string;
-  department: string;
-  professionalRole: string;
+  branchIds: string[];
+  appRole: StaffAddDraftAppRole;
   accessLevels: Record<string, boolean>;
   email: string;
   phone: string;
@@ -23,7 +25,14 @@ export function getStaffAddDraft(): StaffAddDraft | null {
   try {
     const raw = sessionStorage.getItem(STAFF_ADD_DRAFT_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as StaffAddDraft;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object") return null;
+    const o = parsed as Record<string, unknown>;
+    if ("branchIds" in o && Array.isArray(o.branchIds)) {
+      return parsed as StaffAddDraft;
+    }
+    sessionStorage.removeItem(STAFF_ADD_DRAFT_KEY);
+    return null;
   } catch {
     return null;
   }

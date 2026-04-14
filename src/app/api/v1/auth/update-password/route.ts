@@ -35,6 +35,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  await services.staff.activateInvitedMembershipsForStaff(user.id);
+
   const redirectTo = await services.auth.getPostAuthRedirect(user.id);
 
   return NextResponse.json({ ok: true as const, redirectTo });

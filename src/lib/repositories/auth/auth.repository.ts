@@ -1,3 +1,4 @@
+import type { MembershipCapabilities } from "@/lib/rbac/capabilities";
 import {
   organizationMemberships,
   organizationOnboarding,
@@ -10,6 +11,13 @@ export type AuthContext = {
   membership: typeof organizationMemberships.$inferSelect;
   organization: typeof organizations.$inferSelect;
   onboarding: typeof organizationOnboarding.$inferSelect | null;
+  capabilities: MembershipCapabilities;
+  /**
+   * Active `branch_staff_assignments` for this org (`[]` = no branches).
+   * `null` means no SQL branch filter (legacy / tests only); resolved auth context
+   * from `findByAuthUserId` uses a non-null array.
+   */
+  allowedBranchIds: string[] | null;
 };
 
 export type RegisteredUserParams = {

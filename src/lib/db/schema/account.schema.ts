@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   index,
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -103,7 +104,11 @@ export const organizationMemberships = pgTable(
     role: appRoleEnum("role").notNull().default("pharmacist"),
     status: membershipStatusEnum("status").notNull().default("active"),
     jobTitle: varchar("job_title", { length: 128 }),
+    /** Human-readable per-organization employee id (e.g. AP-00001); assigned on membership create. */
+    staffEmployeeCode: varchar("staff_employee_code", { length: 32 }),
     isDefault: boolean("is_default").notNull().default(false),
+    /** Module flags (stock, sales, insights, …); null means derive from `role` until backfilled. */
+    capabilities: jsonb("capabilities").$type<Record<string, boolean> | null>(),
     invitedAt: timestamp("invited_at", { withTimezone: true }).defaultNow().notNull(),
     joinedAt: timestamp("joined_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -119,5 +124,8 @@ export const organizationMemberships = pgTable(
       .where(sql`${table.status} <> 'removed'`),
     organizationIdx: index("organization_memberships_org_idx").on(table.organizationId),
     userIdx: index("organization_memberships_user_idx").on(table.userId),
+    orgStaffCodeUnique: uniqueIndex("organization_memberships_org_staff_code_unique")
+      .on(table.organizationId, table.staffEmployeeCode)
+      .where(sql`${table.staffEmployeeCode} IS NOT NULL`),
   }),
 );

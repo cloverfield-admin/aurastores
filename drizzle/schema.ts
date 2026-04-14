@@ -55,6 +55,7 @@ export const organizationMemberships = pgTable("organization_memberships", {
 	role: appRole().default('pharmacist').notNull(),
 	status: membershipStatus().default('active').notNull(),
 	jobTitle: varchar("job_title", { length: 128 }),
+	staffEmployeeCode: varchar("staff_employee_code", { length: 32 }),
 	isDefault: boolean("is_default").default(false).notNull(),
 	invitedAt: timestamp("invited_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	joinedAt: timestamp("joined_at", { withTimezone: true, mode: 'string' }),
@@ -63,6 +64,7 @@ export const organizationMemberships = pgTable("organization_memberships", {
 }, (table) => [
 	index("organization_memberships_org_idx").using("btree", table.organizationId.asc().nullsLast().op("uuid_ops")),
 	uniqueIndex("organization_memberships_org_user_unique").using("btree", table.organizationId.asc().nullsLast().op("uuid_ops"), table.userId.asc().nullsLast().op("uuid_ops")),
+	uniqueIndex("organization_memberships_org_staff_code_unique").using("btree", table.organizationId.asc().nullsLast().op("uuid_ops"), table.staffEmployeeCode.asc().nullsLast().op("text_ops")).where(sql`${table.staffEmployeeCode} IS NOT NULL`),
 	index("organization_memberships_user_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
 			columns: [table.organizationId],

@@ -55,7 +55,7 @@ export function createTestServices(overrides: TestServiceOverrides = {}): AppSer
     stock: new StockService({ stock }),
     sales: new SalesService({ sales }),
     onboarding: new OnboardingService({ onboarding, documentStorage }),
-    staff: new StaffService({ staff }),
+    staff: new StaffService({ staff, documentStorage }),
     network: new NetworkService({ network }),
     pharmacySearch: new PharmacySearchService({ pharmacySearch }),
     productCategories: new ProductCategoriesService({ productCategories }),

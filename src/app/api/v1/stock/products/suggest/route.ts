@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
-import { getCurrentAppContext } from "@/lib/auth/session";
+import { requireAppApiCapability } from "@/lib/auth/require-api-context";
 import { services } from "@/lib/di/services";
 
 export async function GET(request: Request) {
-  const context = await getCurrentAppContext();
-  if (!context) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const gate = await requireAppApiCapability("stock");
+  if (!gate.ok) {
+    return gate.response;
   }
+  const context = gate.context;
 
   const url = new URL(request.url);
   const q = url.searchParams.get("q") ?? "";

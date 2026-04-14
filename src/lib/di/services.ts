@@ -35,7 +35,7 @@ export const services: AppServices = {
     onboarding: onboardingRepository,
     documentStorage: documentStorageRepository,
   }),
-  staff: new StaffService({ staff: staffRepository }),
+  staff: new StaffService({ staff: staffRepository, documentStorage: documentStorageRepository }),
   network: new NetworkService({ network: networkRepository }),
   pharmacySearch: new PharmacySearchService({ pharmacySearch: pharmacySearchRepository }),
   productCategories: new ProductCategoriesService({ productCategories: productCategoriesRepository }),

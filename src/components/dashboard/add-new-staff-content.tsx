@@ -2,54 +2,78 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import type { ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
+import { useStockBranchesQuery } from "@/lib/queries/stock";
 import {
   getStaffAddDraft,
   type StaffAddDraft,
+  type StaffAddDraftAppRole,
   setStaffAddDraft,
 } from "@/lib/staff-add-draft";
 import { ROUTES } from "@/lib/routes";
 
-const STEPS = [
-  {
-    id: "01",
-    title: "Basic Info",
-    desc: "Name, role, and internal identification.",
-    active: true,
-    variant: "filled" as const,
-  },
-  {
-    id: "02",
-    title: "Role Assignment",
-    desc: "System permissions and level.",
-    active: true,
-    variant: "outline" as const,
-  },
-  {
-    id: "03",
-    title: "Contact Details",
-    desc: "Verified communication channels.",
-    active: false,
-    variant: "inactive" as const,
-  },
-  {
-    id: "04",
-    title: "Credentials",
-    desc: "Licenses and legal certifications.",
-    active: false,
-    variant: "inactive" as const,
-  },
+const STEP_DEFS = [
+  { id: "01", title: "Basic Info", desc: "Name, branch, and staff identification." },
+  { id: "02", title: "Role Assignment", desc: "System permissions and level." },
+  { id: "03", title: "Contact Details", desc: "Verified communication channels." },
+  { id: "04", title: "Credentials", desc: "Licenses and legal certifications." },
 ] as const;
 
-const ROLE_OPTIONS = ["Pharmacist", "Technician", "Intern"] as const;
+type StepVariant = "filled" | "outline" | "inactive";
 
-const ACCESS_LEVELS = [
-  { id: "inventory", label: "Inventory Access", checked: true },
-  { id: "financial", label: "Financial Reports", checked: false },
-  { id: "patient", label: "Patient Records", checked: true },
-  { id: "settings", label: "System Settings", checked: false },
+function stepPresentation(index: number, activeIndex: number): { variant: StepVariant; isCurrent: boolean } {
+  if (index < activeIndex) return { variant: "filled", isCurrent: false };
+  if (index === activeIndex) return { variant: "outline", isCurrent: true };
+  return { variant: "inactive", isCurrent: false };
+}
+
+const APP_ROLE_OPTIONS: { value: StaffAddDraftAppRole; label: string }[] = [
+  { value: "owner", label: "Owner" },
+  { value: "admin", label: "Admin" },
+  { value: "pharmacist", label: "Pharmacist" },
+  { value: "cashier", label: "Cashier" },
+];
+
+const ACCESS_LEVEL_DEFS = [
+  { id: "stock", label: "Stock & inventory" },
+  { id: "sales", label: "Sales & checkout" },
+  { id: "insights", label: "Insights & analytics" },
+  { id: "catalog", label: "Product categories" },
+  { id: "staff", label: "Staff & directory" },
+  { id: "pay", label: "Payments" },
+  { id: "settings", label: "Settings & organization" },
 ] as const;
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function defaultAccessForRole(role: StaffAddDraftAppRole): Record<string, boolean> {
+  const allTrue = Object.fromEntries(ACCESS_LEVEL_DEFS.map((d) => [d.id, true])) as Record<string, boolean>;
+  if (role === "owner" || role === "admin") {
+    return { ...allTrue };
+  }
+  if (role === "pharmacist") {
+    return {
+      stock: true,
+      sales: true,
+      insights: true,
+      catalog: true,
+      staff: false,
+      pay: false,
+      settings: false,
+    };
+  }
+  return {
+    stock: true,
+    sales: true,
+    insights: false,
+    catalog: false,
+    staff: false,
+    pay: false,
+    settings: false,
+  };
+}
 
 type UploadedFile = {
   id: string;
@@ -60,39 +84,123 @@ type UploadedFile = {
 
 export function AddNewStaffContent() {
   const router = useRouter();
-  const { withLoading, notify } = useAuraFeedback();
+  const { notify } = useAuraFeedback();
+  const branchesQuery = useStockBranchesQuery(undefined, true);
+  const [draftHydrated, setDraftHydrated] = useState(false);
   const [fullName, setFullName] = useState("");
-  const [staffId, setStaffId] = useState("");
-  const [department, setDepartment] = useState("");
-  const [professionalRole, setProfessionalRole] = useState<(typeof ROLE_OPTIONS)[number]>("Pharmacist");
-  const [accessLevels, setAccessLevels] = useState<Record<string, boolean>>({
-    inventory: true,
-    financial: false,
-    patient: true,
-    settings: false,
-  });
+  const [branchIds, setBranchIds] = useState<string[]>([]);
+  const [appRole, setAppRole] = useState<StaffAddDraftAppRole>("pharmacist");
+  const [accessLevels, setAccessLevels] = useState<Record<string, boolean>>(() =>
+    defaultAccessForRole("pharmacist"),
+  );
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [files, setFiles] = useState<UploadedFile[]>([
-    { id: "1", name: "Medical_License_2024.pdf", subtitle: "Pharmacist Board Certification • 2.4 MB", icon: "description" },
-    { id: "2", name: "ID_Verification_State.jpg", subtitle: "State Issued Identification • 1.1 MB", icon: "badge" },
-  ]);
+  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [activeStepIndex, setActiveStepIndex] = useState(0);
+  const stepSectionRefs = useRef<(HTMLElement | null)[]>([]);
+  const intersectionRatios = useRef<number[]>([0, 0, 0, 0]);
+  const credentialFileInputRef = useRef<HTMLInputElement>(null);
+
+  const setStepSectionRef = useCallback((index: number) => (el: HTMLElement | null) => {
+    stepSectionRefs.current[index] = el;
+  }, []);
+
+  useEffect(() => {
+    if (!draftHydrated) return;
+    const nodes = STEP_DEFS.map((_, i) => stepSectionRefs.current[i]).filter(
+      (n): n is HTMLElement => n != null,
+    );
+    if (nodes.length !== STEP_DEFS.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const idx = nodes.indexOf(entry.target as HTMLElement);
+          if (idx >= 0) {
+            intersectionRatios.current[idx] = entry.intersectionRatio;
+          }
+        }
+        const ratios = intersectionRatios.current;
+        let bestIdx = 0;
+        let best = ratios[0] ?? 0;
+        for (let i = 1; i < ratios.length; i++) {
+          if ((ratios[i] ?? 0) > best) {
+            best = ratios[i] ?? 0;
+            bestIdx = i;
+          }
+        }
+        if (best > 0) {
+          setActiveStepIndex(bestIdx);
+        }
+      },
+      {
+        root: null,
+        rootMargin: "-14% 0px -32% 0px",
+        threshold: [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.35, 0.5, 0.65, 0.8, 1],
+      },
+    );
+
+    intersectionRatios.current = [0, 0, 0, 0];
+    for (const node of nodes) {
+      observer.observe(node);
+    }
+    return () => {
+      observer.disconnect();
+      intersectionRatios.current = [0, 0, 0, 0];
+    };
+  }, [draftHydrated]);
+
+  const scrollToStep = useCallback((index: number) => {
+    stepSectionRefs.current[index]?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const stepItems = useMemo(
+    () =>
+      STEP_DEFS.map((step, index) => ({
+        ...step,
+        ...stepPresentation(index, activeStepIndex),
+      })),
+    [activeStepIndex],
+  );
+
+  const isFormValid = useMemo(() => {
+    if (!fullName.trim()) return false;
+    if (branchIds.length === 0) return false;
+    const emailTrim = email.trim();
+    if (!emailTrim || !EMAIL_RE.test(emailTrim)) return false;
+    const phoneTrim = phone.trim();
+    if (!phoneTrim || phoneTrim.length > 32) return false;
+    if (appRole === "pharmacist" && files.length === 0) return false;
+    return true;
+  }, [fullName, branchIds, email, phone, appRole, files.length]);
 
   useEffect(() => {
     const stored = getStaffAddDraft();
-    if (stored) {
-      setFullName(stored.fullName);
-      setStaffId(stored.staffId);
-      setDepartment(stored.department);
-      setProfessionalRole(
-        stored.professionalRole as (typeof ROLE_OPTIONS)[number],
-      );
-      setAccessLevels(stored.accessLevels);
-      setEmail(stored.email);
-      setPhone(stored.phone);
-      setFiles(stored.files);
-    }
+    queueMicrotask(() => {
+      if (stored) {
+        setFullName(stored.fullName);
+        setBranchIds(stored.branchIds);
+        setAppRole(stored.appRole);
+        setAccessLevels(stored.accessLevels);
+        setEmail(stored.email);
+        setPhone(stored.phone);
+        setFiles(stored.files);
+      }
+      setDraftHydrated(true);
+    });
   }, []);
+
+  useEffect(() => {
+    if (!draftHydrated) return;
+    const list = branchesQuery.data?.branches ?? [];
+    if (!list.length || branchIds.length > 0) return;
+    const primary = list.find((b) => b.isPrimary) ?? list[0];
+    if (primary) {
+      queueMicrotask(() => {
+        setBranchIds([primary.id]);
+      });
+    }
+  }, [draftHydrated, branchesQuery.data?.branches, branchIds.length]);
 
   const toggleAccess = useCallback((id: string) => {
     setAccessLevels((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -102,9 +210,37 @@ export function AddNewStaffContent() {
     setFiles((prev) => prev.filter((f) => f.id !== id));
   }, []);
 
+  const handleCredentialFiles = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const list = event.target.files;
+    if (!list?.length) return;
+    const added: UploadedFile[] = [];
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
+      const lower = f.name.toLowerCase();
+      const icon: UploadedFile["icon"] = lower.endsWith(".pdf") ? "description" : "badge";
+      added.push({
+        id: `${Date.now()}-${i}-${f.name}`,
+        name: f.name,
+        subtitle: `${f.type || "Document"} • ${(f.size / (1024 * 1024)).toFixed(1)} MB`,
+        icon,
+      });
+    }
+    setFiles((prev) => [...prev, ...added]);
+    event.target.value = "";
+  }, []);
+
   const handleDiscard = () => {
     router.push(ROUTES.dashboard.staff);
   };
+
+  const toggleBranch = useCallback((id: string) => {
+    setBranchIds((prev) => (prev.includes(id) ? prev.filter((b) => b !== id) : [...prev, id]));
+  }, []);
+
+  const handleAppRoleChange = useCallback((next: StaffAddDraftAppRole) => {
+    setAppRole(next);
+    setAccessLevels(defaultAccessForRole(next));
+  }, []);
 
   const handleSaveAndReview = () => {
     if (!fullName.trim()) {
@@ -115,15 +251,60 @@ export function AddNewStaffContent() {
       });
       return;
     }
+    if (branchIds.length === 0) {
+      notify({
+        variant: "error",
+        title: "Branch required",
+        description: "Select at least one branch.",
+      });
+      return;
+    }
+    const emailTrim = email.trim();
+    if (!emailTrim || !EMAIL_RE.test(emailTrim)) {
+      notify({
+        variant: "error",
+        title: "Required field missing",
+        description: "Please enter a valid email address.",
+      });
+      scrollToStep(2);
+      return;
+    }
+    const phoneTrim = phone.trim();
+    if (!phoneTrim) {
+      notify({
+        variant: "error",
+        title: "Required field missing",
+        description: "Please enter a phone number.",
+      });
+      scrollToStep(2);
+      return;
+    }
+    if (phoneTrim.length > 32) {
+      notify({
+        variant: "error",
+        title: "Phone too long",
+        description: "Use at most 32 characters for the phone number.",
+      });
+      scrollToStep(2);
+      return;
+    }
+    if (appRole === "pharmacist" && files.length === 0) {
+      notify({
+        variant: "error",
+        title: "Credentials required",
+        description: "Pharmacists must upload at least one license or credential file before continuing.",
+      });
+      scrollToStep(3);
+      return;
+    }
 
     const draft: StaffAddDraft = {
       fullName,
-      staffId,
-      department,
-      professionalRole,
+      branchIds,
+      appRole,
       accessLevels,
-      email,
-      phone,
+      email: emailTrim,
+      phone: phoneTrim,
       files: [...files],
     };
     setStaffAddDraft(draft);
@@ -134,7 +315,8 @@ export function AddNewStaffContent() {
     <button
       type="button"
       onClick={handleSaveAndReview}
-      className="inline-flex items-center justify-center gap-2 rounded-xl px-8 py-3 text-base font-semibold text-white shadow-[0px_10px_15px_-3px_rgba(0,106,101,0.2),0px_4px_6px_-4px_rgba(0,106,101,0.2)] transition hover:opacity-95"
+      disabled={!isFormValid}
+      className="inline-flex items-center justify-center gap-2 rounded-xl px-8 py-3 text-base font-semibold text-white shadow-[0px_10px_15px_-3px_rgba(0,106,101,0.2),0px_4px_6px_-4px_rgba(0,106,101,0.2)] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
       style={{
         background: "linear-gradient(135deg, rgb(15, 185, 177) 0%, rgb(70, 72, 212) 100%)",
       }}
@@ -182,10 +364,15 @@ export function AddNewStaffContent() {
           <aside className="flex flex-col gap-6 lg:col-span-3">
             <div className="rounded-xl border border-[rgba(187,201,199,0.1)] bg-[#f2f4f6] p-6">
               <div className="space-y-6">
-                {STEPS.map((step) => (
-                  <div
+                {stepItems.map((step, index) => (
+                  <button
                     key={step.id}
-                    className={step.variant === "inactive" ? "opacity-50" : ""}
+                    type="button"
+                    aria-label={`Scroll to ${step.title}`}
+                    onClick={() => scrollToStep(index)}
+                    className={`w-full rounded-lg p-2 text-left transition hover:bg-black/[0.03] ${
+                      step.variant === "inactive" ? "opacity-55" : ""
+                    }`}
                   >
                     <div className="flex gap-4">
                       <div
@@ -205,12 +392,18 @@ export function AddNewStaffContent() {
                             : undefined
                         }
                       >
-                        {step.id}
+                        {step.variant === "filled" ? (
+                          <span className="material-symbols-outlined notranslate text-base leading-none">
+                            check
+                          </span>
+                        ) : (
+                          step.id
+                        )}
                       </div>
                       <div>
                         <p
                           className={`text-base font-bold ${
-                            step.active ? "text-[#006a65]" : "text-[#191c1e]"
+                            step.isCurrent ? "text-[#006a65]" : "text-[#191c1e]"
                           }`}
                         >
                           {step.title}
@@ -220,7 +413,7 @@ export function AddNewStaffContent() {
                         </p>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -240,8 +433,11 @@ export function AddNewStaffContent() {
 
           {/* Main form - 9 cols */}
           <div className="flex flex-col gap-8 lg:col-span-9">
-            {/* Basic Information — Full Name, Staff ID, Department only */}
-            <section className="rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-8 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
+            {/* Basic Information */}
+            <section
+              ref={setStepSectionRef(0)}
+              className="scroll-mt-8 rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-8 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"
+            >
               <h2 className="mb-6 flex items-center gap-3 font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]">
                 <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">
                   person_add
@@ -251,7 +447,7 @@ export function AddNewStaffContent() {
               <div className="grid gap-6 sm:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[#3c4948]">
-                    Full Name
+                    Full Name <span className="font-normal normal-case text-[#64748b]">(required)</span>
                   </label>
                   <input
                     type="text"
@@ -265,31 +461,50 @@ export function AddNewStaffContent() {
                   <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[#3c4948]">
                     Staff ID Number
                   </label>
-                  <input
-                    type="text"
-                    value={staffId}
-                    onChange={(e) => setStaffId(e.target.value)}
-                    placeholder="PH-XXXXX-2024"
-                    className="w-full rounded-lg border-0 bg-[#f2f4f6] px-4 py-3.5 text-base text-[#191c1e] placeholder:text-[#6b7280] outline-none focus:ring-2 focus:ring-[#006a65]/20"
-                  />
+                  <div className="rounded-lg border border-[rgba(0,106,101,0.12)] bg-[#f8fafc] px-4 py-3.5 text-base text-[#475569]">
+                    Assigned automatically when you add this member (e.g. AP-00001).
+                  </div>
                 </div>
                 <div className="sm:col-span-2">
                   <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[#3c4948]">
-                    Department
+                    Branch
                   </label>
-                  <input
-                    type="text"
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    placeholder="Inpatient Care / Retail"
-                    className="w-full rounded-lg border-0 bg-[#f2f4f6] px-4 py-3.5 text-base text-[#191c1e] placeholder:text-[#6b7280] outline-none focus:ring-2 focus:ring-[#006a65]/20"
-                  />
+                  {branchesQuery.isPending ? (
+                    <p className="text-sm text-[#64748b]">Loading branches…</p>
+                  ) : branchesQuery.isError || !(branchesQuery.data?.branches.length) ? (
+                    <p className="text-sm text-[#64748b]">No branches available. Add a branch before inviting staff.</p>
+                  ) : (
+                    <div className="grid gap-2 rounded-lg border border-[rgba(187,201,199,0.25)] bg-[#f2f4f6] p-4 sm:grid-cols-2">
+                      {branchesQuery.data.branches.map((b) => (
+                        <label
+                          key={b.id}
+                          className="flex cursor-pointer items-center gap-3 rounded-lg bg-white/80 px-3 py-2.5 shadow-sm"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={branchIds.includes(b.id)}
+                            onChange={() => toggleBranch(b.id)}
+                            className="size-4 shrink-0 rounded border-[#cbd5e1] text-[#006a65] accent-[#006a65]"
+                          />
+                          <span className="text-sm font-medium text-[#191c1e]">
+                            {b.name}
+                            {b.isPrimary ? (
+                              <span className="ml-2 text-xs font-normal text-[#64748b]">(Primary)</span>
+                            ) : null}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </section>
 
-            {/* Role & Permission Assignment — NEW section */}
-            <section className="rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-8 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
+            {/* Role & Permission Assignment */}
+            <section
+              ref={setStepSectionRef(1)}
+              className="scroll-mt-8 rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-8 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"
+            >
               <h2 className="mb-6 flex items-center gap-3 font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]">
                 <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">
                   shield
@@ -299,28 +514,26 @@ export function AddNewStaffContent() {
               <div className="grid gap-8 sm:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[#3c4948]">
-                    Professional Role
+                    Role
                   </label>
                   <select
-                    value={professionalRole}
-                    onChange={(e) =>
-                      setProfessionalRole(e.target.value as (typeof ROLE_OPTIONS)[number])
-                    }
+                    value={appRole}
+                    onChange={(e) => handleAppRoleChange(e.target.value as StaffAddDraftAppRole)}
                     className="w-full appearance-none rounded-lg border-0 bg-[#f2f4f6] px-4 py-3 text-base text-[#191c1e] outline-none focus:ring-2 focus:ring-[#006a65]/20 [background-image:url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] [background-position:right_0.75rem_center] [background-repeat:no-repeat] [background-size:1.25rem] pr-12"
                   >
-                    {ROLE_OPTIONS.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
+                    {APP_ROLE_OPTIONS.map((r) => (
+                      <option key={r.value} value={r.value}>
+                        {r.label}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
                   <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[#3c4948]">
-                    System Access Level
+                    System access (preset)
                   </label>
                   <div className="grid grid-cols-2 gap-3">
-                    {ACCESS_LEVELS.map((item) => (
+                    {ACCESS_LEVEL_DEFS.map((item) => (
                       <button
                         key={item.id}
                         type="button"
@@ -353,7 +566,10 @@ export function AddNewStaffContent() {
             </section>
 
             {/* Contact Details */}
-            <section className="rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-8 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
+            <section
+              ref={setStepSectionRef(2)}
+              className="scroll-mt-8 rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-8 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"
+            >
               <h2 className="mb-6 flex items-center gap-3 font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]">
                 <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">
                   contact_page
@@ -363,7 +579,7 @@ export function AddNewStaffContent() {
               <div className="grid gap-6 sm:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[#3c4948]">
-                    Email Address
+                    Email Address <span className="font-normal normal-case text-[#64748b]">(required)</span>
                   </label>
                   <div className="relative">
                     <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-[#64748b]">
@@ -380,7 +596,7 @@ export function AddNewStaffContent() {
                 </div>
                 <div>
                   <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[#3c4948]">
-                    Phone Number
+                    Phone Number <span className="font-normal normal-case text-[#64748b]">(required)</span>
                   </label>
                   <div className="relative">
                     <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-[#64748b]">
@@ -399,13 +615,29 @@ export function AddNewStaffContent() {
             </section>
 
             {/* Credential Upload */}
-            <section className="rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-8 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
-              <h2 className="mb-6 flex items-center gap-3 font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]">
+            <section
+              ref={setStepSectionRef(3)}
+              className="scroll-mt-8 rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-8 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"
+            >
+              <h2 className="mb-6 flex flex-wrap items-center gap-3 font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]">
                 <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">
                   fact_check
                 </span>
                 Credential Upload
+                {appRole === "pharmacist" ? (
+                  <span className="rounded-full bg-[#fef3c7] px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-[#b45309]">
+                    Required
+                  </span>
+                ) : null}
               </h2>
+              <input
+                ref={credentialFileInputRef}
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+                multiple
+                className="sr-only"
+                onChange={handleCredentialFiles}
+              />
               <div className="rounded-xl border-2 border-dashed border-[rgba(187,201,199,0.3)] bg-[rgba(242,244,246,0.5)] p-10">
                 <div className="flex flex-col items-center text-center">
                   <div className="flex size-16 items-center justify-center rounded-full bg-[rgba(0,106,101,0.1)]">
@@ -414,19 +646,20 @@ export function AddNewStaffContent() {
                     </span>
                   </div>
                   <p className="mt-4 text-lg font-semibold text-[#191c1e]">
-                    Drop professional licenses here
+                    Upload professional licenses
                   </p>
                   <p className="mt-2 text-sm text-[#3c4948]">
-                    or{" "}
                     <button
                       type="button"
+                      onClick={() => credentialFileInputRef.current?.click()}
                       className="font-medium text-[#006a65] underline underline-offset-2 hover:text-[#00504c]"
                     >
-                      browse your files
+                      Browse files
                     </button>
+                    <span className="text-[#94a3b8]"> · PDF, PNG, JPG</span>
                   </p>
                   <p className="mt-4 text-xs text-[#3c4948] opacity-60">
-                    Accepted formats: PDF, PNG, JPG (Max 10MB per file)
+                    Max 10MB per file (multiple files allowed)
                   </p>
                 </div>
               </div>
@@ -472,7 +705,9 @@ export function AddNewStaffContent() {
               <div className="flex items-center gap-3">
                 <span className="size-2 rounded-full bg-[#006a65]" />
                 <p className="text-sm font-medium text-[#00504c]">
-                  Ready for submission. All required fields have been validated.
+                  {appRole === "pharmacist" && files.length === 0
+                    ? "Pharmacist role requires at least one credential upload before review."
+                    : "Review each step, then save to continue to confirmation."}
                 </p>
               </div>
               {primaryButton}
