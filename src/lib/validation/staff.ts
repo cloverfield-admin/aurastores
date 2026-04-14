@@ -11,4 +11,22 @@ export const addStaffByEmailSchema = z.object({
   branchId: z.string().uuid().nullable().optional(),
 });
 
+export const listStaffDirectorySchema = z.object({
+  q: z.string().optional(),
+  page: z
+    .string()
+    .optional()
+    .transform((value) => {
+      const parsed = Number.parseInt(value ?? "1", 10);
+      return Number.isFinite(parsed) ? parsed : 1;
+    }),
+  pageSize: z
+    .string()
+    .optional()
+    .transform((value) => {
+      const parsed = Number.parseInt(value ?? "10", 10);
+      return Number.isFinite(parsed) ? parsed : 10;
+    }),
+});
+
 export type AddStaffByEmailPayload = z.infer<typeof addStaffByEmailSchema>;

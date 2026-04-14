@@ -1,4 +1,4 @@
-import { and, eq, ilike, isNull, ne, or, sql } from "drizzle-orm";
+import { and, count, eq, ilike, isNull, ne, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   branchStaffAssignments,
@@ -10,11 +10,52 @@ import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 import type {
   AddStaffByEmailInput,
   StaffDirectoryMember,
+  StaffDirectorySummary,
   StaffRepository,
 } from "@/lib/repositories/staff/staff.repository";
 
 export class StaffRepositoryImpl implements StaffRepository {
-  async listDirectory(context: AuthContext): Promise<StaffDirectoryMember[]> {
+  async listDirectory(
+    context: AuthContext,
+    options?: { q?: string; page?: number; pageSize?: number },
+  ): Promise<{
+    members: StaffDirectoryMember[];
+    pagination: { page: number; pageSize: number; totalItems: number; totalPages: number };
+    summary: StaffDirectorySummary;
+  }> {
+    const q = options?.q?.trim() ?? "";
+    const page = Math.max(1, Math.floor(options?.page ?? 1));
+    const pageSize = Math.min(50, Math.max(1, Math.floor(options?.pageSize ?? 10)));
+    const offset = (page - 1) * pageSize;
+
+    const baseWhere = and(
+      eq(organizationMemberships.organizationId, context.organization.id),
+      ne(organizationMemberships.status, "removed"),
+      q ? or(ilike(users.fullName, `%${q}%`), ilike(users.email, `%${q}%`)) : sql`true`,
+    );
+
+    const [{ value: totalItems }] = await db
+      .select({ value: count() })
+      .from(organizationMemberships)
+      .innerJoin(users, eq(users.id, organizationMemberships.userId))
+      .where(baseWhere);
+
+    const summaryRows = await db
+      .select({
+        status: organizationMemberships.status,
+        count: count(),
+      })
+      .from(organizationMemberships)
+      .innerJoin(users, eq(users.id, organizationMemberships.userId))
+      .where(baseWhere)
+      .groupBy(organizationMemberships.status);
+
+    const summaryMap = new Map(summaryRows.map((row) => [row.status, row.count] as const));
+    const active = summaryMap.get("active") ?? 0;
+    const invited = summaryMap.get("invited") ?? 0;
+    const total = totalItems;
+    const other = Math.max(0, total - active - invited);
+
     const rows = await db
       .select({
         membershipId: organizationMemberships.id,
@@ -35,24 +76,38 @@ export class StaffRepositoryImpl implements StaffRepository {
       })
       .from(organizationMemberships)
       .innerJoin(users, eq(users.id, organizationMemberships.userId))
-      .where(
-        and(
-          eq(organizationMemberships.organizationId, context.organization.id),
-          ne(organizationMemberships.status, "removed"),
-        ),
-      )
-      .orderBy(users.fullName);
+      .where(baseWhere)
+      .orderBy(users.fullName)
+      .limit(pageSize)
+      .offset(offset);
 
-    return rows.map((row) => ({
-      membershipId: row.membershipId,
-      userId: row.userId,
-      fullName: row.fullName,
-      email: row.email,
-      role: row.role,
-      membershipStatus: row.membershipStatus,
-      jobTitle: row.jobTitle,
-      branchName: row.branchName,
-    }));
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    const safePage = Math.min(page, totalPages);
+
+    return {
+      members: rows.map((row) => ({
+        membershipId: row.membershipId,
+        userId: row.userId,
+        fullName: row.fullName,
+        email: row.email,
+        role: row.role,
+        membershipStatus: row.membershipStatus,
+        jobTitle: row.jobTitle,
+        branchName: row.branchName,
+      })),
+      pagination: {
+        page: safePage,
+        pageSize,
+        totalItems,
+        totalPages,
+      },
+      summary: {
+        total,
+        active,
+        invited,
+        other,
+      },
+    };
   }
 
   async searchDirectory(
