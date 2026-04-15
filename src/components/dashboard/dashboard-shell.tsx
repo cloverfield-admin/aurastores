@@ -563,16 +563,6 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                     ariaLabel: "Active branch context",
                     onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
                   })}
-                  <label className="relative block w-full min-w-0">
-                    <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[var(--app-text-faint)]">
-                      search
-                    </span>
-                    <input
-                      type="search"
-                      placeholder={searchPlaceholder}
-                      className="w-full rounded-full border-0 bg-[var(--app-input-bg)] py-2 pl-10 pr-4 text-sm text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] outline-none"
-                    />
-                  </label>
                 </div>
               ) : isDashboardMain ? (
                 canUsePharmacySearch ? <PharmacySearchField /> : null
@@ -743,18 +733,6 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                   <span className="material-symbols-outlined notranslate text-lg">{topActionIcon}</span>
                   {topActionLabel}
                 </button>
-              )}
-              {isSales && (
-                <label className="relative hidden w-64 sm:block">
-                  <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[var(--app-text-faint)]">
-                    search
-                  </span>
-                  <input
-                    type="search"
-                    placeholder={searchPlaceholder}
-                    className="w-full rounded-full border-0 bg-[var(--app-input-bg)] py-2 pl-10 pr-4 text-sm text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] outline-none"
-                  />
-                </label>
               )}
               <div className="flex items-center gap-2 border-l border-[var(--app-surface-subtle)] pl-4">
                 <button

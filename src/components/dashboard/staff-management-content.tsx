@@ -264,6 +264,7 @@ export function StaffManagementContent() {
                               <div className="flex items-center gap-3">
                                 <AuraAvatar
                                   name={member.fullName}
+                                  photoUrl={member.avatarUrl}
                                   decorative
                                   className="size-9 shrink-0 rounded-full ring-2 ring-white text-xs"
                                 />

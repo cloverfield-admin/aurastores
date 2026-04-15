@@ -6,6 +6,7 @@ export type StaffDirectoryMember = {
   userId: string;
   fullName: string;
   email: string;
+  avatarUrl: string | null;
   role: string;
   membershipStatus: string;
   jobTitle: string | null;
