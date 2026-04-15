@@ -18,14 +18,14 @@ export function MissingCapabilityNotice({
   const label = membershipCapabilityLabel(capability);
   const prose = (
     <>
-      You do not have access to <span className="font-semibold text-[#191c1e]">{label}</span>. An organization owner or
+      You do not have access to <span className="font-semibold text-[var(--app-text)]">{label}</span>. An organization owner or
       admin can update your permissions in the staff directory (Staff management).
     </>
   );
 
   if (variant === "inline") {
     return (
-      <p role="status" className={`text-sm leading-relaxed text-[#64748b] ${className}`}>
+      <p role="status" className={`text-sm leading-relaxed text-[var(--app-text-muted)] ${className}`}>
         {prose}
       </p>
     );
@@ -34,9 +34,9 @@ export function MissingCapabilityNotice({
   return (
     <div
       role="status"
-      className={`rounded-xl border border-[rgba(187,201,199,0.2)] bg-white p-6 shadow-sm ${className}`}
+      className={`rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-[var(--app-shadow-card)] ${className}`}
     >
-      <p className="text-sm leading-relaxed text-[#3c4948]">{prose}</p>
+      <p className="text-sm leading-relaxed text-[var(--app-text-secondary)]">{prose}</p>
     </div>
   );
 }

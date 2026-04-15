@@ -138,7 +138,7 @@ export function PharmacySearchField({ className }: PharmacySearchFieldProps) {
   return (
     <div ref={rootRef} className={`relative min-w-0 ${className ?? ""}`}>
       <label className="relative block w-full sm:w-72">
-        <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
+        <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[var(--app-text-faint)]">
           search
         </span>
         <input
@@ -158,7 +158,7 @@ export function PharmacySearchField({ className }: PharmacySearchFieldProps) {
           aria-expanded={showPanel}
           aria-controls="pharmacy-search-results"
           aria-autocomplete="list"
-          className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
+          className="w-full rounded-full border-0 bg-[var(--app-input-bg)] py-2 pl-10 pr-4 text-sm text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] outline-none ring-1 ring-transparent focus:ring-[var(--app-link-teal)]/25"
         />
       </label>
 
@@ -166,12 +166,12 @@ export function PharmacySearchField({ className }: PharmacySearchFieldProps) {
         <div
           id="pharmacy-search-results"
           role="listbox"
-          className="absolute left-0 right-0 top-full z-50 mt-2 max-h-80 overflow-auto rounded-xl border border-[#e2e8f0] bg-white py-2 shadow-lg"
+          className="absolute left-0 right-0 top-full z-50 mt-2 max-h-80 overflow-auto rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] py-2 shadow-lg"
         >
           {searchQuery.isFetching && hits.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-[#64748b]">Searching…</p>
+            <p className="px-4 py-3 text-sm text-[var(--app-text-muted)]">Searching…</p>
           ) : hits.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-[#64748b]">No matches yet.</p>
+            <p className="px-4 py-3 text-sm text-[var(--app-text-muted)]">No matches yet.</p>
           ) : (
             hits.map((hit, index) => {
               const prev = hits[index - 1];
@@ -180,7 +180,7 @@ export function PharmacySearchField({ className }: PharmacySearchFieldProps) {
               return (
                 <div key={`${hit.kind}-${hit.id}`}>
                   {showHeading ? (
-                    <p className="px-4 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#94a3b8]">
+                    <p className="px-4 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--app-text-faint)]">
                       {sectionTitle(hit.kind)}
                     </p>
                   ) : null}
@@ -189,18 +189,18 @@ export function PharmacySearchField({ className }: PharmacySearchFieldProps) {
                     role="option"
                     aria-selected={active}
                     className={`flex w-full items-start gap-3 px-4 py-2.5 text-left text-sm transition ${
-                      active ? "bg-[#f0fdfa]" : "hover:bg-[#f8fafc]"
+                      active ? "bg-[var(--app-search-hit-active)]" : "hover:bg-[var(--app-list-hover)]"
                     }`}
                     onMouseEnter={() => setHighlightedIndex(index)}
                     onClick={() => selectHit(hit)}
                   >
-                    <span className="material-symbols-outlined notranslate mt-0.5 text-base text-[#64748b]">
+                    <span className="material-symbols-outlined notranslate mt-0.5 text-base text-[var(--app-text-muted)]">
                       {kindIcon(hit.kind)}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium text-[#0f172a]">{hit.title}</span>
+                      <span className="block truncate font-medium text-[var(--app-header-title)]">{hit.title}</span>
                       {hit.subtitle ? (
-                        <span className="mt-0.5 block truncate text-xs text-[#64748b]">{hit.subtitle}</span>
+                        <span className="mt-0.5 block truncate text-xs text-[var(--app-text-muted)]">{hit.subtitle}</span>
                       ) : null}
                     </span>
                   </button>

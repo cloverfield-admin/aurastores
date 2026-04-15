@@ -13,7 +13,7 @@ export function SaveProgressButton({ variant = "gradient" }: SaveProgressButtonP
   const { notify, withLoading } = useAuraFeedback();
   const [label, setLabel] = useState("Save Progress");
   const outline =
-    "border border-[#e2e8f0] bg-white text-[#0f172a] hover:bg-slate-50";
+    "border border-[var(--app-border-ui)] bg-[var(--app-surface)] text-[var(--app-header-title)] hover:bg-[var(--app-surface-subtle)]";
   const gradient =
     "bg-gradient-to-r from-[#0fb9b1] to-[#6063ee] text-white shadow-sm hover:opacity-95";
 

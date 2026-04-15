@@ -15,31 +15,35 @@ export function AuraInlineAlert({
 }: AuraInlineAlertProps) {
   const tone = {
     error: {
-      wrapper: "border-[rgba(239,68,68,0.18)] bg-[rgba(254,242,242,0.92)]",
-      badge: "bg-[rgba(239,68,68,0.14)] text-[#ba1a1a]",
-      title: "text-[#7f1d1d]",
-      body: "text-[#991b1b]",
+      wrapper:
+        "border-[rgba(239,68,68,0.18)] bg-[rgba(254,242,242,0.92)] dark:border-red-500/25 dark:bg-red-950/40",
+      badge: "bg-[rgba(239,68,68,0.14)] text-[#ba1a1a] dark:bg-red-500/15 dark:text-red-200",
+      title: "text-[#7f1d1d] dark:text-red-100",
+      body: "text-[#991b1b] dark:text-red-200/90",
       icon: "error",
     },
     success: {
-      wrapper: "border-[rgba(15,185,177,0.18)] bg-[rgba(240,253,250,0.96)]",
-      badge: "bg-[rgba(15,185,177,0.16)] text-[#006a65]",
-      title: "text-[#065f5b]",
-      body: "text-[#0f766e]",
+      wrapper:
+        "border-[rgba(15,185,177,0.18)] bg-[rgba(240,253,250,0.96)] dark:border-teal-500/25 dark:bg-teal-950/35",
+      badge: "bg-[rgba(15,185,177,0.16)] text-[#006a65] dark:bg-teal-500/15 dark:text-teal-200",
+      title: "text-[#065f5b] dark:text-teal-100",
+      body: "text-[#0f766e] dark:text-teal-200/90",
       icon: "check_circle",
     },
     warning: {
-      wrapper: "border-[rgba(245,158,11,0.18)] bg-[rgba(255,251,235,0.96)]",
-      badge: "bg-[rgba(245,158,11,0.16)] text-[#b45309]",
-      title: "text-[#92400e]",
-      body: "text-[#b45309]",
+      wrapper:
+        "border-[rgba(245,158,11,0.18)] bg-[rgba(255,251,235,0.96)] dark:border-amber-500/25 dark:bg-amber-950/35",
+      badge: "bg-[rgba(245,158,11,0.16)] text-[#b45309] dark:bg-amber-500/15 dark:text-amber-200",
+      title: "text-[#92400e] dark:text-amber-100",
+      body: "text-[#b45309] dark:text-amber-200/90",
       icon: "warning",
     },
     info: {
-      wrapper: "border-[rgba(96,99,238,0.16)] bg-[rgba(245,243,255,0.94)]",
-      badge: "bg-[rgba(96,99,238,0.16)] text-[#4648d4]",
-      title: "text-[#3730a3]",
-      body: "text-[#4c51bf]",
+      wrapper:
+        "border-[rgba(96,99,238,0.16)] bg-[rgba(245,243,255,0.94)] dark:border-indigo-500/25 dark:bg-indigo-950/35",
+      badge: "bg-[rgba(96,99,238,0.16)] text-[#4648d4] dark:bg-indigo-500/15 dark:text-indigo-200",
+      title: "text-[#3730a3] dark:text-indigo-100",
+      body: "text-[#4c51bf] dark:text-indigo-200/90",
       icon: "info",
     },
   }[variant];

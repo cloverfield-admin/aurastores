@@ -9,6 +9,7 @@ import { loadAccessibleBranchTabs } from "@/lib/rbac/workspace-branches";
 import { ROUTES } from "@/lib/routes";
 import { DashboardLayoutShell } from "@/components/dashboard/dashboard-layout-shell";
 import { getUserAvatarPublicUrl } from "@/lib/supabase/user-avatar-public-url";
+import { DEFAULT_USER_PREFERENCES } from "@/lib/validation/me";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -28,6 +29,9 @@ export default async function DashboardLayout({
   }
 
   const appContext = await getCurrentAppContext();
+  const prefs = appContext?.user.preferences;
+  const initialTheme = prefs?.theme ?? DEFAULT_USER_PREFERENCES.theme;
+
   const workspaceAccess: DashboardWorkspaceAccess = appContext
     ? {
         capabilities: appContext.capabilities,
@@ -38,6 +42,7 @@ export default async function DashboardLayout({
         userAvatarUrl: appContext.user.avatarStorageKey
           ? getUserAvatarPublicUrl(appContext.user.avatarStorageKey)
           : null,
+        initialTheme,
       }
     : {
         capabilities: fullCapabilities(),
@@ -46,6 +51,7 @@ export default async function DashboardLayout({
         userDisplayName: user.email ?? "User",
         membershipRoleLabel: "—",
         userAvatarUrl: null,
+        initialTheme,
       };
 
   return <DashboardLayoutShell workspaceAccess={workspaceAccess}>{children}</DashboardLayoutShell>;

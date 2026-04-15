@@ -515,15 +515,15 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
           <div className="space-y-2">
             <Link
               href={ROUTES.dashboard.staff}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-[#006a65] hover:text-[#00504c]"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--app-brand)] hover:text-[var(--app-link-teal)]"
             >
               <span className="material-symbols-outlined notranslate text-lg">arrow_back</span>
               Back to Staff Directory
             </Link>
-            <h1 className="font-[family-name:var(--font-manrope)] text-[36px] font-extrabold leading-10 tracking-[-0.9px] text-[#191c1e]">
+            <h1 className="font-[family-name:var(--font-manrope)] text-[36px] font-extrabold leading-10 tracking-[-0.9px] text-[var(--app-text)]">
               {variant === "add" ? "Add New Staff Member" : "Edit Staff Member"}
             </h1>
-            <p className="text-base text-[#3c4948]">
+            <p className="text-base text-[var(--app-text-secondary)]">
               {variant === "add"
                 ? "Onboard a new professional to the AuraPharma clinical network."
                 : "Update profile, role, branches, and credentials. Email cannot be changed."}
@@ -533,7 +533,7 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
             <button
               type="button"
               onClick={handleDiscard}
-              className="rounded-xl bg-[#e6e8ea] px-6 py-3 text-base font-semibold text-[#3c4948] transition hover:bg-[#d1d5db]"
+              className="rounded-xl bg-[#e6e8ea] px-6 py-3 text-base font-semibold text-[var(--app-text-secondary)] transition hover:bg-[#d1d5db]"
             >
               {variant === "add" ? "Discard" : "Cancel"}
             </button>
@@ -545,7 +545,7 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
         <div className="grid gap-8 lg:grid-cols-12">
           {/* Progress sidebar - 3 cols */}
           <aside className="flex flex-col gap-6 lg:col-span-3">
-            <div className="rounded-xl border border-[rgba(187,201,199,0.1)] bg-[#f2f4f6] p-6">
+            <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-input-bg)] p-6">
               <div className="space-y-6">
                 {stepItems.map((step, index) => (
                   <button
@@ -563,8 +563,8 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
                           step.variant === "filled"
                             ? "text-white"
                             : step.variant === "outline"
-                              ? "border-2 border-[#006a65] bg-white text-[#006a65]"
-                              : "bg-[#e0e3e5] text-[#3c4948]"
+                              ? "border-2 border-[var(--app-brand)] bg-[var(--app-surface)] text-[var(--app-brand)]"
+                              : "bg-[var(--app-cancel-bg)] text-[var(--app-text-secondary)]"
                         }`}
                         style={
                           step.variant === "filled"
@@ -586,12 +586,12 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
                       <div>
                         <p
                           className={`text-base font-bold ${
-                            step.isCurrent ? "text-[#006a65]" : "text-[#191c1e]"
+                            step.isCurrent ? "text-[var(--app-brand)]" : "text-[var(--app-text)]"
                           }`}
                         >
                           {step.title}
                         </p>
-                        <p className="mt-1 text-xs leading-4 text-[#3c4948]">
+                        <p className="mt-1 text-xs leading-4 text-[var(--app-text-secondary)]">
                           {step.desc}
                         </p>
                       </div>
@@ -602,10 +602,10 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
             </div>
             <div className="rounded-xl border border-[rgba(0,106,101,0.1)] bg-[rgba(0,106,101,0.05)] p-6">
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined notranslate text-lg text-[#006a65]">
+                <span className="material-symbols-outlined notranslate text-lg text-[var(--app-brand)]">
                   shield
                 </span>
-                <p className="text-sm font-semibold text-[#006a65]">Security Notice</p>
+                <p className="text-sm font-semibold text-[var(--app-brand)]">Security Notice</p>
               </div>
               <p className="mt-3 text-xs leading-5 text-[#00504c] opacity-80">
                 {variant === "add"
@@ -620,66 +620,66 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
             {/* Basic Information */}
             <section
               ref={setStepSectionRef(0)}
-              className="scroll-mt-8 rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-8 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"
+              className="scroll-mt-8 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-8 shadow-[var(--app-shadow-card)]"
             >
-              <h2 className="mb-6 flex items-center gap-3 font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]">
-                <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">
+              <h2 className="mb-6 flex items-center gap-3 font-[family-name:var(--font-manrope)] text-xl font-bold text-[var(--app-text)]">
+                <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">
                   person_add
                 </span>
                 Basic Information
               </h2>
               <div className="grid gap-6 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[#3c4948]">
-                    Full Name <span className="font-normal normal-case text-[#64748b]">(required)</span>
+                  <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[var(--app-text-secondary)]">
+                    Full Name <span className="font-normal normal-case text-[var(--app-text-muted)]">(required)</span>
                   </label>
                   <input
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="e.g. Dr. Sarah Jenkins"
-                    className="w-full rounded-lg border-0 bg-[#f2f4f6] px-4 py-3.5 text-base text-[#191c1e] placeholder:text-[#6b7280] outline-none focus:ring-2 focus:ring-[#006a65]/20"
+                    className="w-full rounded-lg border-0 bg-[var(--app-input-bg)] px-4 py-3.5 text-base text-[var(--app-text)] placeholder:text-[var(--app-placeholder)] outline-none focus:ring-2 focus:ring-[var(--app-brand)]/20"
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[#3c4948]">
+                  <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[var(--app-text-secondary)]">
                     Staff ID Number
                   </label>
                   {variant === "add" ? (
-                    <div className="rounded-lg border border-[rgba(0,106,101,0.12)] bg-[#f8fafc] px-4 py-3.5 text-base text-[#475569]">
+                    <div className="rounded-lg border border-[rgba(0,106,101,0.12)] bg-[var(--app-surface-muted)] px-4 py-3.5 text-base text-[#475569]">
                       Assigned automatically when you add this member (e.g. AP-00001).
                     </div>
                   ) : (
-                    <div className="rounded-lg border border-[rgba(0,106,101,0.12)] bg-[#f2f4f6] px-4 py-3.5 text-base font-medium text-[#191c1e]">
+                    <div className="rounded-lg border border-[rgba(0,106,101,0.12)] bg-[var(--app-input-bg)] px-4 py-3.5 text-base font-medium text-[var(--app-text)]">
                       {initialMember?.staffEmployeeCode ?? "—"}
                     </div>
                   )}
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[#3c4948]">
+                  <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[var(--app-text-secondary)]">
                     Branch
                   </label>
                   {branchesQuery.isPending ? (
-                    <p className="text-sm text-[#64748b]">Loading branches…</p>
+                    <p className="text-sm text-[var(--app-text-muted)]">Loading branches…</p>
                   ) : branchesQuery.isError || !branchesList.length ? (
-                    <p className="text-sm text-[#64748b]">No branches available. Add a branch before inviting staff.</p>
+                    <p className="text-sm text-[var(--app-text-muted)]">No branches available. Add a branch before inviting staff.</p>
                   ) : (
-                    <div className="grid gap-2 rounded-lg border border-[rgba(187,201,199,0.25)] bg-[#f2f4f6] p-4 sm:grid-cols-2">
+                    <div className="grid gap-2 rounded-lg border border-[var(--app-border)] bg-[var(--app-input-bg)] p-4 sm:grid-cols-2">
                       {branchesList.map((b) => (
                         <label
                           key={b.id}
-                          className="flex cursor-pointer items-center gap-3 rounded-lg bg-white/80 px-3 py-2.5 shadow-sm"
+                          className="flex cursor-pointer items-center gap-3 rounded-lg bg-[var(--app-surface)]/80 px-3 py-2.5 shadow-sm"
                         >
                           <input
                             type="checkbox"
                             checked={branchIds.includes(b.id)}
                             onChange={() => toggleBranch(b.id)}
-                            className="size-4 shrink-0 rounded border-[#cbd5e1] text-[#006a65] accent-[#006a65]"
+                            className="size-4 shrink-0 rounded border-[var(--app-outline-variant)] text-[var(--app-brand)] accent-[var(--app-brand)]"
                           />
-                          <span className="text-sm font-medium text-[#191c1e]">
+                          <span className="text-sm font-medium text-[var(--app-text)]">
                             {b.name}
                             {b.isPrimary ? (
-                              <span className="ml-2 text-xs font-normal text-[#64748b]">(Primary)</span>
+                              <span className="ml-2 text-xs font-normal text-[var(--app-text-muted)]">(Primary)</span>
                             ) : null}
                           </span>
                         </label>
@@ -693,24 +693,24 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
             {/* Role & Permission Assignment */}
             <section
               ref={setStepSectionRef(1)}
-              className="scroll-mt-8 rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-8 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"
+              className="scroll-mt-8 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-8 shadow-[var(--app-shadow-card)]"
             >
-              <h2 className="mb-6 flex items-center gap-3 font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]">
-                <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">
+              <h2 className="mb-6 flex items-center gap-3 font-[family-name:var(--font-manrope)] text-xl font-bold text-[var(--app-text)]">
+                <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">
                   shield
                 </span>
                 Role & Permission Assignment
               </h2>
               <div className="grid gap-8 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[#3c4948]">
+                  <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[var(--app-text-secondary)]">
                     Role
                   </label>
                   <select
                     value={appRole}
                     onChange={(e) => handleAppRoleChange(e.target.value as StaffFormAppRole)}
                     disabled={credentialBusy}
-                    className="w-full appearance-none rounded-lg border-0 bg-[#f2f4f6] px-4 py-3 text-base text-[#191c1e] outline-none focus:ring-2 focus:ring-[#006a65]/20 [background-image:url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] [background-position:right_0.75rem_center] [background-repeat:no-repeat] [background-size:1.25rem] pr-12 disabled:opacity-50"
+                    className="w-full appearance-none rounded-lg border-0 bg-[var(--app-input-bg)] px-4 py-3 text-base text-[var(--app-text)] outline-none focus:ring-2 focus:ring-[var(--app-brand)]/20 [background-image:url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] [background-position:right_0.75rem_center] [background-repeat:no-repeat] [background-size:1.25rem] pr-12 disabled:opacity-50"
                   >
                     {APP_ROLE_OPTIONS.map((r) => (
                       <option key={r.value} value={r.value}>
@@ -720,7 +720,7 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[#3c4948]">
+                  <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[var(--app-text-secondary)]">
                     System access (preset)
                   </label>
                   <div className="grid grid-cols-2 gap-3">
@@ -731,13 +731,13 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
                         onClick={() => toggleAccess(item.id)}
                         className={`flex items-center gap-3 rounded-lg p-3 text-left transition ${
                           accessLevels[item.id]
-                            ? "bg-[#f2f4f6] ring-1 ring-[#006a65]/30"
-                            : "bg-[#f2f4f6] hover:bg-[#e2e8f0]"
+                            ? "bg-[var(--app-input-bg)] ring-1 ring-[var(--app-brand)]/30"
+                            : "bg-[var(--app-input-bg)] hover:bg-[var(--app-cancel-hover)]"
                         }`}
                       >
                         <div
                           className={`flex size-5 shrink-0 items-center justify-center rounded ${
-                            accessLevels[item.id] ? "bg-[#006a65] text-white" : "bg-white/50"
+                            accessLevels[item.id] ? "bg-[var(--app-brand)] text-white" : "bg-[var(--app-surface)]/50"
                           }`}
                         >
                           {accessLevels[item.id] && (
@@ -746,7 +746,7 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
                             </span>
                           )}
                         </div>
-                        <span className="text-sm font-medium text-[#191c1e] leading-5">
+                        <span className="text-sm font-medium text-[var(--app-text)] leading-5">
                           {item.label}
                         </span>
                       </button>
@@ -759,21 +759,21 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
             {/* Contact Details */}
             <section
               ref={setStepSectionRef(2)}
-              className="scroll-mt-8 rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-8 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"
+              className="scroll-mt-8 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-8 shadow-[var(--app-shadow-card)]"
             >
-              <h2 className="mb-6 flex items-center gap-3 font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]">
-                <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">
+              <h2 className="mb-6 flex items-center gap-3 font-[family-name:var(--font-manrope)] text-xl font-bold text-[var(--app-text)]">
+                <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">
                   contact_page
                 </span>
                 Contact Details
               </h2>
               <div className="grid gap-6 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[#3c4948]">
-                    Email Address <span className="font-normal normal-case text-[#64748b]">(required)</span>
+                  <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[var(--app-text-secondary)]">
+                    Email Address <span className="font-normal normal-case text-[var(--app-text-muted)]">(required)</span>
                   </label>
                   <div className="relative">
-                    <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-[#64748b]">
+                    <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-[var(--app-text-muted)]">
                       mail
                     </span>
                     <input
@@ -783,20 +783,20 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
                       readOnly={variant === "edit"}
                       disabled={variant === "edit"}
                       placeholder="s.jenkins@aurapharma.com"
-                      className={`w-full rounded-lg border-0 bg-[#f2f4f6] py-3.5 pl-11 pr-4 text-base outline-none focus:ring-2 focus:ring-[#006a65]/20 ${
+                      className={`w-full rounded-lg border-0 bg-[var(--app-input-bg)] py-3.5 pl-11 pr-4 text-base outline-none focus:ring-2 focus:ring-[var(--app-brand)]/20 ${
                         variant === "edit"
-                          ? "cursor-not-allowed text-[#64748b] opacity-90"
-                          : "text-[#191c1e] placeholder:text-[#6b7280]"
+                          ? "cursor-not-allowed text-[var(--app-text-muted)] opacity-90"
+                          : "text-[var(--app-text)] placeholder:text-[var(--app-placeholder)]"
                       }`}
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[#3c4948]">
-                    Phone Number <span className="font-normal normal-case text-[#64748b]">(required)</span>
+                  <label className="mb-2 block text-base font-semibold uppercase tracking-[0.1em] text-[var(--app-text-secondary)]">
+                    Phone Number <span className="font-normal normal-case text-[var(--app-text-muted)]">(required)</span>
                   </label>
                   <div className="relative">
-                    <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-[#64748b]">
+                    <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-[var(--app-text-muted)]">
                       phone
                     </span>
                     <input
@@ -804,7 +804,7 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="+1 (555) 000-0000"
-                      className="w-full rounded-lg border-0 bg-[#f2f4f6] py-3.5 pl-11 pr-4 text-base text-[#191c1e] placeholder:text-[#6b7280] outline-none focus:ring-2 focus:ring-[#006a65]/20"
+                      className="w-full rounded-lg border-0 bg-[var(--app-input-bg)] py-3.5 pl-11 pr-4 text-base text-[var(--app-text)] placeholder:text-[var(--app-placeholder)] outline-none focus:ring-2 focus:ring-[var(--app-brand)]/20"
                     />
                   </div>
                 </div>
@@ -814,10 +814,10 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
             {/* Credential Upload */}
             <section
               ref={setStepSectionRef(3)}
-              className="scroll-mt-8 rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-8 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"
+              className="scroll-mt-8 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-8 shadow-[var(--app-shadow-card)]"
             >
-              <h2 className="mb-6 flex flex-wrap items-center gap-3 font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]">
-                <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">
+              <h2 className="mb-6 flex flex-wrap items-center gap-3 font-[family-name:var(--font-manrope)] text-xl font-bold text-[var(--app-text)]">
+                <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">
                   fact_check
                 </span>
                 Credential Upload
@@ -838,25 +838,25 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
               <div className="rounded-xl border-2 border-dashed border-[rgba(187,201,199,0.3)] bg-[rgba(242,244,246,0.5)] p-10">
                 <div className="flex flex-col items-center text-center">
                   <div className="flex size-16 items-center justify-center rounded-full bg-[rgba(0,106,101,0.1)]">
-                    <span className="material-symbols-outlined notranslate text-3xl text-[#006a65]">
+                    <span className="material-symbols-outlined notranslate text-3xl text-[var(--app-brand)]">
                       cloud_upload
                     </span>
                   </div>
-                  <p className="mt-4 text-lg font-semibold text-[#191c1e]">
+                  <p className="mt-4 text-lg font-semibold text-[var(--app-text)]">
                     Upload professional licenses
                   </p>
-                  <p className="mt-2 text-sm text-[#3c4948]">
+                  <p className="mt-2 text-sm text-[var(--app-text-secondary)]">
                     <button
                       type="button"
                       disabled={credentialBusy}
                       onClick={() => credentialFileInputRef.current?.click()}
-                      className="font-medium text-[#006a65] underline underline-offset-2 hover:text-[#00504c] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="font-medium text-[var(--app-brand)] underline underline-offset-2 hover:text-[var(--app-link-teal)] disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Browse files
                     </button>
-                    <span className="text-[#94a3b8]"> · PDF, PNG, JPG</span>
+                    <span className="text-[var(--app-text-faint)]"> · PDF, PNG, JPG</span>
                   </p>
-                  <p className="mt-4 text-xs text-[#3c4948] opacity-60">
+                  <p className="mt-4 text-xs text-[var(--app-text-secondary)] opacity-60">
                     Max 10MB per file (multiple files allowed)
                   </p>
                 </div>
@@ -872,16 +872,16 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
                 {displayFiles.map((file) => (
                   <div
                     key={file.id}
-                    className="flex items-center gap-4 rounded-lg bg-[#f2f4f6] p-4"
+                    className="flex items-center gap-4 rounded-lg bg-[var(--app-input-bg)] p-4"
                   >
-                    <div className="flex size-12 shrink-0 items-center justify-center rounded-full border-4 border-[#f7f9fb] bg-white shadow-sm">
-                      <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">
+                    <div className="flex size-12 shrink-0 items-center justify-center rounded-full border-4 border-[var(--app-canvas)] bg-[var(--app-surface)] shadow-sm">
+                      <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">
                         {file.icon}
                       </span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-[#191c1e]">{file.name}</p>
-                      <p className="text-xs text-[#3c4948]">{file.subtitle}</p>
+                      <p className="text-sm font-semibold text-[var(--app-text)]">{file.name}</p>
+                      <p className="text-xs text-[var(--app-text-secondary)]">{file.subtitle}</p>
                     </div>
                     <button
                       type="button"
@@ -892,7 +892,7 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
                           : undefined
                       }
                       onClick={() => void removeFile(file.id)}
-                      className="rounded-lg p-2 text-[#64748b] hover:bg-[#e2e8f0] hover:text-[#475569] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="rounded-lg p-2 text-[var(--app-text-muted)] hover:bg-[var(--app-cancel-hover)] hover:text-[#475569] disabled:cursor-not-allowed disabled:opacity-40"
                       aria-label={`Remove ${file.name}`}
                     >
                       <span className="material-symbols-outlined notranslate text-lg">
@@ -907,7 +907,7 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
             {/* Final Actions bar */}
             <div className="flex flex-col gap-4 rounded-xl border border-[rgba(0,106,101,0.1)] bg-[rgba(0,106,101,0.05)] p-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
-                <span className="size-2 rounded-full bg-[#006a65]" />
+                <span className="size-2 rounded-full bg-[var(--app-brand)]" />
                 <p className="text-sm font-medium text-[#00504c]">
                   {appRole === "pharmacist" && displayFiles.length === 0
                     ? variant === "add"

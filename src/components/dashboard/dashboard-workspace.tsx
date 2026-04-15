@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
+import type { UserPreferences } from "@/lib/db/schema";
 import type { MembershipCapabilities } from "@/lib/rbac/capabilities";
 import type { WorkspaceBranchTab } from "@/lib/rbac/workspace-branches";
 
@@ -13,6 +14,8 @@ export type DashboardWorkspaceAccess = {
   membershipRoleLabel: string;
   /** Public URL for profile photo when `users.avatar_storage_key` is set; otherwise null. */
   userAvatarUrl: string | null;
+  /** Saved appearance preference from `users.preferences.theme` (for client theme sync). */
+  initialTheme: UserPreferences["theme"];
 };
 
 const DashboardWorkspaceContext = createContext<DashboardWorkspaceAccess | null>(null);

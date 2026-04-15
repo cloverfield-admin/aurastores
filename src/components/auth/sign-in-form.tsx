@@ -79,7 +79,7 @@ export function SignInForm() {
               </AuraFieldLabel>
               <Link
                 href={ROUTES.auth.forgotPassword}
-                className={`shrink-0 text-xs font-semibold text-[#006a65] hover:underline ${isBusy ? "pointer-events-none opacity-60" : ""}`}
+                className={`shrink-0 text-xs font-semibold text-[var(--app-brand)] hover:underline ${isBusy ? "pointer-events-none opacity-60" : ""}`}
               >
                 Forgot password?
               </Link>
@@ -105,9 +105,9 @@ export function SignInForm() {
               type="checkbox"
               checked={remember}
               onChange={(event) => setRemember(event.target.checked)}
-              className="size-4 rounded border-[#bbc9c7] bg-[#f2f4f6] text-[#006a65] accent-[#006a65]"
+              className="size-4 rounded border-[#bbc9c7] bg-[var(--app-input-bg)] text-[var(--app-brand)] accent-[#006a65]"
             />
-            <span className="text-sm font-medium text-[#3c4948]">
+            <span className="text-sm font-medium text-[var(--app-text-secondary)]">
               Remember my session
             </span>
           </label>
@@ -127,10 +127,10 @@ export function SignInForm() {
       </form>
 
       <div className="mt-8 border-t border-[rgba(187,201,199,0.35)] pt-6 text-center text-sm">
-        <span className="font-medium text-[#3c4948]">New to the platform? </span>
+        <span className="font-medium text-[var(--app-text-secondary)]">New to the platform? </span>
         <Link
           href={ROUTES.auth.register}
-          className="font-semibold text-[#006a65] hover:underline"
+          className="font-semibold text-[var(--app-brand)] hover:underline"
         >
           Create an account
         </Link>

@@ -17,7 +17,7 @@ const BranchLocationPicker = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="absolute inset-0 flex items-center justify-center bg-[#e2e8f0] text-sm text-[#64748b]">
+      <div className="absolute inset-0 flex items-center justify-center bg-[#e2e8f0] text-sm text-[var(--app-text-muted)]">
         Loading map…
       </div>
     ),
@@ -180,7 +180,7 @@ export function PharmacyDetailsStepForm() {
   const { draft, loading } = useOnboardingProgress();
 
   if (loading && !draft) {
-    return <div className="py-12 text-sm text-[#64748b]">Loading onboarding details...</div>;
+    return <div className="py-12 text-sm text-[var(--app-text-muted)]">Loading onboarding details...</div>;
   }
 
   if (!draft) {
@@ -353,7 +353,7 @@ function PharmacyDetailsStepFormFields({
           <div className="flex flex-1 flex-col gap-6">
             <div className="flex flex-col gap-4 rounded-[20px] bg-[#f2f4f6] p-6">
               <div className={labelRow}>
-                <span className="material-symbols-outlined notranslate text-base text-[#64748b]">
+                <span className="material-symbols-outlined notranslate text-base text-[var(--app-text-muted)]">
                   store
                 </span>
                 Branch name
@@ -370,7 +370,7 @@ function PharmacyDetailsStepFormFields({
             </div>
             <div className="flex flex-col gap-4 rounded-[20px] bg-[#f2f4f6] p-6">
               <div className={labelRow}>
-                <span className="material-symbols-outlined notranslate text-base text-[#64748b]">
+                <span className="material-symbols-outlined notranslate text-base text-[var(--app-text-muted)]">
                   groups
                 </span>
                 Number of pharmacists
@@ -397,7 +397,7 @@ function PharmacyDetailsStepFormFields({
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className={labelRow}>
-                <span className="material-symbols-outlined notranslate text-base text-[#64748b]">
+                <span className="material-symbols-outlined notranslate text-base text-[var(--app-text-muted)]">
                   location_on
                 </span>
                 Branch location
@@ -415,7 +415,7 @@ function PharmacyDetailsStepFormFields({
                 </button>
               </div>
             </div>
-            <p className="mt-2 text-xs leading-relaxed text-[#64748b]">
+            <p className="mt-2 text-xs leading-relaxed text-[var(--app-text-muted)]">
               Use the map search or click to set a pin. Enter the full street address in the field
               under the map—both save with this branch when you continue.
             </p>
@@ -430,7 +430,7 @@ function PharmacyDetailsStepFormFields({
                     setMapLat(null);
                     setMapLng(null);
                   }}
-                  className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-semibold text-[#64748b] shadow-sm ring-1 ring-black/5 hover:bg-white"
+                  className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-semibold text-[var(--app-text-muted)] shadow-sm ring-1 ring-black/5 hover:bg-white"
                 >
                   Clear pin
                 </button>
@@ -460,7 +460,7 @@ function PharmacyDetailsStepFormFields({
             </div>
             {/* <div className="mt-4 flex flex-col gap-2">
               <label className={labelRow} htmlFor="branchLocation">
-                <span className="material-symbols-outlined notranslate text-base text-[#64748b]">
+                <span className="material-symbols-outlined notranslate text-base text-[var(--app-text-muted)]">
                   signpost
                 </span>
                 Physical address

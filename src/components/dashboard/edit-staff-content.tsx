@@ -13,14 +13,14 @@ export function EditStaffContent() {
 
   if (!membershipId) {
     return (
-      <div className="px-4 py-16 text-center text-sm text-[#64748b]">Invalid staff link.</div>
+      <div className="px-4 py-16 text-center text-sm text-[var(--app-text-muted)]">Invalid staff link.</div>
     );
   }
 
   if (memberQuery.isPending) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center px-4">
-        <p className="text-sm text-[#64748b]">Loading staff member…</p>
+        <p className="text-sm text-[var(--app-text-muted)]">Loading staff member…</p>
       </div>
     );
   }
@@ -29,7 +29,7 @@ export function EditStaffContent() {
     return (
       <div className="px-4 py-16 text-center">
         <p className="text-sm text-red-600">Could not load this staff member.</p>
-        <Link href={ROUTES.dashboard.staff} className="mt-4 inline-block text-sm font-semibold text-[#006a65]">
+        <Link href={ROUTES.dashboard.staff} className="mt-4 inline-block text-sm font-semibold text-[var(--app-brand)]">
           Back to directory
         </Link>
       </div>

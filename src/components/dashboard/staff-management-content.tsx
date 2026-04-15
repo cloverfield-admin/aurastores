@@ -13,9 +13,9 @@ import { hasCapability } from "@/lib/rbac/capabilities";
 type LicenseStatus = "verified" | "expiring_soon" | "pending";
 
 const ROLE_STYLES: Record<string, string> = {
-  pharmacist: "bg-[#f0fdfa] text-[#0f766e]",
+  pharmacist: "bg-[#f0fdfa] text-[var(--app-link-teal)]",
   cashier: "bg-[#eef2ff] text-[#4338ca]",
-  analyst: "bg-[#f1f5f9] text-[#334155]",
+  analyst: "bg-[var(--app-surface-subtle)] text-[#334155]",
   manager: "bg-[#fef3c7] text-[#b45309]",
   admin: "bg-[#ede9fe] text-[#5b21b6]",
   owner: "bg-[#fce7f3] text-[#9d174d]",
@@ -24,7 +24,7 @@ const ROLE_STYLES: Record<string, string> = {
 const LICENSE_STYLES: Record<LicenseStatus, { bg: string; text: string; icon: string }> = {
   verified: { bg: "", text: "text-[#059669]", icon: "check_circle" },
   expiring_soon: { bg: "", text: "text-[#9a461c]", icon: "warning" },
-  pending: { bg: "", text: "text-[#94a3b8]", icon: "more_horiz" },
+  pending: { bg: "", text: "text-[var(--app-text-faint)]", icon: "more_horiz" },
 };
 
 function membershipStatusToLicense(status: string): LicenseStatus {
@@ -89,10 +89,10 @@ export function StaffManagementContent() {
       <div className="px-4 pb-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[1280px] space-y-8">
           <div className="space-y-1">
-            <h1 className="font-[family-name:var(--font-manrope)] text-[30px] font-extrabold leading-9 tracking-[-0.75px] text-[#191c1e]">
+            <h1 className="font-[family-name:var(--font-manrope)] text-[30px] font-extrabold leading-9 tracking-[-0.75px] text-[var(--app-text)]">
               Staff Management
             </h1>
-            <p className="text-sm text-[#64748b]">
+            <p className="text-sm text-[var(--app-text-muted)]">
               Monitor, verify, and coordinate your clinical workforce across the network.
             </p>
           </div>
@@ -108,10 +108,10 @@ export function StaffManagementContent() {
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1">
-            <h1 className="font-[family-name:var(--font-manrope)] text-[30px] font-extrabold leading-9 tracking-[-0.75px] text-[#191c1e]">
+            <h1 className="font-[family-name:var(--font-manrope)] text-[30px] font-extrabold leading-9 tracking-[-0.75px] text-[var(--app-text)]">
               Staff Management
             </h1>
-            <p className="text-sm text-[#64748b]">
+            <p className="text-sm text-[var(--app-text-muted)]">
               Monitor, verify, and coordinate your clinical workforce across the network.
             </p>
           </div>
@@ -129,49 +129,49 @@ export function StaffManagementContent() {
 
         {/* KPI cards */}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <article className="rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-6 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
+          <article className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-[var(--app-shadow-card)]">
             <div className="flex items-center justify-between">
               <div className="flex size-10 items-center justify-center rounded-lg bg-[#f0fdfa]">
-                <span className="material-symbols-outlined notranslate text-lg text-[#0d9488]">groups</span>
+                <span className="material-symbols-outlined notranslate text-lg text-[var(--app-link-teal)]">groups</span>
               </div>
             </div>
-            <p className="mt-6 font-[family-name:var(--font-manrope)] text-[30px] font-bold text-[#191c1e]">
+            <p className="mt-6 font-[family-name:var(--font-manrope)] text-[30px] font-bold text-[var(--app-text)]">
               {staffQuery.isPending ? "—" : total}
             </p>
-            <p className="mt-2 text-sm font-medium text-[#64748b]">Team members</p>
+            <p className="mt-2 text-sm font-medium text-[var(--app-text-muted)]">Team members</p>
           </article>
-          <article className="rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-6 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
+          <article className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-[var(--app-shadow-card)]">
             <div className="flex items-center justify-between">
               <div className="flex size-10 items-center justify-center rounded-lg bg-[#eef2ff]">
                 <span className="material-symbols-outlined notranslate text-lg text-[#4f46e5]">check_circle</span>
               </div>
             </div>
-            <p className="mt-6 font-[family-name:var(--font-manrope)] text-[30px] font-bold text-[#191c1e]">
+            <p className="mt-6 font-[family-name:var(--font-manrope)] text-[30px] font-bold text-[var(--app-text)]">
               {staffQuery.isPending ? "—" : active}
             </p>
-            <p className="mt-2 text-sm font-medium text-[#64748b]">Active memberships</p>
+            <p className="mt-2 text-sm font-medium text-[var(--app-text-muted)]">Active memberships</p>
           </article>
-          <article className="rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-6 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
+          <article className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-[var(--app-shadow-card)]">
             <div className="flex items-center justify-between">
               <div className="flex size-10 items-center justify-center rounded-lg bg-[#ecfdf5]">
                 <span className="material-symbols-outlined notranslate text-lg text-[#059669]">mail</span>
               </div>
             </div>
-            <p className="mt-6 font-[family-name:var(--font-manrope)] text-[30px] font-bold text-[#191c1e]">
+            <p className="mt-6 font-[family-name:var(--font-manrope)] text-[30px] font-bold text-[var(--app-text)]">
               {staffQuery.isPending ? "—" : invited}
             </p>
-            <p className="mt-2 text-sm font-medium text-[#64748b]">Invited (pending join)</p>
+            <p className="mt-2 text-sm font-medium text-[var(--app-text-muted)]">Invited (pending join)</p>
           </article>
-          <article className="rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-6 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
+          <article className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-[var(--app-shadow-card)]">
             <div className="flex items-center justify-between">
-              <div className="flex size-10 items-center justify-center rounded-lg bg-[#f1f5f9]">
-                <span className="material-symbols-outlined notranslate text-lg text-[#64748b]">pause_circle</span>
+              <div className="flex size-10 items-center justify-center rounded-lg bg-[var(--app-surface-subtle)]">
+                <span className="material-symbols-outlined notranslate text-lg text-[var(--app-text-muted)]">pause_circle</span>
               </div>
             </div>
-            <p className="mt-6 font-[family-name:var(--font-manrope)] text-[30px] font-bold text-[#191c1e]">
+            <p className="mt-6 font-[family-name:var(--font-manrope)] text-[30px] font-bold text-[var(--app-text)]">
               {staffQuery.isPending ? "—" : other}
             </p>
-            <p className="mt-2 text-sm font-medium text-[#64748b]">Suspended / other</p>
+            <p className="mt-2 text-sm font-medium text-[var(--app-text-muted)]">Suspended / other</p>
           </article>
         </div>
 
@@ -179,22 +179,22 @@ export function StaffManagementContent() {
         <div className="grid min-w-0 gap-8 lg:grid-cols-3">
           {/* Staff Directory table - 2 cols */}
           <div className="min-w-0 lg:col-span-2">
-            <div className="overflow-hidden rounded-xl border border-[rgba(187,201,199,0.1)] bg-white shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
+            <div className="overflow-hidden rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-[var(--app-shadow-card)]">
               <div className="flex items-center justify-between border-b border-[#f8fafc] px-6 py-5">
-                <h2 className="font-[family-name:var(--font-manrope)] text-lg font-bold text-[#191c1e]">
+                <h2 className="font-[family-name:var(--font-manrope)] text-lg font-bold text-[var(--app-text)]">
                   Staff Directory
                 </h2>
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    className="rounded-lg p-2 text-[#64748b] hover:bg-[#f1f5f9]"
+                    className="rounded-lg p-2 text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]"
                     aria-label="Filter"
                   >
                     <span className="material-symbols-outlined notranslate text-lg">filter_list</span>
                   </button>
                   <button
                     type="button"
-                    className="rounded-lg p-2 text-[#64748b] hover:bg-[#f1f5f9]"
+                    className="rounded-lg p-2 text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]"
                     aria-label="Download"
                   >
                     <span className="material-symbols-outlined notranslate text-lg">download</span>
@@ -204,20 +204,20 @@ export function StaffManagementContent() {
               <div className="overflow-x-auto overscroll-x-contain">
                 <table className="w-full min-w-[560px]">
                   <thead>
-                    <tr className="bg-[#f2f4f6]">
-                      <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[1px] text-[#64748b]">
+                    <tr className="bg-[var(--app-input-bg)]">
+                      <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[1px] text-[var(--app-text-muted)]">
                         Name
                       </th>
-                      <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[1px] text-[#64748b]">
+                      <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[1px] text-[var(--app-text-muted)]">
                         Staff ID
                       </th>
-                      <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[1px] text-[#64748b]">
+                      <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[1px] text-[var(--app-text-muted)]">
                         Role
                       </th>
-                      <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[1px] text-[#64748b]">
+                      <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[1px] text-[var(--app-text-muted)]">
                         License
                       </th>
-                      <th className="px-6 py-4 text-right text-[10px] font-semibold uppercase tracking-[1px] text-[#64748b]">
+                      <th className="px-6 py-4 text-right text-[10px] font-semibold uppercase tracking-[1px] text-[var(--app-text-muted)]">
                         Actions
                       </th>
                     </tr>
@@ -225,7 +225,7 @@ export function StaffManagementContent() {
                   <tbody>
                     {staffQuery.isPending ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-10 text-center text-sm text-[#64748b]">
+                        <td colSpan={5} className="px-6 py-10 text-center text-sm text-[var(--app-text-muted)]">
                           Loading directory…
                         </td>
                       </tr>
@@ -241,9 +241,9 @@ export function StaffManagementContent() {
                       </tr>
                     ) : members.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-10 text-center text-sm text-[#64748b]">
+                        <td colSpan={5} className="px-6 py-10 text-center text-sm text-[var(--app-text-muted)]">
                           No team members yet. Use{" "}
-                          <Link href={ROUTES.dashboard.staffAdd} className="font-semibold text-[#0d9488] underline">
+                          <Link href={ROUTES.dashboard.staffAdd} className="font-semibold text-[var(--app-link-teal)] underline">
                             Add New Staff
                           </Link>{" "}
                           once they have an AuraPharma account.
@@ -253,7 +253,7 @@ export function StaffManagementContent() {
                       members.map((member, rowIndex) => {
                         const licenseStatus = membershipStatusToLicense(member.membershipStatus);
                         const licenseStyle = LICENSE_STYLES[licenseStatus];
-                        const roleClass = ROLE_STYLES[member.role] ?? "bg-[#f1f5f9] text-[#334155]";
+                        const roleClass = ROLE_STYLES[member.role] ?? "bg-[var(--app-surface-subtle)] text-[#334155]";
                         return (
                           <tr
                             key={member.membershipId}
@@ -268,10 +268,10 @@ export function StaffManagementContent() {
                                   className="size-9 shrink-0 rounded-full ring-2 ring-white text-xs"
                                 />
                                 <div>
-                                  <p className="text-sm font-semibold leading-5 text-[#191c1e]">
+                                  <p className="text-sm font-semibold leading-5 text-[var(--app-text)]">
                                     {member.fullName}
                                   </p>
-                                  <p className="truncate text-xs text-[#94a3b8]">{member.email}</p>
+                                  <p className="truncate text-xs text-[var(--app-text-faint)]">{member.email}</p>
                                 </div>
                               </div>
                             </td>
@@ -304,7 +304,7 @@ export function StaffManagementContent() {
                             <td className="relative px-6 py-4 text-right">
                               <button
                                 type="button"
-                                className="rounded-lg p-2 text-[#64748b] hover:bg-[#f1f5f9]"
+                                className="rounded-lg p-2 text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]"
                                 aria-label="Actions"
                                 aria-expanded={openActionsMenuId === member.membershipId}
                                 onClick={() =>
@@ -325,10 +325,10 @@ export function StaffManagementContent() {
                                     aria-label="Close menu"
                                     onClick={() => setOpenActionsMenuId(null)}
                                   />
-                                  <div className="absolute right-4 top-full z-20 mt-1 min-w-[160px] rounded-lg border border-[#e2e8f0] bg-white py-1 shadow-lg">
+                                  <div className="absolute right-4 top-full z-20 mt-1 min-w-[160px] rounded-lg border border-[var(--app-border-ui)] bg-[var(--app-surface)] py-1 shadow-lg">
                                     <Link
                                       href={ROUTES.dashboard.staffEdit(member.membershipId)}
-                                      className="block px-4 py-2.5 text-left text-sm font-semibold text-[#334155] hover:bg-[#f8fafc]"
+                                      className="block px-4 py-2.5 text-left text-sm font-semibold text-[#334155] hover:bg-[var(--app-surface-muted)]"
                                       onClick={() => setOpenActionsMenuId(null)}
                                     >
                                       Edit member
@@ -345,7 +345,7 @@ export function StaffManagementContent() {
                 </table>
               </div>
               <div className="flex items-center justify-between border-t border-[#f8fafc] px-6 py-4">
-                <p className="text-xs font-medium text-[#64748b]">
+                <p className="text-xs font-medium text-[var(--app-text-muted)]">
                   {staffQuery.isPending
                     ? "Loading…"
                     : `Showing page ${pagination.page.toLocaleString()} of ${pagination.totalPages.toLocaleString()} • ${pagination.totalItems.toLocaleString()} total`}
@@ -354,7 +354,7 @@ export function StaffManagementContent() {
             </div>
 
             <div className="mt-4 flex flex-col items-center justify-between gap-4 sm:flex-row">
-              <label className="inline-flex items-center gap-2 text-xs font-semibold text-[#64748b]">
+              <label className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--app-text-muted)]">
                 Rows
                 <select
                   value={pageSize}
@@ -365,7 +365,7 @@ export function StaffManagementContent() {
                     params.set("page", "1");
                     replaceParams(params);
                   }}
-                  className="rounded-md border border-[#e2e8f0] bg-white px-2 py-1 text-xs font-semibold text-[#0f172a]"
+                  className="rounded-md border border-[var(--app-border-ui)] bg-[var(--app-surface)] px-2 py-1 text-xs font-semibold text-[var(--app-header-title)]"
                 >
                   <option value={10}>10</option>
                   <option value={20}>20</option>
@@ -382,11 +382,11 @@ export function StaffManagementContent() {
                     params.set("page", String(Math.max(1, pagination.page - 1)));
                     replaceParams(params);
                   }}
-                  className="flex size-8 items-center justify-center rounded border border-[#e2e8f0] text-[#64748b] hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex size-8 items-center justify-center rounded border border-[var(--app-border-ui)] text-[var(--app-text-muted)] hover:bg-[var(--app-surface)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <span className="material-symbols-outlined notranslate text-lg">chevron_left</span>
                 </button>
-                <span className="inline-flex min-w-14 items-center justify-center gap-1 rounded border border-[#006a65] bg-white px-3 py-1 text-xs font-semibold text-[#006a65]">
+                <span className="inline-flex min-w-14 items-center justify-center gap-1 rounded border border-[var(--app-brand)] bg-[var(--app-surface)] px-3 py-1 text-xs font-semibold text-[var(--app-brand)]">
                   {staffQuery.isFetching ? (
                     <span className="material-symbols-outlined notranslate animate-spin text-sm">
                       progress_activity
@@ -402,7 +402,7 @@ export function StaffManagementContent() {
                     params.set("page", String(Math.min(pagination.totalPages, pagination.page + 1)));
                     replaceParams(params);
                   }}
-                  className="flex size-8 items-center justify-center rounded border border-[#e2e8f0] text-[#64748b] hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex size-8 items-center justify-center rounded border border-[var(--app-border-ui)] text-[var(--app-text-muted)] hover:bg-[var(--app-surface)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <span className="material-symbols-outlined notranslate text-lg">chevron_right</span>
                 </button>
@@ -411,11 +411,11 @@ export function StaffManagementContent() {
           </div>
 
           <div className="flex flex-col gap-6">
-            <div className="rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-6 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
-              <h3 className="font-[family-name:var(--font-manrope)] text-lg font-bold text-[#191c1e]">
+            <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-[var(--app-shadow-card)]">
+              <h3 className="font-[family-name:var(--font-manrope)] text-lg font-bold text-[var(--app-text)]">
                 Scheduling & coverage
               </h3>
-              <p className="mt-3 text-sm leading-relaxed text-[#64748b]">
+              <p className="mt-3 text-sm leading-relaxed text-[var(--app-text-muted)]">
                 Shift coverage, heatmaps, and license tasks will appear here when scheduling and
                 compliance workflows are connected to live data.
               </p>

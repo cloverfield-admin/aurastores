@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { useId, useMemo, useRef, useState } from "react";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
 import { AuraInlineAlert } from "@/components/ui/aura-inline-alert";
-import { apiUrl } from "@/lib/api/version";
 import type { MeResponse } from "@/lib/queries/me";
 import {
   useChangePasswordMutation,
@@ -73,6 +73,7 @@ function activityIconColor(icon: string): string {
 export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfileSettingsContentProps) {
   const { user, membership } = context;
   const router = useRouter();
+  const { setTheme } = useTheme();
   const me = useMeQuery(mePlaceholder);
   const activity = useSecurityActivityQuery();
   const patchMe = usePatchMeMutation();
@@ -192,10 +193,10 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
     <div className="px-4 pb-16 pt-5 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-[1280px] space-y-10">
         <div className="space-y-2">
-          {/* <h1 className="font-[family-name:var(--font-manrope)] text-[30px] font-extrabold leading-9 tracking-[-0.75px] text-[#191c1e]">
+          {/* <h1 className="font-[family-name:var(--font-manrope)] text-[30px] font-extrabold leading-9 tracking-[-0.75px] text-[var(--app-text)]">
             Settings & Profile
           </h1> */}
-          <p className="text-base leading-6 text-[#3c4948]">
+          <p className="text-base leading-6 text-[var(--app-text-secondary)]">
             Manage your identity and preferences.
           </p>
         </div>
@@ -210,14 +211,14 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-x-8 lg:gap-y-8">
           <div className="flex flex-col gap-8 lg:col-span-8">
             <section
-              className="rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-[33px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"
+              className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-[33px] shadow-[var(--app-shadow-card)]"
               aria-labelledby="account-details-heading"
             >
               <h2
                 id="account-details-heading"
-                className="mb-8 flex items-center gap-2 font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]"
+                className="mb-8 flex items-center gap-2 font-[family-name:var(--font-manrope)] text-xl font-bold text-[var(--app-text)]"
               >
-                <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">person</span>
+                <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">person</span>
                 Account Details
               </h2>
               <div className="flex flex-col gap-10 sm:flex-row sm:gap-10">
@@ -239,12 +240,12 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
                     disabled={isUploadingPhoto}
                     onClick={() => fileInputRef.current?.click()}
                     aria-label="Change profile photo"
-                    className="group relative size-[128px] shrink-0 overflow-hidden rounded-2xl p-1 text-left transition-opacity hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#006a65] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="group relative size-[128px] shrink-0 overflow-hidden rounded-2xl p-1 text-left transition-opacity hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-brand)] disabled:cursor-not-allowed disabled:opacity-50"
                     style={{
                       background: "linear-gradient(135deg, rgb(15, 185, 177) 0%, rgb(99, 102, 241) 100%)",
                     }}
                   >
-                    <div className="relative size-full overflow-hidden rounded-xl bg-white">
+                    <div className="relative size-full overflow-hidden rounded-xl bg-[var(--app-surface)]">
                       <AuraAvatar
                         name={fullName}
                         photoUrl={avatarUrl}
@@ -260,7 +261,7 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
                   </button>
                   <button
                     type="button"
-                    className="text-[10px] font-semibold uppercase tracking-[1px] text-[#94a3b8] hover:text-[#64748b] disabled:opacity-50"
+                    className="text-[10px] font-semibold uppercase tracking-[1px] text-[var(--app-text-faint)] hover:text-[var(--app-text-muted)] disabled:opacity-50"
                     disabled={isUploadingPhoto}
                     onClick={() => fileInputRef.current?.click()}
                   >
@@ -271,7 +272,7 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
                   <div className="relative">
                     <label
                       htmlFor="settings-full-name"
-                      className="absolute left-1 top-[7px] text-[10px] font-semibold uppercase tracking-[0.5px] text-[#006a65]"
+                      className="absolute left-1 top-[7px] text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--app-brand)]"
                     >
                       Full Name
                     </label>
@@ -281,11 +282,11 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
                       autoComplete="name"
                       value={fullName}
                       onChange={(e) => setFullNameOverride(e.target.value)}
-                      className="mt-[19px] w-full rounded-lg border-0 bg-[#f2f4f6] px-3 py-3 text-base font-medium leading-6 text-[#191c1e] outline-none ring-0 placeholder:text-[#6b7280] focus:bg-[#e8eaed]"
+                      className="mt-[19px] w-full rounded-lg border-0 bg-[var(--app-input-bg)] px-3 py-3 text-base font-medium leading-6 text-[var(--app-text)] outline-none ring-0 placeholder:text-[var(--app-placeholder)] focus:bg-[var(--app-input-focus-bg)]"
                     />
                   </div>
                   <div className="relative">
-                    <label className="absolute left-1 top-[7px] text-[10px] font-semibold uppercase tracking-[0.5px] text-[#64748b]">
+                    <label className="absolute left-1 top-[7px] text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--app-text-muted)]">
                       Role
                     </label>
                     <input
@@ -293,12 +294,12 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
                       readOnly
                       disabled
                       value={formatMembershipRole(membership.role)}
-                      className="mt-[19px] w-full cursor-not-allowed rounded-lg border-0 bg-[rgba(230,232,234,0.5)] px-3 py-3 text-base font-medium leading-6 text-[#3c4948]"
+                      className="mt-[19px] w-full cursor-not-allowed rounded-lg border-0 bg-[var(--app-readonly-field)] px-3 py-3 text-base font-medium leading-6 text-[var(--app-text-secondary)]"
                       aria-label="Role (cannot be changed here)"
                     />
                   </div>
                   <div className="relative sm:col-span-2">
-                    <label className="absolute left-1 top-[7px] text-[10px] font-semibold uppercase tracking-[0.5px] text-[#64748b]">
+                    <label className="absolute left-1 top-[7px] text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--app-text-muted)]">
                       Email Address
                     </label>
                     <input
@@ -306,7 +307,7 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
                       readOnly
                       disabled
                       value={user.email}
-                      className="mt-[19px] w-full cursor-not-allowed rounded-lg border-0 bg-[#f2f4f6] px-3 py-3 text-base font-medium leading-6 text-[#191c1e]"
+                      className="mt-[19px] w-full cursor-not-allowed rounded-lg border-0 bg-[var(--app-input-bg)] px-3 py-3 text-base font-medium leading-6 text-[var(--app-text)]"
                       aria-label="Email (cannot be changed here)"
                     />
                   </div>
@@ -315,19 +316,19 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
             </section>
 
             <section
-              className="rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-[33px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"
+              className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-[33px] shadow-[var(--app-shadow-card)]"
               aria-labelledby="security-heading"
             >
               <h2
                 id="security-heading"
-                className="mb-8 flex items-center gap-2 font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]"
+                className="mb-8 flex items-center gap-2 font-[family-name:var(--font-manrope)] text-xl font-bold text-[var(--app-text)]"
               >
-                <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">lock</span>
+                <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">lock</span>
                 Security Settings
               </h2>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
                 <div className="relative">
-                  <label className="absolute left-1 top-[7px] text-[10px] font-semibold uppercase tracking-[0.5px] text-[#64748b]">
+                  <label className="absolute left-1 top-[7px] text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--app-text-muted)]">
                     Current Password
                   </label>
                   <input
@@ -336,11 +337,11 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
                     placeholder="••••••••"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="mt-[19px] w-full rounded-lg bg-[#f2f4f6] px-3 py-3.5 text-base text-[#191c1e] placeholder:text-[#6b7280]"
+                    className="mt-[19px] w-full rounded-lg bg-[var(--app-input-bg)] px-3 py-3.5 text-base text-[var(--app-text)] placeholder:text-[var(--app-placeholder)]"
                   />
                 </div>
                 <div className="relative">
-                  <label className="absolute left-1 top-[7px] text-[10px] font-semibold uppercase tracking-[0.5px] text-[#64748b]">
+                  <label className="absolute left-1 top-[7px] text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--app-text-muted)]">
                     New Password
                   </label>
                   <input
@@ -349,11 +350,11 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
                     placeholder="••••••••"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="mt-[19px] w-full rounded-lg bg-[#f2f4f6] px-3 py-3.5 text-base text-[#191c1e] placeholder:text-[#6b7280]"
+                    className="mt-[19px] w-full rounded-lg bg-[var(--app-input-bg)] px-3 py-3.5 text-base text-[var(--app-text)] placeholder:text-[var(--app-placeholder)]"
                   />
                 </div>
                 <div className="relative">
-                  <label className="absolute left-1 top-[7px] text-[10px] font-semibold uppercase tracking-[0.5px] text-[#64748b]">
+                  <label className="absolute left-1 top-[7px] text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--app-text-muted)]">
                     Confirm New
                   </label>
                   <input
@@ -362,19 +363,19 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
                     placeholder="••••••••"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="mt-[19px] w-full rounded-lg bg-[#f2f4f6] px-3 py-3.5 text-base text-[#191c1e] placeholder:text-[#6b7280]"
+                    className="mt-[19px] w-full rounded-lg bg-[var(--app-input-bg)] px-3 py-3.5 text-base text-[var(--app-text)] placeholder:text-[var(--app-placeholder)]"
                   />
                 </div>
               </div>
-              <div className="mt-8 rounded-xl border border-[rgba(0,106,101,0.1)] bg-[rgba(0,106,101,0.05)] p-4">
+              <div className="mt-8 rounded-xl border border-[var(--app-brand-border)] bg-[var(--app-brand-soft)] p-4">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <div className="flex size-12 items-center justify-center rounded-full bg-white shadow-sm">
-                      <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">shield</span>
+                    <div className="flex size-12 items-center justify-center rounded-full bg-[var(--app-surface)] shadow-sm">
+                      <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">shield</span>
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-[#191c1e]">Two-Factor Authentication</p>
-                      <p className="mt-0.5 text-xs text-[#3c4948]">
+                      <p className="text-sm font-semibold text-[var(--app-text)]">Two-Factor Authentication</p>
+                      <p className="mt-0.5 text-xs text-[var(--app-text-secondary)]">
                         Coming soon — advanced MFA enrollment is not enabled for this workspace yet.
                       </p>
                     </div>
@@ -386,9 +387,9 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
                     aria-disabled={true}
                     disabled
                     title="Coming soon"
-                    className="relative h-6 w-11 shrink-0 cursor-not-allowed rounded-full bg-[#e2e8f0] opacity-60"
+                    className="relative h-6 w-11 shrink-0 cursor-not-allowed rounded-full bg-[var(--app-switch-off)] opacity-60"
                   >
-                    <span className="absolute top-0.5 left-0.5 size-5 rounded-full border-2 border-white bg-white shadow" />
+                    <span className="absolute top-0.5 left-0.5 size-5 rounded-full border-2 border-[var(--app-surface)] bg-[var(--app-surface)] shadow" />
                   </button>
                 </div>
               </div>
@@ -397,14 +398,14 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
 
           <div className="flex flex-col gap-8 lg:col-span-4 lg:pb-14">
             <section
-              className="rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-6 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"
+              className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-[var(--app-shadow-card)]"
               aria-labelledby="appearance-heading"
             >
               <h2
                 id="appearance-heading"
-                className="mb-6 flex items-center gap-2 font-[family-name:var(--font-manrope)] text-lg font-bold text-[#191c1e]"
+                className="mb-6 flex items-center gap-2 font-[family-name:var(--font-manrope)] text-lg font-bold text-[var(--app-text)]"
               >
-                <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">palette</span>
+                <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">palette</span>
                 Appearance
               </h2>
               <div className="grid grid-cols-3 gap-3">
@@ -414,16 +415,20 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
                     <button
                       key={t}
                       type="button"
-                      onClick={() => setLocalPrefsDelta((d) => ({ ...d, theme: t }))}
+                      onClick={() => {
+                        /* Preview immediately; leaving without Save keeps next-themes state until reload/redirect. */
+                        setTheme(t);
+                        setLocalPrefsDelta((d) => ({ ...d, theme: t }));
+                      }}
                       className={`flex flex-col items-center gap-2 ${selected ? "" : "opacity-60"}`}
                     >
                       <div
                         className={`w-full rounded-lg p-2 ${
                           t === "light"
-                            ? `border-2 ${selected ? "border-[#006a65]" : "border-transparent"} bg-[#f1f5f9]`
+                            ? `border-2 ${selected ? "border-[var(--app-brand)]" : "border-transparent"} bg-[var(--app-surface-subtle)]`
                             : t === "dark"
-                              ? `border-2 ${selected ? "border-[#006a65]" : "border-transparent"} bg-[#1e293b]`
-                              : `border-2 ${selected ? "border-[#006a65]" : "border-transparent"}`
+                              ? `border-2 ${selected ? "border-[var(--app-brand)]" : "border-transparent"} bg-[#1e293b]`
+                              : `border-2 ${selected ? "border-[var(--app-brand)]" : "border-transparent"}`
                         }`}
                         style={
                           t === "system"
@@ -434,9 +439,9 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
                         }
                       >
                         {t === "light" && (
-                          <div className="space-y-1 rounded bg-white p-1 shadow-sm">
-                            <div className="h-1.5 w-full rounded-full bg-[#f1f5f9]" />
-                            <div className="h-1.5 w-[60%] rounded-full bg-[#f1f5f9]" />
+                          <div className="space-y-1 rounded bg-[var(--app-surface)] p-1 shadow-sm">
+                            <div className="h-1.5 w-full rounded-full bg-[var(--app-surface-subtle)]" />
+                            <div className="h-1.5 w-[60%] rounded-full bg-[var(--app-surface-subtle)]" />
                           </div>
                         )}
                         {t === "dark" && (
@@ -445,11 +450,11 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
                             <div className="h-1.5 w-[70%] rounded-full bg-[#334155]" />
                           </div>
                         )}
-                        {t === "system" && <div className="h-14 rounded bg-white/20 backdrop-blur" />}
+                        {t === "system" && <div className="h-14 rounded bg-[var(--app-surface)]/20 backdrop-blur" />}
                       </div>
                       <span
                         className={`text-[10px] font-semibold uppercase tracking-[1px] ${
-                          selected ? "text-[#006a65]" : "text-[#64748b]"
+                          selected ? "text-[var(--app-brand)]" : "text-[var(--app-text-muted)]"
                         }`}
                       >
                         {t === "light" ? "Light" : t === "dark" ? "Dark" : "System"}
@@ -461,14 +466,14 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
             </section>
 
             <section
-              className="rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-6 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"
+              className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-[var(--app-shadow-card)]"
               aria-labelledby="preferences-heading"
             >
               <h2
                 id="preferences-heading"
-                className="mb-6 flex items-center gap-2 font-[family-name:var(--font-manrope)] text-lg font-bold text-[#191c1e]"
+                className="mb-6 flex items-center gap-2 font-[family-name:var(--font-manrope)] text-lg font-bold text-[var(--app-text)]"
               >
-                <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">notifications</span>
+                <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">notifications</span>
                 Preferences
               </h2>
               <div className="space-y-6">
@@ -491,8 +496,8 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
                 ].map(({ label, sub, key }) => (
                   <div key={label} className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-[#191c1e]">{label}</p>
-                      <p className="text-[10px] font-semibold uppercase tracking-[-0.25px] text-[#64748b]">{sub}</p>
+                      <p className="text-sm font-semibold text-[var(--app-text)]">{label}</p>
+                      <p className="text-[10px] font-semibold uppercase tracking-[-0.25px] text-[var(--app-text-muted)]">{sub}</p>
                     </div>
                     <button
                       type="button"
@@ -505,12 +510,14 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
                         }))
                       }
                       className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-                        prefs[key] ? "bg-[#006a65]" : "bg-[#e2e8f0]"
+                        prefs[key] ? "bg-[var(--app-brand)]" : "bg-[var(--app-switch-off)]"
                       }`}
                     >
                       <span
-                        className={`absolute top-0.5 size-4 rounded-full border border-white bg-white transition-all ${
-                          prefs[key] ? "left-[18px] border-white" : "left-0.5 border-[#d1d5db]"
+                        className={`absolute top-0.5 size-4 rounded-full border bg-[var(--app-surface)] transition-all ${
+                          prefs[key]
+                            ? "left-[18px] border-white"
+                            : "left-0.5 border-[var(--app-outline-variant)] bg-[var(--app-surface)]"
                         }`}
                       />
                     </button>
@@ -522,7 +529,7 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
             <div className="flex gap-4">
               <Link
                 href={ROUTES.dashboard.main}
-                className="flex flex-1 items-center justify-center rounded-xl bg-[#e0e3e5] py-3 text-base font-semibold text-[#191c1e] transition hover:bg-[#d1d5db]"
+                className="flex flex-1 items-center justify-center rounded-xl bg-[var(--app-cancel-bg)] py-3 text-base font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-cancel-hover)]"
               >
                 Cancel
               </Link>
@@ -542,12 +549,12 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
         </div>
 
         <section
-          className="rounded-2xl border border-[rgba(187,201,199,0.05)] bg-[#f2f4f6] px-8 py-10"
+          className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-activity-bg)] px-8 py-10"
           aria-labelledby="activity-heading"
         >
           <h2
             id="activity-heading"
-            className="mb-6 text-[11px] font-semibold uppercase tracking-[1.1px] text-[#006a65]"
+            className="mb-6 text-[11px] font-semibold uppercase tracking-[1.1px] text-[var(--app-brand)]"
           >
             Recent Activity Log
           </h2>
@@ -559,11 +566,11 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
               }}
             />
             {activity.isLoading ? (
-              <p className="text-sm text-[#64748b]">Loading activity…</p>
+              <p className="text-sm text-[var(--app-text-muted)]">Loading activity…</p>
             ) : activity.isError ? (
-              <p className="text-sm text-[#64748b]">Could not load activity.</p>
+              <p className="text-sm text-[var(--app-text-muted)]">Could not load activity.</p>
             ) : !activity.data?.items.length ? (
-              <p className="text-sm text-[#64748b]">
+              <p className="text-sm text-[var(--app-text-muted)]">
                 No recent security events yet. Sign-ins and password changes appear here when auth audit logging is
                 enabled in your project database.
               </p>
@@ -572,7 +579,7 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
                 {activity.data.items.map((item) => (
                   <div key={item.id} className="flex gap-6">
                     <div
-                      className="flex size-12 shrink-0 items-center justify-center rounded-full border-2 bg-white shadow-sm"
+                      className="flex size-12 shrink-0 items-center justify-center rounded-full border-2 bg-[var(--app-surface)] shadow-sm"
                       style={{ borderColor: activityIconColor(item.icon) }}
                     >
                       <span
@@ -583,9 +590,9 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
                       </span>
                     </div>
                     <div className="min-w-0 flex-1 pt-1">
-                      <p className="text-sm font-semibold text-[#191c1e]">{item.title}</p>
-                      <p className="mt-1 text-xs text-[#3c4948]">{item.description}</p>
-                      <p className="mt-1 text-[10px] font-semibold uppercase text-[#94a3b8]">
+                      <p className="text-sm font-semibold text-[var(--app-text)]">{item.title}</p>
+                      <p className="mt-1 text-xs text-[var(--app-text-secondary)]">{item.description}</p>
+                      <p className="mt-1 text-[10px] font-semibold uppercase text-[var(--app-text-faint)]">
                         {formatActivityWhen(item.occurredAt)}
                       </p>
                     </div>

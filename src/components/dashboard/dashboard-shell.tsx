@@ -267,17 +267,17 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
       }
       const canOpenBranchSetup = hasCapability(workspaceAccess.capabilities, "organization");
       return (
-        <div className="flex flex-wrap items-center gap-2 text-sm text-[#64748b]">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--app-text-muted)]">
           <span>No branches available for your account.</span>
           {canOpenBranchSetup ? (
             <Link
               href={ROUTES.dashboard.onboarding.pharmacyDetails}
-              className="font-semibold text-[#0d9488] underline decoration-[rgba(20,184,166,0.35)]"
+              className="font-semibold text-[var(--app-link-teal)] underline decoration-[rgba(20,184,166,0.35)]"
             >
               Branch setup
             </Link>
           ) : (
-            <span className="text-[#94a3b8]">
+            <span className="text-[var(--app-text-faint)]">
               Ask an organization admin to assign you to a branch or complete branch setup.
             </span>
           )}
@@ -293,8 +293,8 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
           const active = tab.id === activeSectionBranchId;
           const className = `pb-1.5 pt-1 font-[family-name:var(--font-manrope)] text-sm ${
             active
-              ? "border-b-2 border-[#14b8a6] font-semibold text-[#0d9488]"
-              : "font-normal text-[#64748b] hover:text-[#0f172a]"
+              ? "border-b-2 border-[var(--app-branch-active-border)] font-semibold text-[var(--app-link-teal)]"
+              : "font-normal text-[var(--app-text-muted)] hover:text-[var(--app-header-title)]"
           }`;
           return (
             <button
@@ -312,7 +312,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
   }
 
   return (
-    <div className="aura-landing min-h-dvh bg-[#f7f9fb] text-[#191c1e]">
+    <div className="aura-landing min-h-dvh bg-[var(--app-canvas)] text-[var(--app-text)]">
       {mobileNavOpen ? (
         <button
           type="button"
@@ -325,19 +325,19 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
       {/* Sidebar: off-canvas below lg */}
       <aside
         id="dashboard-mobile-nav"
-        className={`fixed left-0 top-0 z-[100] flex h-dvh w-64 max-w-[min(100vw,20rem)] flex-col border-r border-[#f1f5f9] bg-[#f8fafc] px-4 pb-4 pt-2 shadow-[4px_0_24px_rgba(15,23,42,0.08)] transition-transform duration-200 ease-out motion-reduce:transition-none lg:z-40 lg:max-w-none lg:translate-x-0 lg:p-4 lg:shadow-none ${
+        className={`fixed left-0 top-0 z-[100] flex h-dvh w-64 max-w-[min(100vw,20rem)] flex-col border-r border-[var(--app-surface-subtle)] bg-[var(--app-surface-muted)] px-4 pb-4 pt-2 shadow-[4px_0_24px_rgba(15,23,42,0.08)] transition-transform duration-200 ease-out motion-reduce:transition-none lg:z-40 lg:max-w-none lg:translate-x-0 lg:p-4 lg:shadow-none ${
           mobileNavOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#e2e8f0]/80 pb-2 lg:hidden">
-          <span className="text-xs font-semibold uppercase tracking-wider text-[#64748b]">Menu</span>
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--app-border-ui-soft)] pb-2 lg:hidden">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--app-text-muted)]">Menu</span>
           <button
             ref={mobileNavCloseRef}
             type="button"
             data-mobile-nav-close
             aria-label="Close navigation menu"
             onClick={closeMobileNav}
-            className="rounded-lg p-2 text-[#64748b] hover:bg-slate-100"
+            className="rounded-lg p-2 text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]"
           >
             <span className="material-symbols-outlined notranslate text-xl">close</span>
           </button>
@@ -365,7 +365,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
               <p className="bg-gradient-to-r from-[#14b8a6] to-[#6366f1] bg-clip-text font-[family-name:var(--font-manrope)] text-xl font-bold tracking-tight text-transparent">
                 AuraPharma
               </p>
-              <p className="text-[10px] font-medium uppercase tracking-[-0.05em] text-[#64748b]">
+              <p className="text-[10px] font-medium uppercase tracking-[-0.05em] text-[var(--app-text-muted)]">
                 Clinical Intelligence
               </p>
             </div>
@@ -389,12 +389,12 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                   onClick={closeMobileNav}
                   className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
                     active
-                      ? "bg-white text-[#0d9488] shadow-sm"
-                      : "text-[#64748b] hover:bg-slate-100/80"
+                      ? "bg-[var(--app-surface)] text-[var(--app-link-teal)] shadow-sm"
+                      : "text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]/80"
                   }`}
                 >
                   <span
-                    className={`material-symbols-outlined notranslate text-xl ${active ? "text-[#0d9488]" : ""}`}
+                    className={`material-symbols-outlined notranslate text-xl ${active ? "text-[var(--app-link-teal)]" : ""}`}
                   >
                     {item.icon}
                   </span>
@@ -405,19 +405,19 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
           </nav>
         </div>
 
-        <div className="mt-auto shrink-0 border-t border-[rgba(226,232,240,0.5)] pt-4">
+        <div className="mt-auto shrink-0 border-t border-[var(--app-border-ui-soft)] pt-4">
           <nav className="flex flex-col gap-1" aria-label="Account">
             <Link
               href={ROUTES.settings}
               onClick={closeMobileNav}
               className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
                 isSettings
-                  ? "bg-white text-[#0d9488] shadow-sm"
-                  : "text-[#64748b] hover:bg-slate-100/80"
+                  ? "bg-[var(--app-surface)] text-[var(--app-link-teal)] shadow-sm"
+                  : "text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]/80"
               }`}
             >
               <span
-                className={`material-symbols-outlined notranslate text-xl ${isSettings ? "text-[#0d9488]" : ""}`}
+                className={`material-symbols-outlined notranslate text-xl ${isSettings ? "text-[var(--app-link-teal)]" : ""}`}
               >
                 settings
               </span>
@@ -426,7 +426,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
             <Link
               href={ROUTES.features}
               onClick={closeMobileNav}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#64748b] hover:bg-slate-100/80"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]/80"
             >
               <span className="material-symbols-outlined notranslate text-xl">support_agent</span>
               Support
@@ -435,7 +435,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
               href={apiUrl("/auth/sign-out")}
               prefetch={false}
               onClick={closeMobileNav}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#64748b] transition hover:bg-slate-100/80 hover:text-[#dc2626]"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface-subtle)]/80 hover:text-[#dc2626]"
             >
               <span className="material-symbols-outlined notranslate text-xl">logout</span>
               Log out
@@ -444,20 +444,20 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
           <Link
             href={ROUTES.settings}
             onClick={closeMobileNav}
-            className="mt-3 block rounded-xl bg-[#f1f5f9] p-3 transition hover:bg-[#e2e8f0]"
+            className="mt-3 block rounded-xl bg-[var(--app-surface-subtle)] p-3 transition hover:bg-[var(--app-cancel-hover)]"
           >
             <div className="flex items-center gap-3">
               <AuraAvatar
                 name={workspaceAccess.userDisplayName}
                 photoUrl={workspaceAccess.userAvatarUrl}
                 decorative
-                className="size-8 shrink-0 rounded-full text-[11px] ring-2 ring-white"
+                className="size-8 shrink-0 rounded-full text-[11px] ring-2 ring-[var(--app-surface)]"
               />
               <div className="min-w-0">
-                <p className="truncate font-[family-name:var(--font-manrope)] text-xs font-bold text-[#191c1e]">
+                <p className="truncate font-[family-name:var(--font-manrope)] text-xs font-bold text-[var(--app-text)]">
                   {workspaceAccess.userDisplayName}
                 </p>
-                <p className="text-[10px] font-medium text-[#64748b]">{workspaceAccess.membershipRoleLabel}</p>
+                <p className="text-[10px] font-medium text-[var(--app-text-muted)]">{workspaceAccess.membershipRoleLabel}</p>
               </div>
             </div>
           </Link>
@@ -467,7 +467,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
       {/* Top bar */}
       <header
         ref={headerRef}
-        className="fixed left-0 right-0 top-0 z-[110] border-b border-[#f1f5f9] bg-white/80 shadow-[0_1px_2px_0_rgba(226,232,240,0.5)] backdrop-blur-md lg:left-64 lg:z-30"
+        className="fixed left-0 right-0 top-0 z-[110] border-b border-[var(--app-surface-subtle)] bg-[var(--app-surface)]/85 shadow-[var(--app-shadow-card)] backdrop-blur-md lg:left-64 lg:z-30"
       >
         <div className="lg:hidden">
           <div className="mx-auto max-w-[1280px] px-4 py-3">
@@ -475,7 +475,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
               <button
                 ref={mobileMenuButtonRef}
                 type="button"
-                className="shrink-0 rounded-lg p-2 text-[#64748b] hover:bg-slate-100"
+                className="shrink-0 rounded-lg p-2 text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]"
                 aria-expanded={mobileNavOpen}
                 aria-controls="dashboard-mobile-nav"
                 onClick={() => {
@@ -487,14 +487,14 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                   {mobileNavOpen ? "close" : "menu"}
                 </span>
               </button>
-              <p className="min-w-0 flex-1 truncate font-[family-name:var(--font-manrope)] text-base font-bold leading-tight text-[#0f172a]">
+              <p className="min-w-0 flex-1 truncate font-[family-name:var(--font-manrope)] text-base font-bold leading-tight text-[var(--app-header-title)]">
                 {mobileHeaderTitle}
               </p>
               {hasMobileToolsPanel ? (
                 <button
                   ref={mobileToolsToggleRef}
                   type="button"
-                  className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#e2e8f0] bg-white px-2.5 py-2 text-[#64748b] hover:bg-slate-50"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--app-border-ui)] bg-[var(--app-surface)] px-2.5 py-2 text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]"
                   aria-expanded={mobileToolsOpen}
                   aria-controls="dashboard-mobile-tools"
                   onClick={() => {
@@ -506,10 +506,10 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                   <span className="sr-only">Search and branches</span>
                 </button>
               ) : null}
-              <div className="flex shrink-0 items-center gap-2 border-l border-[#f1f5f9] pl-3">
+              <div className="flex shrink-0 items-center gap-2 border-l border-[var(--app-surface-subtle)] pl-3">
                 <button
                   type="button"
-                  className="rounded-lg p-1.5 text-[#64748b] hover:bg-slate-100"
+                  className="rounded-lg p-1.5 text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]"
                   aria-label="Notifications"
                 >
                   <span className="material-symbols-outlined notranslate text-xl">
@@ -538,18 +538,18 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
               role="region"
               aria-label="Search and branch filters"
               hidden={!mobileToolsOpen}
-              className="border-t border-[#f1f5f9] px-4 py-3"
+              className="border-t border-[var(--app-surface-subtle)] px-4 py-3"
             >
               {isStaff || isInsights ? (
                 <div className="flex flex-col gap-4">
                   <label className="relative block w-full min-w-0">
-                    <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
+                    <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[var(--app-text-faint)]">
                       search
                     </span>
                     <input
                       type="search"
                       placeholder={searchPlaceholder}
-                      className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
+                      className="w-full rounded-full border-0 bg-[var(--app-input-bg)] py-2 pl-10 pr-4 text-sm text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] outline-none ring-1 ring-transparent focus:ring-[var(--app-link-teal)]/25"
                     />
                   </label>
                   {branchSwitcherNav({
@@ -564,13 +564,13 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                     onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
                   })}
                   <label className="relative block w-full min-w-0">
-                    <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
+                    <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[var(--app-text-faint)]">
                       search
                     </span>
                     <input
                       type="search"
                       placeholder={searchPlaceholder}
-                      className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none"
+                      className="w-full rounded-full border-0 bg-[var(--app-input-bg)] py-2 pl-10 pr-4 text-sm text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] outline-none"
                     />
                   </label>
                 </div>
@@ -580,7 +580,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                 <div className="flex flex-col gap-4">
                   {!isStock && !isSettings && !isOrganization ? (
                     <label className="relative block w-full min-w-0">
-                      <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
+                      <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[var(--app-text-faint)]">
                         search
                       </span>
                       <input
@@ -590,7 +590,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                         onChange={(event) => {
                           setLocalSearch(event.target.value);
                         }}
-                        className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
+                        className="w-full rounded-full border-0 bg-[var(--app-input-bg)] py-2 pl-10 pr-4 text-sm text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] outline-none ring-1 ring-transparent focus:ring-[var(--app-link-teal)]/25"
                       />
                     </label>
                   ) : null}
@@ -620,8 +620,8 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                       }}
                       className={`inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 font-[family-name:var(--font-manrope)] text-sm ${
                         topActionVariant === "primary"
-                          ? "bg-[#0fb9b1] font-bold text-[#004340]"
-                          : "bg-[#f2f4f6] font-medium text-[#191c1e]"
+                          ? "bg-[var(--app-cta-bg)] font-bold text-[var(--app-cta-text)]"
+                          : "bg-[var(--app-input-bg)] font-medium text-[var(--app-text)]"
                       }`}
                     >
                       <span className="material-symbols-outlined notranslate text-lg">{topActionIcon}</span>
@@ -638,31 +638,31 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
           <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
             <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
               {isSettings ? (
-                <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#0f172a] sm:text-lg">
+                <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[var(--app-header-title)] sm:text-lg">
                   Profile & Settings
                 </h1>
               ) : isOrganization ? (
-                <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#0f172a] sm:text-lg">
+                <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[var(--app-header-title)] sm:text-lg">
                   Organization
                 </h1>
               ) : isProductCategories ? (
-                <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#0f172a] sm:text-lg">
+                <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[var(--app-header-title)] sm:text-lg">
                   Product Categories
                 </h1>
               ) : isStaffAdd ? (
-                <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#0f172a] sm:text-lg">
+                <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[var(--app-header-title)] sm:text-lg">
                   Add New Staff
                 </h1>
               ) : isStaff || isInsights ? (
                 <>
                   <label className="relative hidden w-full min-w-0 sm:block sm:w-64">
-                    <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
+                    <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[var(--app-text-faint)]">
                       search
                     </span>
                     <input
                       type="search"
                       placeholder={searchPlaceholder}
-                      className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
+                      className="w-full rounded-full border-0 bg-[var(--app-input-bg)] py-2 pl-10 pr-4 text-sm text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] outline-none ring-1 ring-transparent focus:ring-[var(--app-link-teal)]/25"
                     />
                   </label>
                   {branchSwitcherNav({
@@ -684,7 +684,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                       canUsePharmacySearch ? <PharmacySearchField /> : null
                     ) : (
                       <label className="relative block w-full sm:w-64">
-                        <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
+                        <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[var(--app-text-faint)]">
                           search
                         </span>
                         <input
@@ -694,7 +694,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                           onChange={(event) => {
                             setLocalSearch(event.target.value);
                           }}
-                          className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
+                          className="w-full rounded-full border-0 bg-[var(--app-input-bg)] py-2 pl-10 pr-4 text-sm text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] outline-none ring-1 ring-transparent focus:ring-[var(--app-link-teal)]/25"
                         />
                       </label>
                     )
@@ -736,8 +736,8 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                   }}
                   className={`inline-flex items-center gap-2 rounded-lg px-4 py-1.5 font-[family-name:var(--font-manrope)] text-sm ${
                     topActionVariant === "primary"
-                      ? "bg-[#0fb9b1] font-bold text-[#004340]"
-                      : "bg-[#f2f4f6] font-medium text-[#191c1e]"
+                      ? "bg-[var(--app-cta-bg)] font-bold text-[var(--app-cta-text)]"
+                      : "bg-[var(--app-input-bg)] font-medium text-[var(--app-text)]"
                   }`}
                 >
                   <span className="material-symbols-outlined notranslate text-lg">{topActionIcon}</span>
@@ -746,20 +746,20 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
               )}
               {isSales && (
                 <label className="relative hidden w-64 sm:block">
-                  <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
+                  <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[var(--app-text-faint)]">
                     search
                   </span>
                   <input
                     type="search"
                     placeholder={searchPlaceholder}
-                    className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none"
+                    className="w-full rounded-full border-0 bg-[var(--app-input-bg)] py-2 pl-10 pr-4 text-sm text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] outline-none"
                   />
                 </label>
               )}
-              <div className="flex items-center gap-2 border-l border-[#f1f5f9] pl-4">
+              <div className="flex items-center gap-2 border-l border-[var(--app-surface-subtle)] pl-4">
                 <button
                   type="button"
-                  className="rounded-lg p-1.5 text-[#64748b] hover:bg-slate-100"
+                  className="rounded-lg p-1.5 text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]"
                   aria-label="Notifications"
                 >
                   <span className="material-symbols-outlined notranslate text-xl">

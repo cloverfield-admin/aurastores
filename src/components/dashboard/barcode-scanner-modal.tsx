@@ -112,16 +112,16 @@ export function BarcodeScannerModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="barcode-scanner-title"
-        className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+        className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-[var(--app-surface)] shadow-xl"
       >
-        <div className="flex items-center justify-between border-b border-[#e2e8f0] px-4 py-3">
-          <h2 id="barcode-scanner-title" className="text-base font-semibold text-[#0f172a]">
+        <div className="flex items-center justify-between border-b border-[var(--app-border-ui)] px-4 py-3">
+          <h2 id="barcode-scanner-title" className="text-base font-semibold text-[var(--app-header-title)]">
             {title}
           </h2>
           <button
             type="button"
             onClick={close}
-            className="rounded-lg p-2 text-[#64748b] transition hover:bg-[#f1f5f9] hover:text-[#0f172a]"
+            className="rounded-lg p-2 text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface-subtle)] hover:text-[var(--app-header-title)]"
             aria-label="Close scanner"
           >
             <span className="material-symbols-outlined notranslate text-xl">close</span>
@@ -129,9 +129,9 @@ export function BarcodeScannerModal({
         </div>
 
         <div className="space-y-3 px-4 py-3">
-          <p className="text-xs leading-relaxed text-[#64748b]">{hint}</p>
+          <p className="text-xs leading-relaxed text-[var(--app-text-muted)]">{hint}</p>
           {status === "starting" ? (
-            <p className="text-sm text-[#006a65]">Starting camera…</p>
+            <p className="text-sm text-[var(--app-brand)]">Starting camera…</p>
           ) : null}
           {errorMessage ? <p className="text-sm text-[#b91c1c]">{errorMessage}</p> : null}
         </div>
@@ -148,11 +148,11 @@ export function BarcodeScannerModal({
           ) : null}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-[#e2e8f0] px-4 py-3">
+        <div className="flex justify-end gap-2 border-t border-[var(--app-border-ui)] px-4 py-3">
           <button
             type="button"
             onClick={close}
-            className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#475569] transition hover:bg-[#f1f5f9]"
+            className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#475569] transition hover:bg-[var(--app-surface-subtle)]"
           >
             Cancel
           </button>

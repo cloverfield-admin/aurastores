@@ -13,8 +13,8 @@ export function AuraPayContent() {
       <div className="px-4 py-10 sm:px-8">
         <div className="mx-auto max-w-[1280px] space-y-8">
           <div className="space-y-2">
-            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-bold text-[#191c1e]">Aura Pay</h1>
-            <p className="text-[#3c4948]">
+            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-bold text-[var(--app-text)]">Aura Pay</h1>
+            <p className="text-[var(--app-text-secondary)]">
               Payments workspace for AuraPharma — connect modules to show live transaction and payout data.
             </p>
           </div>
@@ -27,8 +27,8 @@ export function AuraPayContent() {
   return (
     <div className="px-4 py-10 sm:px-8">
       <div className="mx-auto max-w-[1280px]">
-        <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-bold text-[#191c1e]">Aura Pay</h1>
-        <p className="mt-2 text-[#3c4948]">Payments workspace — connect modules to show live data.</p>
+        <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-bold text-[var(--app-text)]">Aura Pay</h1>
+        <p className="mt-2 text-[var(--app-text-secondary)]">Payments workspace — connect modules to show live data.</p>
       </div>
     </div>
   );

@@ -85,7 +85,7 @@ const StockSearchField = memo(function StockSearchField({
 
   return (
     <label className="relative block w-full sm:w-72">
-      <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
+      <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[var(--app-text-faint)]">
         search
       </span>
       <input
@@ -93,7 +93,7 @@ const StockSearchField = memo(function StockSearchField({
         value={value}
         onChange={(event) => setValue(event.target.value)}
         placeholder="Search by product, SKU, product ref, or supplier"
-        className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
+        className="w-full rounded-full border-0 bg-[var(--app-input-bg)] py-2 pl-10 pr-4 text-sm text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] outline-none ring-1 ring-transparent focus:ring-[var(--app-link-teal)]/25"
         autoComplete="off"
         spellCheck={false}
       />
@@ -142,21 +142,21 @@ const StockAdjustDialog = memo(function StockAdjustDialog({
 
   return (
     <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/35 p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+      <div className="w-full max-w-lg rounded-2xl bg-[var(--app-surface)] p-6 shadow-2xl">
         <div className="mb-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#006a65]">Adjust Stock</p>
-          <h3 className="mt-1 font-[family-name:var(--font-manrope)] text-2xl font-bold text-[#191c1e]">
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--app-brand)]">Adjust Stock</p>
+          <h3 className="mt-1 font-[family-name:var(--font-manrope)] text-2xl font-bold text-[var(--app-text)]">
             {label}
           </h3>
-          <p className="mt-1 text-sm text-[#64748b]">
+          <p className="mt-1 text-sm text-[var(--app-text-muted)]">
             Apply one adjustment to {batchCount} product{batchCount === 1 ? "" : "s"}.
           </p>
         </div>
 
         <div className="space-y-4">
           {batchCount > 1 ? (
-            <div className="rounded-xl bg-[#f8fafc] p-3">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">
+            <div className="rounded-xl bg-[var(--app-surface-muted)] p-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--app-text-muted)]">
                 Selected products
               </p>
               <div className="max-h-24 space-y-1 overflow-y-auto text-xs text-[#475569]">
@@ -173,7 +173,7 @@ const StockAdjustDialog = memo(function StockAdjustDialog({
           ) : null}
 
           <label className="block">
-            <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--app-text-muted)]">
               Quantity Delta
             </span>
             <input
@@ -181,25 +181,25 @@ const StockAdjustDialog = memo(function StockAdjustDialog({
               value={quantityInput}
               onChange={(event) => setQuantityInput(event.target.value)}
               placeholder="Use negative numbers to reduce stock"
-              className="w-full rounded-xl border-0 bg-[#f2f4f6] px-4 py-3 text-sm text-[#191c1e] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
+              className="w-full rounded-xl border-0 bg-[var(--app-input-bg)] px-4 py-3 text-sm text-[var(--app-text)] outline-none ring-1 ring-transparent focus:ring-[var(--app-link-teal)]/25"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#64748b]">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[var(--app-text-muted)]">
               Note (Optional)
             </span>
             <textarea
               value={note}
               onChange={(event) => setNote(event.target.value)}
               rows={3}
-              className="w-full resize-none rounded-xl border-0 bg-[#f2f4f6] px-4 py-3 text-sm text-[#191c1e] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
+              className="w-full resize-none rounded-xl border-0 bg-[var(--app-input-bg)] px-4 py-3 text-sm text-[var(--app-text)] outline-none ring-1 ring-transparent focus:ring-[var(--app-link-teal)]/25"
               placeholder="Reason for this adjustment"
             />
           </label>
 
           {error ? <p className="text-sm font-medium text-[#b42318]">{error}</p> : null}
-          {successMessage ? <p className="text-sm font-medium text-[#0d9488]">{successMessage}</p> : null}
+          {successMessage ? <p className="text-sm font-medium text-[var(--app-link-teal)]">{successMessage}</p> : null}
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
@@ -207,7 +207,7 @@ const StockAdjustDialog = memo(function StockAdjustDialog({
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="rounded-xl bg-[#f2f4f6] px-4 py-2 text-sm font-semibold text-[#191c1e] transition hover:bg-[#e8eaed] disabled:opacity-50"
+            className="rounded-xl bg-[var(--app-input-bg)] px-4 py-2 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-input-focus-bg)] disabled:opacity-50"
           >
             Cancel
           </button>
@@ -382,7 +382,7 @@ export function StockInventoryContent() {
       value: currencyFormatter.format(metrics.totalStockValueCents / 100),
       sub: `${metrics.totalAvailableUnits.toLocaleString()} units across ${metrics.totalBatchCount.toLocaleString()} products`,
       badge: `${metrics.healthyBatchRatio}% healthy`,
-      badgeClass: "bg-[#f0fdfa] text-[#0d9488]",
+      badgeClass: "bg-[#f0fdfa] text-[var(--app-link-teal)]",
       icon: "payments",
     },
     {
@@ -467,9 +467,9 @@ export function StockInventoryContent() {
       <div className="relative px-4 pb-24 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[1280px] space-y-8">
           <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#006a65]">Inventory Management</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--app-brand)]">Inventory Management</p>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[#191c1e] sm:text-4xl">
+              <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[var(--app-text)] sm:text-4xl">
                 Stock Inventory
               </h1>
             </div>
@@ -485,18 +485,18 @@ export function StockInventoryContent() {
       <div className="mx-auto max-w-[1280px] space-y-10">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#006a65]">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--app-brand)]">
               Inventory Management
             </p>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[#191c1e] sm:text-4xl">
+              <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[var(--app-text)] sm:text-4xl">
                 Stock Inventory
               </h1>
               <OutboxFeatureStatus feature="stock" />
             </div>
             <div className="flex items-center gap-2 pt-1">
               <span className="size-2 rounded-full bg-[#22c55e]" aria-hidden />
-              <span className="text-xs font-medium text-[#94a3b8]">
+              <span className="text-xs font-medium text-[var(--app-text-faint)]">
                 {stockQuery.data
                   ? `Real-time product sync active • Last synced ${formatRelativeSync(stockQuery.data.lastSyncedAt)}`
                   : "Loading live inventory snapshot..."}
@@ -528,7 +528,7 @@ export function StockInventoryContent() {
                   label: "the selected stock set",
                 });
               }}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#f2f4f6] px-5 py-2.5 text-base font-semibold text-[#191c1e] transition hover:bg-[#e8eaed] disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--app-input-bg)] px-5 py-2.5 text-base font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-input-focus-bg)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span className="material-symbols-outlined notranslate text-lg">edit_note</span>
               Bulk Adjust
@@ -553,14 +553,14 @@ export function StockInventoryContent() {
                   },
                 );
               }}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#f2f4f6] px-5 py-2.5 text-base font-semibold text-[#191c1e] transition hover:bg-[#e8eaed]"
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--app-input-bg)] px-5 py-2.5 text-base font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-input-focus-bg)]"
             >
               <span className="material-symbols-outlined notranslate text-lg">sync</span>
               Refresh Inventory
             </button>
             <Link
               href={ROUTES.dashboard.stockBulkAdd}
-              className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-base font-semibold text-[#191c1e] shadow-sm ring-1 ring-[rgba(187,201,199,0.25)] transition hover:bg-[#f8fafc]"
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--app-surface)] px-5 py-2.5 text-base font-semibold text-[var(--app-text)] shadow-sm ring-1 ring-[rgba(187,201,199,0.25)] transition hover:bg-[var(--app-surface-muted)]"
             >
               <span className="material-symbols-outlined notranslate text-lg">playlist_add</span>
               Bulk Add
@@ -581,8 +581,8 @@ export function StockInventoryContent() {
             const cardContent = (
               <>
                 <div className="mb-4 flex items-start justify-between">
-                  <div className="flex size-9 items-center justify-center rounded-lg bg-[#f1f5f9]">
-                    <span className="material-symbols-outlined notranslate text-xl text-[#64748b]">
+                  <div className="flex size-9 items-center justify-center rounded-lg bg-[var(--app-surface-subtle)]">
+                    <span className="material-symbols-outlined notranslate text-xl text-[var(--app-text-muted)]">
                       {metric.icon}
                     </span>
                   </div>
@@ -590,15 +590,15 @@ export function StockInventoryContent() {
                     {metric.badge}
                   </span>
                 </div>
-                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#3c4948]">
+                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--app-text-secondary)]">
                   {metric.label}
                 </p>
-                <p className="mt-1 font-[family-name:var(--font-manrope)] text-2xl font-extrabold text-[#191c1e]">
+                <p className="mt-1 font-[family-name:var(--font-manrope)] text-2xl font-extrabold text-[var(--app-text)]">
                   {stockQuery.isLoading ? "..." : metric.value}
                 </p>
-                <p className="mt-2 text-[10px] text-[#94a3b8]">{metric.sub}</p>
+                <p className="mt-2 text-[10px] text-[var(--app-text-faint)]">{metric.sub}</p>
                 {isNearExpiry ? (
-                  <span className="mt-3 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[#0d9488]">
+                  <span className="mt-3 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--app-link-teal)]">
                     View details
                     <span className="material-symbols-outlined notranslate text-sm">arrow_forward</span>
                   </span>
@@ -611,7 +611,7 @@ export function StockInventoryContent() {
                 <Link
                   key={metric.label}
                   href={stockExpiringHref}
-                  className="block rounded-xl border border-[rgba(187,201,199,0.15)] bg-white p-6 shadow-sm transition hover:border-[#14b8a6]/30 hover:shadow-md"
+                  className="block rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-sm transition hover:border-[var(--app-link-teal)]/30 hover:shadow-md"
                 >
                   {cardContent}
                 </Link>
@@ -621,7 +621,7 @@ export function StockInventoryContent() {
             return (
               <article
                 key={metric.label}
-                className="rounded-xl border border-[rgba(187,201,199,0.15)] bg-white p-6 shadow-sm"
+                className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-sm"
               >
                 {cardContent}
               </article>
@@ -629,15 +629,15 @@ export function StockInventoryContent() {
           })}
         </div>
 
-        <section className="overflow-hidden rounded-xl border border-[rgba(187,201,199,0.1)] bg-white shadow-sm">
-          <div className="flex flex-col gap-4 border-b border-[#f2f4f6] p-6">
+        <section className="overflow-hidden rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-sm">
+          <div className="flex flex-col gap-4 border-b border-[var(--app-input-bg)] p-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <h2 className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]">
+              <h2 className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[var(--app-text)]">
                 Product Inventory
               </h2>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <StockSearchField urlQ={search} onDebouncedChange={handleSearchDebounced} />
-                <label className="inline-flex items-center gap-2 rounded-lg bg-[#f2f4f6] px-3 py-2 text-xs font-semibold text-[#64748b]">
+                <label className="inline-flex items-center gap-2 rounded-lg bg-[var(--app-input-bg)] px-3 py-2 text-xs font-semibold text-[var(--app-text-muted)]">
                   Rows
                   <select
                     value={pageSize}
@@ -651,14 +651,14 @@ export function StockInventoryContent() {
                       params.set("page", "1");
                       router.replace(params.toString() ? `${window.location.pathname}?${params}` : window.location.pathname);
                     }}
-                    className="rounded-md border border-[#e2e8f0] bg-white px-2 py-1 text-xs font-semibold text-[#0f172a]"
+                    className="rounded-md border border-[var(--app-border-ui)] bg-[var(--app-surface)] px-2 py-1 text-xs font-semibold text-[var(--app-header-title)]"
                   >
                     <option value={10}>10</option>
                     <option value={20}>20</option>
                     <option value={50}>50</option>
                   </select>
                 </label>
-                <div className="flex rounded-lg bg-[#f2f4f6] p-1">
+                <div className="flex rounded-lg bg-[var(--app-input-bg)] p-1">
                   <button
                     type="button"
                     onClick={() => {
@@ -671,8 +671,8 @@ export function StockInventoryContent() {
                     }}
                     className={`rounded-md px-4 py-1.5 text-xs font-semibold transition ${
                       filter === "all"
-                        ? "bg-white text-[#191c1e] shadow-sm"
-                        : "font-medium text-[#64748b] hover:text-[#191c1e]"
+                        ? "bg-[var(--app-surface)] text-[var(--app-text)] shadow-sm"
+                        : "font-medium text-[var(--app-text-muted)] hover:text-[var(--app-text)]"
                     }`}
                   >
                     All Products
@@ -689,8 +689,8 @@ export function StockInventoryContent() {
                     }}
                     className={`rounded-md px-4 py-1.5 text-xs transition ${
                       filter === "expiring"
-                        ? "bg-white font-semibold text-[#191c1e] shadow-sm"
-                        : "font-medium text-[#64748b] hover:text-[#191c1e]"
+                        ? "bg-[var(--app-surface)] font-semibold text-[var(--app-text)] shadow-sm"
+                        : "font-medium text-[var(--app-text-muted)] hover:text-[var(--app-text)]"
                     }`}
                   >
                     Expiring Soon
@@ -698,7 +698,7 @@ export function StockInventoryContent() {
                 </div>
               </div>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] uppercase tracking-[0.1em] text-[#94a3b8]">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] uppercase tracking-[0.1em] text-[var(--app-text-faint)]">
               <span>
                 {selectedBatchIds.length > 0
                   ? `${selectedBatchIds.length} product${selectedBatchIds.length === 1 ? "" : "s"} selected`
@@ -717,10 +717,10 @@ export function StockInventoryContent() {
               </div>
             ) : rows.length === 0 && !stockQuery.isLoading ? (
               <div className="px-6 py-12 text-center">
-                <p className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]">
+                <p className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[var(--app-text)]">
                   {search || filter === "expiring" ? "No matching products" : "No products yet"}
                 </p>
-                <p className="mt-2 text-sm text-[#64748b]">
+                <p className="mt-2 text-sm text-[var(--app-text-muted)]">
                   {search || filter === "expiring"
                     ? "Try a different search term or switch back to the full inventory view."
                     : "Add your first stock product to start tracking metrics, expiry, and reorder risk."}
@@ -738,7 +738,7 @@ export function StockInventoryContent() {
             ) : (
               <div>
                 {isTableRefreshing ? (
-                  <div className="flex items-center gap-2 border-b border-[#f1f5f9] bg-[#f8fafc] px-6 py-2 text-xs font-medium text-[#64748b]">
+                  <div className="flex items-center gap-2 border-b border-[var(--app-surface-subtle)] bg-[var(--app-surface-muted)] px-6 py-2 text-xs font-medium text-[var(--app-text-muted)]">
                     <span className="material-symbols-outlined notranslate animate-spin text-sm">progress_activity</span>
                     Updating table results...
                   </div>
@@ -757,26 +757,26 @@ export function StockInventoryContent() {
                               : Array.from(new Set([...current, ...selectableRowIds])),
                           );
                         }}
-                        className="size-4 rounded border-[#cbd5e1] text-[#0d9488] focus:ring-[#14b8a6]"
+                        className="size-4 rounded border-[var(--app-outline-variant)] text-[var(--app-link-teal)] focus:ring-[var(--app-link-teal)]"
                         aria-label="Select visible products"
                       />
                     </th>
-                    <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-wider text-[#94a3b8]">
+                    <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--app-text-faint)]">
                       Product Name
                     </th>
-                    <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-wider text-[#94a3b8]">
+                    <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--app-text-faint)]">
                       Category
                     </th>
-                    <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-wider text-[#94a3b8]">
+                    <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--app-text-faint)]">
                       Product ref
                     </th>
-                    <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-wider text-[#94a3b8]">
+                    <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--app-text-faint)]">
                       Expiry Date
                     </th>
-                    <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-wider text-[#94a3b8]">
+                    <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--app-text-faint)]">
                       Stock Level
                     </th>
-                    <th className="px-6 py-4 text-right text-[10px] font-semibold uppercase tracking-wider text-[#94a3b8]">
+                    <th className="px-6 py-4 text-right text-[10px] font-semibold uppercase tracking-wider text-[var(--app-text-faint)]">
                       Actions
                     </th>
                   </tr>
@@ -800,8 +800,8 @@ export function StockInventoryContent() {
                           isRecentlyAdjusted
                             ? "border-t border-[#bbf7d0] bg-[rgba(240,253,244,0.9)] transition-colors"
                             : expiryVariant === "critical"
-                              ? "border-t border-[#f1f5f9] bg-[rgba(255,241,242,0.05)]"
-                              : "border-t border-[#f1f5f9]"
+                              ? "border-t border-[var(--app-surface-subtle)] bg-[rgba(255,241,242,0.05)]"
+                              : "border-t border-[var(--app-surface-subtle)]"
                         }
                       >
                         <td className="px-6 py-4">
@@ -816,7 +816,7 @@ export function StockInventoryContent() {
                                   : [...current, row.id],
                               );
                             }}
-                            className="size-4 rounded border-[#cbd5e1] text-[#0d9488] focus:ring-[#14b8a6] disabled:opacity-40"
+                            className="size-4 rounded border-[var(--app-outline-variant)] text-[var(--app-link-teal)] focus:ring-[var(--app-link-teal)] disabled:opacity-40"
                             aria-label={`Select product ${row.batchNumber}`}
                           />
                         </td>
@@ -825,10 +825,10 @@ export function StockInventoryContent() {
                             href={ROUTES.dashboard.stockBatch(row.id)}
                             className="block group"
                           >
-                            <p className="text-sm font-semibold text-[#191c1e] group-hover:text-[#006a65] transition">
+                            <p className="text-sm font-semibold text-[var(--app-text)] group-hover:text-[var(--app-brand)] transition">
                               {row.productName}
                             </p>
-                            <p className="font-mono text-[10px] uppercase tracking-tight text-[#94a3b8] group-hover:text-[#00504c] transition">
+                            <p className="font-mono text-[10px] uppercase tracking-tight text-[var(--app-text-faint)] group-hover:text-[var(--app-link-teal)] transition">
                               SKU: {row.sku}
                             </p>
                           </Link>
@@ -837,12 +837,12 @@ export function StockInventoryContent() {
                         <td className="px-6 py-4">
                           <Link
                             href={ROUTES.dashboard.stockBatch(row.id)}
-                            className="font-mono text-sm text-[#64748b] hover:text-[#006a65] transition"
+                            className="font-mono text-sm text-[var(--app-text-muted)] hover:text-[var(--app-brand)] transition"
                           >
                             #{row.batchNumber}
                           </Link>
                           {row.supplierName ? (
-                            <p className="mt-1 text-[10px] text-[#94a3b8]">{row.supplierName}</p>
+                            <p className="mt-1 text-[10px] text-[var(--app-text-faint)]">{row.supplierName}</p>
                           ) : null}
                         </td>
                         <td className="px-6 py-4">
@@ -869,7 +869,7 @@ export function StockInventoryContent() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="w-32 space-y-1.5">
-                            <div className="h-1.5 overflow-hidden rounded-full bg-[#f1f5f9]">
+                            <div className="h-1.5 overflow-hidden rounded-full bg-[var(--app-surface-subtle)]">
                               <div
                                 className="h-full rounded-full"
                                 style={{
@@ -886,7 +886,7 @@ export function StockInventoryContent() {
                             <p
                               className={`text-[10px] font-semibold ${
                                 expiryVariant === "safe"
-                                  ? "text-[#0d9488]"
+                                  ? "text-[var(--app-link-teal)]"
                                   : expiryVariant === "warning"
                                     ? "text-[#d97706]"
                                     : "text-[#e11d48]"
@@ -973,7 +973,7 @@ export function StockInventoryContent() {
                                 Restore
                               </button>
                             ) : (
-                              <span className="inline-flex rounded-full bg-[#f8fafc] px-2.5 py-1 text-[10px] font-semibold uppercase text-[#64748b]">
+                              <span className="inline-flex rounded-full bg-[var(--app-surface-muted)] px-2.5 py-1 text-[10px] font-semibold uppercase text-[var(--app-text-muted)]">
                                 {row.status.replace("_", " ")}
                               </span>
                             )}
@@ -988,13 +988,13 @@ export function StockInventoryContent() {
             )}
           </div>
 
-          <div className="flex flex-col items-center justify-between gap-4 border-t border-[#f1f5f9] bg-[rgba(242,244,246,0.3)] px-6 py-4 sm:flex-row">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#94a3b8]">
+          <div className="flex flex-col items-center justify-between gap-4 border-t border-[var(--app-surface-subtle)] bg-[rgba(242,244,246,0.3)] px-6 py-4 sm:flex-row">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--app-text-faint)]">
               Showing page {pagination.page.toLocaleString()} of {pagination.totalPages.toLocaleString()} •{" "}
               {pagination.totalItems.toLocaleString()} tracked products
             </p>
             <div className="flex items-center gap-3">
-              <label className="inline-flex items-center gap-2 text-xs font-semibold text-[#64748b]">
+              <label className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--app-text-muted)]">
                 Rows
                 <select
                   value={pageSize}
@@ -1012,7 +1012,7 @@ export function StockInventoryContent() {
                         : window.location.pathname,
                     );
                   }}
-                  className="rounded-md border border-[#e2e8f0] bg-white px-2 py-1 text-xs font-semibold text-[#0f172a]"
+                  className="rounded-md border border-[var(--app-border-ui)] bg-[var(--app-surface)] px-2 py-1 text-xs font-semibold text-[var(--app-header-title)]"
                 >
                   <option value={10}>10</option>
                   <option value={20}>20</option>
@@ -1028,11 +1028,11 @@ export function StockInventoryContent() {
                   params.set("page", String(Math.max(1, pagination.page - 1)));
                   router.replace(params.toString() ? `${window.location.pathname}?${params}` : window.location.pathname);
                 }}
-                className="flex size-8 items-center justify-center rounded border border-[#e2e8f0] text-[#64748b] hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex size-8 items-center justify-center rounded border border-[var(--app-border-ui)] text-[var(--app-text-muted)] hover:bg-[var(--app-surface)] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <span className="material-symbols-outlined notranslate text-lg">chevron_left</span>
               </button>
-              <span className="inline-flex min-w-14 items-center justify-center gap-1 rounded border border-[#006a65] bg-white px-3 py-1 text-xs font-semibold text-[#006a65]">
+              <span className="inline-flex min-w-14 items-center justify-center gap-1 rounded border border-[var(--app-brand)] bg-[var(--app-surface)] px-3 py-1 text-xs font-semibold text-[var(--app-brand)]">
                 {isPageLoading ? (
                   <span className="material-symbols-outlined notranslate animate-spin text-sm">progress_activity</span>
                 ) : null}
@@ -1047,7 +1047,7 @@ export function StockInventoryContent() {
                   params.set("page", String(Math.min(pagination.totalPages, pagination.page + 1)));
                   router.replace(params.toString() ? `${window.location.pathname}?${params}` : window.location.pathname);
                 }}
-                className="flex size-8 items-center justify-center rounded border border-[#e2e8f0] text-[#64748b] hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex size-8 items-center justify-center rounded border border-[var(--app-border-ui)] text-[var(--app-text-muted)] hover:bg-[var(--app-surface)] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <span className="material-symbols-outlined notranslate text-lg">chevron_right</span>
               </button>
@@ -1058,11 +1058,11 @@ export function StockInventoryContent() {
         <div className="grid gap-8 lg:grid-cols-2">
           <article className="relative overflow-hidden rounded-xl bg-[#6063ee] p-8">
             <div
-              className="pointer-events-none absolute -bottom-4 -right-4 size-48 rounded-full bg-white/10 blur-3xl"
+              className="pointer-events-none absolute -bottom-4 -right-4 size-48 rounded-full bg-[var(--app-surface)]/10 blur-3xl"
               aria-hidden
             />
             <div className="relative">
-              <div className="mb-6 flex size-12 items-center justify-center rounded-lg bg-white/20">
+              <div className="mb-6 flex size-12 items-center justify-center rounded-lg bg-[var(--app-surface)]/20">
                 <span className="material-symbols-outlined notranslate text-xl text-white">
                   medication
                 </span>
@@ -1094,7 +1094,7 @@ export function StockInventoryContent() {
                         : "Current stock levels are above the configured reorder thresholds.",
                   });
                 }}
-                className="mt-6 rounded-lg bg-white px-6 py-2.5 text-xs font-semibold text-[#4648d4] shadow-lg transition hover:bg-white/95"
+                className="mt-6 rounded-lg bg-[var(--app-surface)] px-6 py-2.5 text-xs font-semibold text-[#4648d4] shadow-lg transition hover:bg-[var(--app-surface)]/95"
               >
                 Review Draft Order
               </button>
@@ -1111,14 +1111,14 @@ export function StockInventoryContent() {
             />
             <div className="relative">
               <div className="mb-6 flex size-12 items-center justify-center rounded-lg bg-[#ccfbf1]">
-                <span className="material-symbols-outlined notranslate text-xl text-[#0d9488]">
+                <span className="material-symbols-outlined notranslate text-xl text-[var(--app-link-teal)]">
                   show_chart
                 </span>
               </div>
               <h3 className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[#134e4a]">
                 Inventory Efficiency
               </h3>
-              <p className="mt-3 text-sm leading-relaxed text-[#0f766e]/80">
+              <p className="mt-3 text-sm leading-relaxed text-[var(--app-link-teal)]/80">
                 {`${metrics.healthyBatchRatio}% of your tracked products are healthy, while ${metrics.nearExpiryBatchCount} products need closer rotation this month.`}
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
@@ -1135,16 +1135,16 @@ export function StockInventoryContent() {
           </article>
         </div>
 
-        <footer className="flex flex-col gap-4 border-t border-[#f1f5f9] pt-6 text-[11px] uppercase tracking-[0.1em] text-[#94a3b8] sm:flex-row sm:items-center sm:justify-between">
+        <footer className="flex flex-col gap-4 border-t border-[var(--app-surface-subtle)] pt-6 text-[11px] uppercase tracking-[0.1em] text-[var(--app-text-faint)] sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <span className="font-semibold text-[#cbd5e1]">AuraPharma v1.0.0</span>
             <span>© {new Date().getFullYear()} Clinical Intelligence</span>
           </div>
           <div className="flex flex-wrap gap-4">
-            <Link href="#" className="underline decoration-[rgba(20,184,166,0.3)] hover:text-[#64748b]">
+            <Link href="#" className="underline decoration-[rgba(20,184,166,0.3)] hover:text-[var(--app-text-muted)]">
               Privacy Policy
             </Link>
-            <Link href="#" className="underline decoration-[rgba(20,184,166,0.3)] hover:text-[#64748b]">
+            <Link href="#" className="underline decoration-[rgba(20,184,166,0.3)] hover:text-[var(--app-text-muted)]">
               System Status
             </Link>
           </div>

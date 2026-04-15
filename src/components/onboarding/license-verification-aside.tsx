@@ -1,6 +1,6 @@
 function TrustChip({ label }: { label: string }) {
   return (
-    <span className="inline-flex h-6 items-center rounded border border-[#cbd5e1] bg-white px-2 text-[9px] font-bold tracking-wide text-[#475569] shadow-sm">
+    <span className="inline-flex h-6 items-center rounded border border-[#cbd5e1] bg-white px-2 text-[9px] font-bold tracking-wide text-[var(--app-text-muted)] shadow-sm">
       {label}
     </span>
   );
@@ -9,8 +9,8 @@ function TrustChip({ label }: { label: string }) {
 export function LicenseVerificationAside() {
   return (
     <div className="flex flex-col gap-6">
-      <div className="rounded-xl border border-[rgba(187,201,199,0.1)] bg-[#f2f4f6] p-6">
-        <h3 className="text-xs font-bold uppercase tracking-[0.08em] text-[#3c4948]">
+      <div className="rounded-xl border border-[rgba(187,201,199,0.1)] bg-[var(--app-input-bg)] p-6">
+        <h3 className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--app-text-secondary)]">
           Verification Tracker
         </h3>
         <div className="relative mt-8 space-y-8 pl-2">
@@ -19,24 +19,24 @@ export function LicenseVerificationAside() {
             aria-hidden
           />
           <div className="relative flex gap-4">
-            <div className="relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full bg-[#006a65] shadow-[0_1px_2px_0_rgba(0,106,101,0.4)]">
+            <div className="relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--app-brand)] shadow-[0_1px_2px_0_rgba(0,106,101,0.4)]">
               <span className="material-symbols-outlined notranslate text-xs text-white">
                 check
               </span>
             </div>
             <div>
-              <p className="font-[family-name:var(--font-manrope)] text-sm font-bold text-[#191c1e]">
+              <p className="font-[family-name:var(--font-manrope)] text-sm font-bold text-[var(--app-text)]">
                 Identity Verified
               </p>
-              <p className="text-xs font-medium text-[#006a65]">Completed</p>
+              <p className="text-xs font-medium text-[var(--app-brand)]">Completed</p>
             </div>
           </div>
           <div className="relative flex gap-4">
             <div className="relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-[#006a65] bg-white p-0.5">
-              <span className="size-2 rounded-full bg-[#006a65]" />
+              <span className="size-2 rounded-full bg-[var(--app-brand)]" />
             </div>
             <div>
-              <p className="font-[family-name:var(--font-manrope)] text-sm font-bold text-[#191c1e]">
+              <p className="font-[family-name:var(--font-manrope)] text-sm font-bold text-[var(--app-text)]">
                 Pharmacy License
               </p>
               <p className="text-xs font-medium text-[#7b2f05]">Awaiting Upload</p>
@@ -44,15 +44,15 @@ export function LicenseVerificationAside() {
           </div>
           <div className="relative flex gap-4">
             <div className="relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full bg-[#e6e8ea]">
-              <span className="material-symbols-outlined notranslate text-sm text-[#64748b]">
+              <span className="material-symbols-outlined notranslate text-sm text-[var(--app-text-muted)]">
                 hourglass_empty
               </span>
             </div>
             <div>
-              <p className="font-[family-name:var(--font-manrope)] text-sm font-bold text-[#3c4948]">
+              <p className="font-[family-name:var(--font-manrope)] text-sm font-bold text-[var(--app-text-secondary)]">
                 PIC Certification
               </p>
-              <p className="text-xs font-medium text-[#94a3b8]">Verifying...</p>
+              <p className="text-xs font-medium text-[var(--app-text-faint)]">Verifying...</p>
             </div>
           </div>
         </div>
@@ -60,12 +60,12 @@ export function LicenseVerificationAside() {
 
       <div className="relative rounded-xl border border-[rgba(15,185,177,0.1)] bg-white p-6 shadow-[0_0_40px_-10px_rgba(15,185,177,0.15)]">
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined notranslate text-[#006a65]">shield_lock</span>
-          <h3 className="font-[family-name:var(--font-manrope)] text-sm font-bold text-[#191c1e]">
+          <span className="material-symbols-outlined notranslate text-[var(--app-brand)]">shield_lock</span>
+          <h3 className="font-[family-name:var(--font-manrope)] text-sm font-bold text-[var(--app-text)]">
             Medical-Grade Trust
           </h3>
         </div>
-        <p className="mt-3 text-xs leading-relaxed text-[#3c4948]">
+        <p className="mt-3 text-xs leading-relaxed text-[var(--app-text-secondary)]">
           All documents are encrypted using AES-256 protocols and stored in SOC2-compliant HIPAA
           environments. Your data is only accessible to authorized clinical verification
           specialists.
@@ -83,7 +83,7 @@ export function LicenseVerificationAside() {
             "linear-gradient(135deg, rgb(247, 249, 251) 0%, rgb(242, 244, 246) 100%)",
         }}
       >
-        <p className="text-sm leading-relaxed text-[#3c4948]">
+        <p className="text-sm leading-relaxed text-[var(--app-text-secondary)]">
           &ldquo;Verification usually takes 12-24 business hours. You can proceed with the rest of
           your onboarding while we review these.&rdquo;
         </p>

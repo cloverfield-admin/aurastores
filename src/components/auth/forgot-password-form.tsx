@@ -91,7 +91,7 @@ export function ForgotPasswordForm() {
       <div className="mt-8 border-t border-[rgba(187,201,199,0.35)] pt-6 text-center text-sm">
         <Link
           href={ROUTES.auth.signIn}
-          className={`font-semibold text-[#006a65] hover:underline ${isBusy ? "pointer-events-none opacity-60" : ""}`}
+          className={`font-semibold text-[var(--app-brand)] hover:underline ${isBusy ? "pointer-events-none opacity-60" : ""}`}
         >
           Back to sign in
         </Link>

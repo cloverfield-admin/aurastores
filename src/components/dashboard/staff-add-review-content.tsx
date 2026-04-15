@@ -34,7 +34,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const labelClass =
-  "text-[10px] font-semibold uppercase tracking-[0.1em] text-[#94a3b8]";
+  "text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--app-text-faint)]";
 const valueClass = "text-base font-semibold text-[#334155]";
 
 function emptyDraft(): StaffAddDraft {
@@ -208,7 +208,7 @@ export function StaffAddReviewContent() {
   if (draft === null) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center px-4">
-        <p className="text-sm text-[#64748b]">Loading review...</p>
+        <p className="text-sm text-[var(--app-text-muted)]">Loading review...</p>
       </div>
     );
   }
@@ -221,24 +221,24 @@ export function StaffAddReviewContent() {
           <div className="space-y-2">
             <Link
               href={ROUTES.dashboard.staff}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-[#006a65] hover:text-[#00504c]"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--app-brand)] hover:text-[var(--app-link-teal)]"
             >
               <span className="material-symbols-outlined notranslate text-lg">
                 arrow_back
               </span>
               Back to Staff Directory
             </Link>
-            <h1 className="font-[family-name:var(--font-manrope)] text-[36px] font-extrabold leading-10 tracking-[-0.9px] text-[#191c1e]">
+            <h1 className="font-[family-name:var(--font-manrope)] text-[36px] font-extrabold leading-10 tracking-[-0.9px] text-[var(--app-text)]">
               Review New Staff Member
             </h1>
-            <p className="text-base text-[#3c4948]">
+            <p className="text-base text-[var(--app-text-secondary)]">
               Confirm the details below before adding this professional to the
               directory.
             </p>
           </div>
           <Link
             href={ROUTES.dashboard.staffAdd}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#e6e8ea] px-6 py-3 text-base font-semibold text-[#3c4948] transition hover:bg-[#d1d5db]"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#e6e8ea] px-6 py-3 text-base font-semibold text-[var(--app-text-secondary)] transition hover:bg-[#d1d5db]"
           >
             <span className="material-symbols-outlined notranslate text-lg">
               edit
@@ -249,11 +249,11 @@ export function StaffAddReviewContent() {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           {/* Basic Information */}
-          <div className="flex flex-col gap-6 rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-8 shadow-sm lg:col-span-7">
+          <div className="flex flex-col gap-6 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-8 shadow-sm lg:col-span-7">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start gap-3">
                 <div className="flex size-8 items-center justify-center rounded-lg bg-[#f0fdfa]">
-                  <span className="material-symbols-outlined notranslate text-lg text-[#006a65]">
+                  <span className="material-symbols-outlined notranslate text-lg text-[var(--app-brand)]">
                     person_add
                   </span>
                 </div>
@@ -263,7 +263,7 @@ export function StaffAddReviewContent() {
               </div>
               <Link
                 href={ROUTES.dashboard.staffAdd}
-                className="inline-flex items-center gap-2 rounded-lg bg-[rgba(0,106,101,0.05)] px-3 py-1.5 text-xs font-semibold text-[#006a65] transition hover:bg-[rgba(0,106,101,0.1)]"
+                className="inline-flex items-center gap-2 rounded-lg bg-[rgba(0,106,101,0.05)] px-3 py-1.5 text-xs font-semibold text-[var(--app-brand)] transition hover:bg-[rgba(0,106,101,0.1)]"
               >
                 <span className="material-symbols-outlined notranslate text-sm">
                   edit
@@ -294,11 +294,11 @@ export function StaffAddReviewContent() {
           </div>
 
           {/* Role & Permissions */}
-          <div className="flex flex-col gap-6 rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-8 shadow-sm lg:col-span-5">
+          <div className="flex flex-col gap-6 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-8 shadow-sm lg:col-span-5">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start gap-3">
                 <div className="flex size-8 items-center justify-center rounded-lg bg-[#f0fdfa]">
-                  <span className="material-symbols-outlined notranslate text-lg text-[#006a65]">
+                  <span className="material-symbols-outlined notranslate text-lg text-[var(--app-brand)]">
                     shield
                   </span>
                 </div>
@@ -308,7 +308,7 @@ export function StaffAddReviewContent() {
               </div>
               <Link
                 href={ROUTES.dashboard.staffAdd}
-                className="inline-flex items-center gap-2 rounded-lg bg-[rgba(0,106,101,0.05)] px-3 py-1.5 text-xs font-semibold text-[#006a65] transition hover:bg-[rgba(0,106,101,0.1)]"
+                className="inline-flex items-center gap-2 rounded-lg bg-[rgba(0,106,101,0.05)] px-3 py-1.5 text-xs font-semibold text-[var(--app-brand)] transition hover:bg-[rgba(0,106,101,0.1)]"
               >
                 <span className="material-symbols-outlined notranslate text-sm">
                   edit
@@ -331,11 +331,11 @@ export function StaffAddReviewContent() {
           </div>
 
           {/* Contact Details */}
-          <div className="flex flex-col gap-6 rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-8 shadow-sm lg:col-span-6">
+          <div className="flex flex-col gap-6 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-8 shadow-sm lg:col-span-6">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start gap-3">
                 <div className="flex size-8 items-center justify-center rounded-lg bg-[#f0fdfa]">
-                  <span className="material-symbols-outlined notranslate text-lg text-[#006a65]">
+                  <span className="material-symbols-outlined notranslate text-lg text-[var(--app-brand)]">
                     contact_page
                   </span>
                 </div>
@@ -345,7 +345,7 @@ export function StaffAddReviewContent() {
               </div>
               <Link
                 href={ROUTES.dashboard.staffAdd}
-                className="inline-flex items-center gap-2 rounded-lg bg-[rgba(0,106,101,0.05)] px-3 py-1.5 text-xs font-semibold text-[#006a65] transition hover:bg-[rgba(0,106,101,0.1)]"
+                className="inline-flex items-center gap-2 rounded-lg bg-[rgba(0,106,101,0.05)] px-3 py-1.5 text-xs font-semibold text-[var(--app-brand)] transition hover:bg-[rgba(0,106,101,0.1)]"
               >
                 <span className="material-symbols-outlined notranslate text-sm">
                   edit
@@ -366,11 +366,11 @@ export function StaffAddReviewContent() {
           </div>
 
           {/* Credentials */}
-          <div className="flex flex-col gap-6 rounded-xl border border-[rgba(187,201,199,0.1)] bg-white p-8 shadow-sm lg:col-span-6">
+          <div className="flex flex-col gap-6 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-8 shadow-sm lg:col-span-6">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start gap-3">
                 <div className="flex size-8 items-center justify-center rounded-lg bg-[#f0fdfa]">
-                  <span className="material-symbols-outlined notranslate text-lg text-[#006a65]">
+                  <span className="material-symbols-outlined notranslate text-lg text-[var(--app-brand)]">
                     fact_check
                   </span>
                 </div>
@@ -380,7 +380,7 @@ export function StaffAddReviewContent() {
               </div>
               <Link
                 href={ROUTES.dashboard.staffAdd}
-                className="inline-flex items-center gap-2 rounded-lg bg-[rgba(0,106,101,0.05)] px-3 py-1.5 text-xs font-semibold text-[#006a65] transition hover:bg-[rgba(0,106,101,0.1)]"
+                className="inline-flex items-center gap-2 rounded-lg bg-[rgba(0,106,101,0.05)] px-3 py-1.5 text-xs font-semibold text-[var(--app-brand)] transition hover:bg-[rgba(0,106,101,0.1)]"
               >
                 <span className="material-symbols-outlined notranslate text-sm">
                   edit
@@ -393,11 +393,11 @@ export function StaffAddReviewContent() {
                 {draft.files.map((file) => (
                   <li
                     key={file.id}
-                    className="flex items-center justify-between gap-3 rounded-lg bg-[#f8fafc] p-4"
+                    className="flex items-center justify-between gap-3 rounded-lg bg-[var(--app-surface-muted)] p-4"
                   >
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white border border-[#e2e8f0]">
-                        <span className="material-symbols-outlined notranslate text-[#006a65]">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--app-surface)] border border-[var(--app-border-ui)]">
+                        <span className="material-symbols-outlined notranslate text-[var(--app-brand)]">
                           {file.icon}
                         </span>
                       </div>
@@ -405,12 +405,12 @@ export function StaffAddReviewContent() {
                         <p className="text-sm font-semibold text-[#334155]">
                           {file.name}
                         </p>
-                        <p className="truncate text-xs text-[#64748b]">
+                        <p className="truncate text-xs text-[var(--app-text-muted)]">
                           {file.subtitle}
                         </p>
                       </div>
                     </div>
-                    <span className="material-symbols-outlined notranslate shrink-0 text-[#006a65]">
+                    <span className="material-symbols-outlined notranslate shrink-0 text-[var(--app-brand)]">
                       check_circle
                     </span>
                   </li>
@@ -422,7 +422,7 @@ export function StaffAddReviewContent() {
                 upload licenses.
               </p>
             ) : (
-              <p className="text-sm text-[#64748b]">No credentials uploaded</p>
+              <p className="text-sm text-[var(--app-text-muted)]">No credentials uploaded</p>
             )}
           </div>
         </div>
@@ -437,9 +437,9 @@ export function StaffAddReviewContent() {
               checked={certified}
               onChange={(e) => setCertified(e.target.checked)}
               disabled={isBusy}
-              className="mt-1 size-4 shrink-0 rounded border-[#cbd5e1] text-[#006a65] accent-[#006a65]"
+              className="mt-1 size-4 shrink-0 rounded border-[var(--app-outline-variant)] text-[var(--app-brand)] accent-[var(--app-brand)]"
             />
-            <span className="text-sm leading-relaxed text-[#64748b]">
+            <span className="text-sm leading-relaxed text-[var(--app-text-muted)]">
               I certify that all provided information is accurate to the best of
               my knowledge.
             </span>
