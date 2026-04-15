@@ -20,9 +20,9 @@ export type StaffInviteMailParams = {
 
 export async function sendStaffInviteCredentialsEmail(params: StaffInviteMailParams): Promise<void> {
   const origin = getSiteUrl();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin;
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (!siteUrl) {
-    throw new Error("NEXT_PUBLIC_SITE_URL is not set");
+    throw new Error("NEXT_PUBLIC_APP_URL is not set");
   }
   const signInUrl = `${siteUrl}${ROUTES.auth.signIn}`;
   const org = escapeHtml(params.organizationName);
