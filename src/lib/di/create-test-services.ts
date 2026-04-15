@@ -1,5 +1,7 @@
 import type { AuthRepository } from "@/lib/repositories/auth/auth.repository";
 import { authRepository } from "@/lib/repositories/auth/auth.repository.impl";
+import type { AvatarStorageRepository } from "@/lib/repositories/avatar-storage/avatar-storage.repository";
+import { avatarStorageRepository } from "@/lib/repositories/avatar-storage/avatar-storage.repository.impl";
 import type { DocumentStorageRepository } from "@/lib/repositories/document-storage/document-storage.repository";
 import { documentStorageRepository } from "@/lib/repositories/document-storage/document-storage.repository.impl";
 import type { NetworkRepository } from "@/lib/repositories/network/network.repository";
@@ -29,6 +31,7 @@ import type { AppServices } from "@/lib/di/services";
 /** Builds services with optional repository overrides; uses production impl singletons for the rest (requires env e.g. DATABASE_URL when loaded). */
 export type TestServiceOverrides = Partial<{
   auth: AuthRepository;
+  avatarStorage: AvatarStorageRepository;
   stock: StockRepository;
   sales: SalesRepository;
   onboarding: OnboardingRepository;
@@ -41,6 +44,7 @@ export type TestServiceOverrides = Partial<{
 
 export function createTestServices(overrides: TestServiceOverrides = {}): AppServices {
   const auth = overrides.auth ?? authRepository;
+  const avatarStorage = overrides.avatarStorage ?? avatarStorageRepository;
   const stock = overrides.stock ?? stockRepository;
   const sales = overrides.sales ?? salesRepository;
   const onboarding = overrides.onboarding ?? onboardingRepository;
@@ -51,7 +55,7 @@ export function createTestServices(overrides: TestServiceOverrides = {}): AppSer
   const productCategories = overrides.productCategories ?? productCategoriesRepository;
 
   return {
-    auth: new AuthService({ auth }),
+    auth: new AuthService({ auth, avatarStorage }),
     stock: new StockService({ stock }),
     sales: new SalesService({ sales }),
     onboarding: new OnboardingService({ onboarding, documentStorage }),

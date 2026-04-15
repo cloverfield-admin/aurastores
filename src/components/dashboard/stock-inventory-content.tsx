@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
+import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
 import { OutboxFeatureStatus } from "@/components/outbox/outbox-detail-dialog";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { isOfflineQueuedError } from "@/lib/offline/offline-queued-error";
 import { ROUTES } from "@/lib/routes";
+import { hasCapability } from "@/lib/rbac/capabilities";
 import {
   useAdjustStockMutation,
   useDisposeStockBatchMutation,
@@ -257,6 +260,8 @@ const StockAdjustDialog = memo(function StockAdjustDialog({
 export function StockInventoryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const workspace = useDashboardWorkspaceAccess();
+  const canStock = hasCapability(workspace.capabilities, "stock");
   const { withLoading, notify } = useAuraFeedback();
   const [selectedBatchIds, setSelectedBatchIds] = useState<string[]>([]);
   const [optimisticAdjustments, setOptimisticAdjustments] = useState<
@@ -281,7 +286,7 @@ export function StockInventoryContent() {
     batchIds: [],
     label: "",
   });
-  const stockQuery = useStockDashboardQuery({ branchId, search, view: filter, page, pageSize });
+  const stockQuery = useStockDashboardQuery({ branchId, search, view: filter, page, pageSize, enabled: canStock });
   const adjustStockMutation = useAdjustStockMutation();
   const disposeBatchMutation = useDisposeStockBatchMutation();
   const restoreBatchMutation = useRestoreStockBatchMutation();
@@ -455,6 +460,24 @@ export function StockInventoryContent() {
 
       return { adjustedCount: result.adjustedCount };
     });
+  }
+
+  if (!canStock) {
+    return (
+      <div className="relative px-4 pb-24 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1280px] space-y-8">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#006a65]">Inventory Management</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[#191c1e] sm:text-4xl">
+                Stock Inventory
+              </h1>
+            </div>
+          </div>
+          <MissingCapabilityNotice capability="stock" />
+        </div>
+      </div>
+    );
   }
 
   return (

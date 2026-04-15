@@ -2,10 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
+import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
 import { useNetworkDashboardQuery } from "@/lib/queries/network";
 import { ROUTES } from "@/lib/routes";
+import { hasCapability } from "@/lib/rbac/capabilities";
 import { DASHBOARD_ASSETS } from "./dashboard-assets";
 
 const money = new Intl.NumberFormat("en-US", {
@@ -22,7 +25,9 @@ const MAP_CYCLE = [
 
 export function NetworkOverviewContent() {
   const { withLoading, notify } = useAuraFeedback();
-  const networkQuery = useNetworkDashboardQuery();
+  const workspace = useDashboardWorkspaceAccess();
+  const canInsights = hasCapability(workspace.capabilities, "insights");
+  const networkQuery = useNetworkDashboardQuery({ enabled: canInsights });
   const data = networkQuery.data;
   const totals = data?.totals;
   const revenueDeltaRaw =
@@ -42,6 +47,24 @@ export function NetworkOverviewContent() {
     totals && data
       ? Math.max(0, totals.activeStaffCount - data.staffPreviewNames.length)
       : 0;
+
+  if (!canInsights) {
+    return (
+      <div className="px-4 pb-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1280px] space-y-8">
+          <div className="space-y-2">
+            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[#191c1e] sm:text-4xl sm:tracking-[-0.025em]">
+              Network Overview
+            </h1>
+            <p className="max-w-xl text-base leading-relaxed text-[#3c4948]">
+              Real-time clinical and operational pulse across all active branches.
+            </p>
+          </div>
+          <MissingCapabilityNotice capability="insights" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 pb-16 sm:px-6 lg:px-8">
@@ -66,9 +89,11 @@ export function NetworkOverviewContent() {
         </div>
 
         {networkQuery.isError ? (
-          <p className="text-sm text-red-600">
-            Could not load network metrics. Try again in a moment.
-          </p>
+          networkQuery.error instanceof Error && networkQuery.error.message === "Forbidden" ? (
+            <MissingCapabilityNotice capability="insights" />
+          ) : (
+            <p className="text-sm text-red-600">Could not load network metrics. Try again in a moment.</p>
+          )
         ) : null}
 
         {/* KPI row */}
@@ -209,6 +234,10 @@ export function NetworkOverviewContent() {
         <div className="grid gap-8 lg:grid-cols-3">
           {networkQuery.isPending ? (
             <p className="text-sm text-[#64748b] lg:col-span-3">Loading branches…</p>
+          ) : networkQuery.isError ? (
+            <p className="text-sm text-[#64748b] lg:col-span-3">
+              Branch cards could not be loaded. Check the message above and try again.
+            </p>
           ) : !data || data.branches.length === 0 ? (
             <p className="text-sm text-[#64748b] lg:col-span-3">
               No branches yet. Use{" "}

@@ -2,18 +2,11 @@
 
 import { usePathname } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import type { DashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
+import { DashboardWorkspaceProvider } from "@/components/dashboard/dashboard-workspace";
 import { ROUTES } from "@/lib/routes";
-import type { MembershipCapabilities } from "@/lib/rbac/capabilities";
-import type { WorkspaceBranchTab } from "@/lib/rbac/workspace-branches";
 
-export type DashboardWorkspaceAccess = {
-  capabilities: MembershipCapabilities;
-  allowedBranchIds: string[] | null;
-  /** Branches the user may see in the shell and home overview (RBAC-scoped). */
-  accessibleBranches: WorkspaceBranchTab[];
-  userDisplayName: string;
-  membershipRoleLabel: string;
-};
+export type { DashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 
 export function DashboardLayoutShell({
   children,
@@ -30,5 +23,9 @@ export function DashboardLayoutShell({
     return <>{children}</>;
   }
 
-  return <DashboardShell workspaceAccess={workspaceAccess}>{children}</DashboardShell>;
+  return (
+    <DashboardWorkspaceProvider value={workspaceAccess}>
+      <DashboardShell workspaceAccess={workspaceAccess}>{children}</DashboardShell>
+    </DashboardWorkspaceProvider>
+  );
 }

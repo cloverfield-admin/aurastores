@@ -45,6 +45,7 @@ export type StaffMemberForEdit = {
   jobTitle: string | null;
   appRole: StaffAppRole;
   membershipStatus: string;
+  staffEmployeeCode: string | null;
   capabilities: MembershipCapabilities;
   branchIds: string[];
   credentials: StaffCredentialRecord[];

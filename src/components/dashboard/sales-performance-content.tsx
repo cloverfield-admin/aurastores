@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
+import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
 import { useSalesDashboardQuery } from "@/lib/queries/sales";
 import { ROUTES } from "@/lib/routes";
+import { hasCapability } from "@/lib/rbac/capabilities";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -31,10 +34,12 @@ function formatRelativeTime(isoString: string) {
 
 export function SalesPerformanceContent() {
   const searchParams = useSearchParams();
+  const workspace = useDashboardWorkspaceAccess();
+  const canSales = hasCapability(workspace.capabilities, "sales");
   const [chartMode, setChartMode] = useState<"revenue" | "volume">("revenue");
   const branch = searchParams.get("branch") ?? undefined;
   const addSaleHref = branch ? `${ROUTES.dashboard.salesAdd}?branch=${branch}` : ROUTES.dashboard.salesAdd;
-  const salesDashboardQuery = useSalesDashboardQuery(branch);
+  const salesDashboardQuery = useSalesDashboardQuery(branch, canSales);
 
   const metrics = salesDashboardQuery.data?.metrics;
   const revenueDeltaPct =
@@ -93,6 +98,25 @@ export function SalesPerformanceContent() {
               : (point.unitsSold / maxUnits) * 6,
         }))
       : [];
+
+  if (!canSales) {
+    return (
+      <div className="relative px-4 pb-24 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1280px] space-y-8">
+          <div className="space-y-1">
+            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[#191c1e] sm:text-4xl">
+              Monthly Sales Performance
+            </h1>
+            <p className="max-w-xl text-base text-[#3c4948]">
+              Real-time clinical intelligence and financial tracking for the current branch (rolling 30-day window in
+              metrics below).
+            </p>
+          </div>
+          <MissingCapabilityNotice capability="sales" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative px-4 pb-24 sm:px-6 lg:px-8">

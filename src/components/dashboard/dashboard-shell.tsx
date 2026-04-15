@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { DashboardWorkspaceAccess } from "@/components/dashboard/dashboard-layout-shell";
+import type { DashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
+import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { apiUrl } from "@/lib/api/version";
 import { ROUTES } from "@/lib/routes";
@@ -11,6 +12,7 @@ import { PharmacySearchField } from "@/components/dashboard/pharmacy-search-fiel
 import { AuraAvatar } from "@/components/ui/aura-avatar";
 import type { MembershipCapability } from "@/lib/rbac/capabilities";
 import { hasCapability } from "@/lib/rbac/capabilities";
+import { dashboardModuleCapabilityForPath } from "@/lib/rbac/dashboard-path-capability";
 
 /** Breathing room between fixed header and main scroll area (px). */
 const MAIN_BELOW_HEADER_GAP_PX = 8;
@@ -27,6 +29,12 @@ const MODULE_NAV: { label: string; icon: string; href: string; capability: Membe
     capability: "catalog",
   },
   { label: "Staff", icon: "groups", href: ROUTES.dashboard.staff, capability: "staff" },
+  {
+    label: "Organization",
+    icon: "domain",
+    href: ROUTES.dashboard.organization,
+    capability: "organization",
+  },
 ];
 
 type DashboardShellProps = {
@@ -62,7 +70,6 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
     [workspaceAccess.capabilities],
   );
 
-  const canAccessSettings = hasCapability(workspaceAccess.capabilities, "settings");
   const canUsePharmacySearch =
     hasCapability(workspaceAccess.capabilities, "stock") ||
     hasCapability(workspaceAccess.capabilities, "staff") ||
@@ -163,6 +170,9 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
     pathname === ROUTES.dashboard.productCategories ||
     pathname.startsWith(`${ROUTES.dashboard.productCategories}/`);
   const isSettings = pathname === ROUTES.settings;
+  const isOrganization =
+    pathname === ROUTES.dashboard.organization
+    || pathname.startsWith(`${ROUTES.dashboard.organization}/`);
   const isStaff = pathname === ROUTES.dashboard.staff || pathname.startsWith(`${ROUTES.dashboard.staff}/`);
   const isStaffAdd = pathname === ROUTES.dashboard.staffAdd;
   const isDashboardMain = pathname === ROUTES.dashboard.main;
@@ -217,6 +227,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
 
   const hasMobileToolsPanel =
     !isSettings
+    && !isOrganization
     && !isStaffAdd
     && !isProductCategories
     && (isStaff
@@ -228,6 +239,8 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
 
   const mobileHeaderTitle = isSettings
     ? "Profile & Settings"
+    : isOrganization
+      ? "Organization"
     : isStaffAdd
       ? "Add New Staff"
       : isProductCategories
@@ -248,15 +261,26 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
 
   function branchSwitcherNav(opts: { ariaLabel: string; onSelectBranch: (branchId: string) => void }) {
     if (sectionBranchTabs.length === 0) {
+      const moduleCap = dashboardModuleCapabilityForPath(pathname);
+      if (moduleCap && !hasCapability(workspaceAccess.capabilities, moduleCap)) {
+        return <MissingCapabilityNotice capability={moduleCap} variant="inline" />;
+      }
+      const canOpenBranchSetup = hasCapability(workspaceAccess.capabilities, "organization");
       return (
         <div className="flex flex-wrap items-center gap-2 text-sm text-[#64748b]">
-          <span>No branches yet.</span>
-          <Link
-            href={ROUTES.dashboard.onboarding.pharmacyDetails}
-            className="font-semibold text-[#0d9488] underline decoration-[rgba(20,184,166,0.35)]"
-          >
-            Finish branch setup
-          </Link>
+          <span>No branches available for your account.</span>
+          {canOpenBranchSetup ? (
+            <Link
+              href={ROUTES.dashboard.onboarding.pharmacyDetails}
+              className="font-semibold text-[#0d9488] underline decoration-[rgba(20,184,166,0.35)]"
+            >
+              Branch setup
+            </Link>
+          ) : (
+            <span className="text-[#94a3b8]">
+              Ask an organization admin to assign you to a branch or complete branch setup.
+            </span>
+          )}
         </div>
       );
     }
@@ -383,7 +407,6 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
 
         <div className="mt-auto shrink-0 border-t border-[rgba(226,232,240,0.5)] pt-4">
           <nav className="flex flex-col gap-1" aria-label="Account">
-            {canAccessSettings ? (
             <Link
               href={ROUTES.settings}
               onClick={closeMobileNav}
@@ -398,9 +421,8 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
               >
                 settings
               </span>
-              Settings
+              Profile & Settings
             </Link>
-            ) : null}
             <Link
               href={ROUTES.features}
               onClick={closeMobileNav}
@@ -420,13 +442,14 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
             </Link>
           </nav>
           <Link
-            href={canAccessSettings ? ROUTES.settings : ROUTES.dashboard.main}
+            href={ROUTES.settings}
             onClick={closeMobileNav}
             className="mt-3 block rounded-xl bg-[#f1f5f9] p-3 transition hover:bg-[#e2e8f0]"
           >
             <div className="flex items-center gap-3">
               <AuraAvatar
                 name={workspaceAccess.userDisplayName}
+                photoUrl={workspaceAccess.userAvatarUrl}
                 decorative
                 className="size-8 shrink-0 rounded-full text-[11px] ring-2 ring-white"
               />
@@ -493,27 +516,18 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                     notifications
                   </span>
                 </button>
-                {canAccessSettings ? (
                 <Link
                   href={ROUTES.settings}
-                  className="block shadow-[0_0_0_2px_rgba(20,184,166,0.2)] transition hover:opacity-90"
+                  className="inline-flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full shadow-[0_0_0_2px_rgba(20,184,166,0.2)] transition hover:opacity-90"
                   aria-label="Profile and settings"
                 >
                   <AuraAvatar
                     name={workspaceAccess.userDisplayName}
+                    photoUrl={workspaceAccess.userAvatarUrl}
                     decorative
-                    className="size-8 rounded-full text-[11px]"
+                    className="size-full min-h-0 min-w-0 rounded-full text-[11px]"
                   />
                 </Link>
-                ) : (
-                  <span className="block shadow-[0_0_0_2px_rgba(20,184,166,0.2)]">
-                    <AuraAvatar
-                      name={workspaceAccess.userDisplayName}
-                      decorative
-                      className="size-8 rounded-full text-[11px]"
-                    />
-                  </span>
-                )}
               </div>
             </div>
           </div>
@@ -564,7 +578,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                 canUsePharmacySearch ? <PharmacySearchField /> : null
               ) : (
                 <div className="flex flex-col gap-4">
-                  {!isStock && !isSettings ? (
+                  {!isStock && !isSettings && !isOrganization ? (
                     <label className="relative block w-full min-w-0">
                       <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
                         search
@@ -587,7 +601,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                           replaceBranchInUrl(branchId, { resetPage: isStock }),
                       })
                     : null}
-                  {!isSales && !isInsights && !isSettings && !isStaff && !isStaffAdd && !isDashboardMain ? (
+                  {!isSales && !isInsights && !isSettings && !isOrganization && !isStaff && !isStaffAdd && !isDashboardMain ? (
                     <button
                       type="button"
                       onClick={async () => {
@@ -627,6 +641,10 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                 <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#0f172a] sm:text-lg">
                   Profile & Settings
                 </h1>
+              ) : isOrganization ? (
+                <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#0f172a] sm:text-lg">
+                  Organization
+                </h1>
               ) : isProductCategories ? (
                 <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#0f172a] sm:text-lg">
                   Product Categories
@@ -661,7 +679,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                 </>
               ) : (
                 <>
-                  {!isStock && !isSettings ? (
+                  {!isStock && !isSettings && !isOrganization ? (
                     isDashboardMain ? (
                       canUsePharmacySearch ? <PharmacySearchField /> : null
                     ) : (
@@ -695,6 +713,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
               {!isSales &&
                 !isInsights &&
                 !isSettings &&
+                !isOrganization &&
                 !isProductCategories &&
                 !isStaff &&
                 !isStaffAdd &&
@@ -747,27 +766,18 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                     notifications
                   </span>
                 </button>
-                {canAccessSettings ? (
                 <Link
                   href={ROUTES.settings}
-                  className="block shadow-[0_0_0_2px_rgba(20,184,166,0.2)] transition hover:opacity-90"
+                  className="inline-flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full shadow-[0_0_0_2px_rgba(20,184,166,0.2)] transition hover:opacity-90"
                   aria-label="Profile and settings"
                 >
                   <AuraAvatar
                     name={workspaceAccess.userDisplayName}
+                    photoUrl={workspaceAccess.userAvatarUrl}
                     decorative
-                    className="size-8 rounded-full text-[11px]"
+                    className="size-full min-h-0 min-w-0 rounded-full text-[11px]"
                   />
                 </Link>
-                ) : (
-                  <span className="block shadow-[0_0_0_2px_rgba(20,184,166,0.2)]">
-                    <AuraAvatar
-                      name={workspaceAccess.userDisplayName}
-                      decorative
-                      className="size-8 rounded-full text-[11px]"
-                    />
-                  </span>
-                )}
               </div>
             </div>
           </div>

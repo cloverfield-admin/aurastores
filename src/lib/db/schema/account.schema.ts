@@ -46,6 +46,14 @@ export const membershipStatusEnum = pgEnum("membership_status", [
   "removed",
 ]);
 
+/** Dashboard settings: appearance + notification toggles (JSONB on `users.preferences`). */
+export type UserPreferences = {
+  theme: "light" | "dark" | "system";
+  emailAlerts: boolean;
+  smsAlerts: boolean;
+  pushNotifications: boolean;
+};
+
 export const organizations = pgTable(
   "organizations",
   {
@@ -83,6 +91,9 @@ export const users = pgTable(
     status: userStatusEnum("status").notNull().default("active"),
     isEmailVerified: boolean("is_email_verified").notNull().default(false),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+    /** Path within Supabase Storage bucket `user-avatars` (first segment = user id). */
+    avatarStorageKey: text("avatar_storage_key"),
+    preferences: jsonb("preferences").$type<UserPreferences | null>(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },

@@ -11,9 +11,15 @@ import {
 } from "@/lib/db/schema";
 import { ROUTES } from "@/lib/routes";
 import { uniqueSlug } from "@/lib/utils/slug";
+import { DEFAULT_USER_PREFERENCES } from "@/lib/validation/me";
+import type { UserPreferences } from "@/lib/db/schema";
 import type { AuthContext, AuthRepository, RegisteredUserParams } from "@/lib/repositories/auth/auth.repository";
 import { resolveAllowedBranchIdsFromAssignments } from "@/lib/rbac/branch-access";
-import { fullCapabilities, normalizeStoredCapabilities } from "@/lib/rbac/capabilities";
+import {
+  fullCapabilities,
+  isOrgWideBranchRole,
+  normalizeStoredCapabilities,
+} from "@/lib/rbac/capabilities";
 
 async function findDefaultMembership(userId: string) {
   return db.query.organizationMemberships.findFirst({
@@ -105,7 +111,22 @@ export class AuthRepositoryImpl implements AuthRepository {
     });
 
     const assignmentIds = await selectAllowedBranchIdsForUser(user.id, membership.organizationId);
-    const allowedBranchIds = resolveAllowedBranchIdsFromAssignments(assignmentIds);
+    let allowedBranchIds: string[] | null;
+    if (assignmentIds.length > 0) {
+      allowedBranchIds = resolveAllowedBranchIdsFromAssignments(assignmentIds);
+    } else if (isOrgWideBranchRole(membership.role)) {
+      // Legacy / pre-migration: no `branch_staff_assignments` rows but owner/admin should see all branches.
+      allowedBranchIds = null;
+    } else if (membership.status === "removed" || membership.status === "suspended") {
+      allowedBranchIds = [];
+    } else {
+      const orgBranchRows = await db
+        .select({ id: branches.id })
+        .from(branches)
+        .where(eq(branches.organizationId, membership.organizationId));
+      // Single-location orgs: members without explicit rows still need a branch scope for the UI/API.
+      allowedBranchIds = orgBranchRows.length === 1 ? [orgBranchRows[0]!.id] : [];
+    }
 
     return {
       user,
@@ -211,6 +232,49 @@ export class AuthRepositoryImpl implements AuthRepository {
     return (await hasCompletedRequiredOnboarding(context))
       ? "/dashboard"
       : "/dashboard/onboarding";
+  }
+
+  async updateUserFullName(userId: string, fullName: string): Promise<void> {
+    const trimmed = fullName.trim();
+    await db
+      .update(users)
+      .set({
+        fullName: trimmed,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async updateUserPreferences(userId: string, patch: Partial<UserPreferences>): Promise<UserPreferences> {
+    const existing = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+    });
+    if (!existing) {
+      throw new Error("User not found.");
+    }
+    const current: UserPreferences = {
+      ...DEFAULT_USER_PREFERENCES,
+      ...(existing.preferences ?? {}),
+    };
+    const next: UserPreferences = { ...current, ...patch };
+    await db
+      .update(users)
+      .set({
+        preferences: next,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+    return next;
+  }
+
+  async setUserAvatarStorageKey(userId: string, storageKey: string): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        avatarStorageKey: storageKey,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
   }
 }
 

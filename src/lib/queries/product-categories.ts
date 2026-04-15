@@ -39,6 +39,7 @@ export function useProductCategoriesQuery(options?: {
   includeArchived?: boolean;
   page?: number;
   pageSize?: number;
+  enabled?: boolean;
 }) {
   const includeArchived = options?.includeArchived ?? false;
   const page = Math.max(1, Math.floor(options?.page ?? 1));
@@ -50,6 +51,7 @@ export function useProductCategoriesQuery(options?: {
       fetchJson<ListProductCategoriesResponse>(`${apiUrl("/product-categories")}?${queryString}`, {
         method: "GET",
       }),
+    enabled: options?.enabled ?? true,
   });
 }
 

@@ -26,6 +26,7 @@ export const ROUTES = {
     insights: "/dashboard/insights",
     productCategories: "/dashboard/product-categories",
     pay: "/dashboard/pay",
+    organization: "/dashboard/organization",
     onboarding: {
       root: "/dashboard/onboarding",
       pharmacyDetails: "/dashboard/onboarding/pharmacy-details",

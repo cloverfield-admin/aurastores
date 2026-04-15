@@ -113,6 +113,27 @@
       "when": 1778400000000,
       "tag": "0015_owner_admin_all_branch_assignments",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1778500000000,
+      "tag": "0016_capabilities_organization_rename",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1778600000000,
+      "tag": "0017_user_avatar_preferences",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1778600000001,
+      "tag": "0018_user_avatars_bucket",
+      "breakpoints": true
     }
   ]
 }

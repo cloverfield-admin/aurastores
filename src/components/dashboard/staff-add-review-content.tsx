@@ -21,14 +21,16 @@ const ACCESS_LABELS: Record<string, string> = {
   catalog: "Product categories",
   staff: "Staff & directory",
   pay: "Payments",
-  settings: "Settings & organization",
+  organization: "Organization management",
 };
 
 const ROLE_LABELS: Record<string, string> = {
   owner: "Owner",
   admin: "Admin",
+  manager: "Manager",
   pharmacist: "Pharmacist",
   cashier: "Cashier",
+  analyst: "Analyst",
 };
 
 const labelClass =
@@ -47,7 +49,7 @@ function emptyDraft(): StaffAddDraft {
       catalog: true,
       staff: false,
       pay: false,
-      settings: false,
+      organization: false,
     },
     email: "",
     phone: "",

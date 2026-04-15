@@ -7,9 +7,10 @@ import type { NetworkDashboardData } from "@/lib/repositories/network/network.re
 
 export const networkDashboardQueryKey = ["dashboard", "network"] as const;
 
-export function useNetworkDashboardQuery() {
+export function useNetworkDashboardQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: networkDashboardQueryKey,
     queryFn: () => fetchJson<NetworkDashboardData>(apiUrl("/dashboard/network"), { method: "GET" }),
+    enabled: options?.enabled ?? true,
   });
 }

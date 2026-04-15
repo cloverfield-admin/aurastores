@@ -7,8 +7,14 @@ export type StaffAddDraftFile = {
   icon: "description" | "badge";
 };
 
-/** Subset of app roles exposed on the add-staff form. */
-export type StaffAddDraftAppRole = "owner" | "admin" | "pharmacist" | "cashier";
+/** App roles supported on the add-staff form (matches invite payload). */
+export type StaffAddDraftAppRole =
+  | "owner"
+  | "admin"
+  | "manager"
+  | "pharmacist"
+  | "cashier"
+  | "analyst";
 
 export type StaffAddDraft = {
   fullName: string;

@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
+import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
 import { useStaffDirectoryQuery } from "@/lib/queries/staff";
 import { ROUTES } from "@/lib/routes";
+import { hasCapability } from "@/lib/rbac/capabilities";
 
 type LicenseStatus = "verified" | "expiring_soon" | "pending";
 
@@ -42,6 +45,8 @@ export function StaffManagementContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const workspace = useDashboardWorkspaceAccess();
+  const canStaff = hasCapability(workspace.capabilities, "staff");
   const [openActionsMenuId, setOpenActionsMenuId] = useState<string | null>(null);
   const urlQ = searchParams.get("q")?.trim() ?? "";
   const firstMatchRef = useRef<HTMLTableRowElement>(null);
@@ -53,7 +58,7 @@ export function StaffManagementContent() {
     router.replace(query ? `${pathname}?${query}` : pathname);
   }
 
-  const staffQuery = useStaffDirectoryQuery({ q: urlQ, page, pageSize });
+  const staffQuery = useStaffDirectoryQuery({ q: urlQ, page, pageSize, enabled: canStaff });
   const members = useMemo(() => staffQuery.data?.members ?? [], [staffQuery.data]);
   const pagination = staffQuery.data?.pagination ?? {
     page: 1,
@@ -78,6 +83,24 @@ export function StaffManagementContent() {
       firstMatchRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
     }
   }, [urlQ, members.length]);
+
+  if (!canStaff) {
+    return (
+      <div className="px-4 pb-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1280px] space-y-8">
+          <div className="space-y-1">
+            <h1 className="font-[family-name:var(--font-manrope)] text-[30px] font-extrabold leading-9 tracking-[-0.75px] text-[#191c1e]">
+              Staff Management
+            </h1>
+            <p className="text-sm text-[#64748b]">
+              Monitor, verify, and coordinate your clinical workforce across the network.
+            </p>
+          </div>
+          <MissingCapabilityNotice capability="staff" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 pb-16 sm:px-6 lg:px-8">
@@ -208,8 +231,12 @@ export function StaffManagementContent() {
                       </tr>
                     ) : staffQuery.isError ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-10 text-center text-sm text-red-600">
-                          Could not load staff. Try refreshing the page.
+                        <td colSpan={5} className="px-6 py-10 text-center text-sm">
+                          {staffQuery.error instanceof Error && staffQuery.error.message === "Forbidden" ? (
+                            <MissingCapabilityNotice capability="staff" variant="inline" className="mx-auto max-w-md" />
+                          ) : (
+                            <span className="text-red-600">Could not load staff. Try refreshing the page.</span>
+                          )}
                         </td>
                       </tr>
                     ) : members.length === 0 ? (

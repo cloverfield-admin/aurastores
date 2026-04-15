@@ -1,4 +1,5 @@
 import { authRepository } from "@/lib/repositories/auth/auth.repository.impl";
+import { avatarStorageRepository } from "@/lib/repositories/avatar-storage/avatar-storage.repository.impl";
 import { documentStorageRepository } from "@/lib/repositories/document-storage/document-storage.repository.impl";
 import { networkRepository } from "@/lib/repositories/network/network.repository.impl";
 import { pharmacySearchRepository } from "@/lib/repositories/pharmacy-search/pharmacy-search.repository.impl";
@@ -28,7 +29,7 @@ export type AppServices = {
 };
 
 export const services: AppServices = {
-  auth: new AuthService({ auth: authRepository }),
+  auth: new AuthService({ auth: authRepository, avatarStorage: avatarStorageRepository }),
   stock: new StockService({ stock: stockRepository }),
   sales: new SalesService({ sales: salesRepository }),
   onboarding: new OnboardingService({

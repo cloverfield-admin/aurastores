@@ -633,6 +633,7 @@ export class StaffRepositoryImpl implements StaffRepository {
         jobTitle: organizationMemberships.jobTitle,
         appRole: organizationMemberships.role,
         membershipStatus: organizationMemberships.status,
+        staffEmployeeCode: organizationMemberships.staffEmployeeCode,
         capabilities: organizationMemberships.capabilities,
       })
       .from(organizationMemberships)
@@ -690,6 +691,7 @@ export class StaffRepositoryImpl implements StaffRepository {
       jobTitle: row.jobTitle,
       appRole: row.appRole as StaffMemberForEdit["appRole"],
       membershipStatus: row.membershipStatus,
+      staffEmployeeCode: row.staffEmployeeCode,
       capabilities: normalizeStoredCapabilities(row.capabilities, roleStr),
       branchIds: branchRows.map((b) => b.branchId),
       credentials,

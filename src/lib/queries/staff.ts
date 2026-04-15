@@ -36,7 +36,12 @@ type StaffDirectoryResponse = {
   };
 };
 
-export function useStaffDirectoryQuery(options?: { q?: string; page?: number; pageSize?: number }) {
+export function useStaffDirectoryQuery(options?: {
+  q?: string;
+  page?: number;
+  pageSize?: number;
+  enabled?: boolean;
+}) {
   const q = options?.q?.trim() ?? "";
   const page = Math.max(1, Math.floor(options?.page ?? 1));
   const pageSize = Math.min(50, Math.max(1, Math.floor(options?.pageSize ?? 10)));
@@ -44,6 +49,7 @@ export function useStaffDirectoryQuery(options?: { q?: string; page?: number; pa
   return useQuery({
     queryKey: [...staffDirectoryQueryKey, { q, page, pageSize }] as const,
     queryFn: () => fetchJson<StaffDirectoryResponse>(`${apiUrl("/staff")}?${queryString}`, { method: "GET" }),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -76,6 +82,7 @@ export type AppMeResponse = {
   allowedBranchIds: string[] | null;
   role: string;
   fullName: string;
+  phone: string | null;
 };
 
 export function useAppMeQuery() {
@@ -103,6 +110,7 @@ export type StaffMemberDetailDto = {
   jobTitle: string | null;
   appRole: string;
   membershipStatus: string;
+  staffEmployeeCode: string | null;
   capabilities: Record<string, boolean>;
   branchIds: string[];
   credentials: StaffMemberCredentialDto[];

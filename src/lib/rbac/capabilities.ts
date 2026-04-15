@@ -5,12 +5,27 @@ export const MEMBERSHIP_CAPABILITY_KEYS = [
   "catalog",
   "staff",
   "pay",
-  "settings",
+  "organization",
 ] as const;
 
 export type MembershipCapability = (typeof MEMBERSHIP_CAPABILITY_KEYS)[number];
 
 export type MembershipCapabilities = Record<MembershipCapability, boolean>;
+
+const MEMBERSHIP_CAPABILITY_LABELS: Record<MembershipCapability, string> = {
+  stock: "Stock & inventory",
+  sales: "Sales & performance",
+  insights: "Insights & analytics",
+  catalog: "Product catalog & categories",
+  staff: "Staff management",
+  pay: "Aura Pay & payments",
+  organization: "Organization management",
+};
+
+/** Short, user-facing name for permission / access messages. */
+export function membershipCapabilityLabel(key: MembershipCapability): string {
+  return MEMBERSHIP_CAPABILITY_LABELS[key];
+}
 
 export function fullCapabilities(): MembershipCapabilities {
   return {
@@ -20,7 +35,7 @@ export function fullCapabilities(): MembershipCapabilities {
     catalog: true,
     staff: true,
     pay: true,
-    settings: true,
+    organization: true,
   };
 }
 
@@ -36,7 +51,7 @@ export function defaultCapabilitiesForAppRole(role: string): MembershipCapabilit
       catalog: true,
       staff: false,
       pay: false,
-      settings: false,
+      organization: false,
     };
   }
   if (role === "analyst") {
@@ -47,7 +62,7 @@ export function defaultCapabilitiesForAppRole(role: string): MembershipCapabilit
       catalog: true,
       staff: false,
       pay: false,
-      settings: false,
+      organization: false,
     };
   }
   return {
@@ -57,7 +72,7 @@ export function defaultCapabilitiesForAppRole(role: string): MembershipCapabilit
     catalog: false,
     staff: false,
     pay: false,
-    settings: false,
+    organization: false,
   };
 }
 
@@ -77,6 +92,10 @@ export function normalizeStoredCapabilities(raw: unknown, roleFallback: string):
       next[key] = o[key] as boolean;
     }
   }
+  /** Legacy DB payloads used `settings` for org-level access before `organization` existed. */
+  if (typeof o.settings === "boolean" && !("organization" in o)) {
+    next.organization = o.settings as boolean;
+  }
   return next;
 }
 
@@ -88,15 +107,21 @@ export function mergeCapabilitiesFromInput(
   if (!partial) {
     return base;
   }
+  const loose = partial as Partial<MembershipCapabilities> & { settings?: boolean };
+  const normalized: Partial<MembershipCapabilities> = { ...partial };
+  if (typeof loose.settings === "boolean" && normalized.organization === undefined) {
+    normalized.organization = loose.settings;
+  }
   const next = { ...base };
   for (const key of MEMBERSHIP_CAPABILITY_KEYS) {
-    if (key in partial && typeof partial[key] === "boolean") {
-      next[key] = partial[key] as boolean;
+    if (key in normalized && typeof normalized[key] === "boolean") {
+      next[key] = normalized[key] as boolean;
     }
   }
   return next;
 }
 
+/** Roles that default to all org branches when no `branch_staff_assignments` rows exist. */
 export function isOrgWideBranchRole(role: string): boolean {
-  return role === "owner" || role === "admin";
+  return role === "owner" || role === "admin" || role === "manager";
 }

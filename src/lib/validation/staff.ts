@@ -10,9 +10,21 @@ const membershipCapabilitiesSchema = z
     catalog: z.boolean().optional(),
     staff: z.boolean().optional(),
     pay: z.boolean().optional(),
+    organization: z.boolean().optional(),
+    /** @deprecated Renamed to `organization`; accepted for older clients. */
     settings: z.boolean().optional(),
   })
   .strict()
+  .transform((v) => {
+    if (!v) {
+      return undefined;
+    }
+    const { settings: legacy, ...rest } = v;
+    if (typeof legacy === "boolean" && rest.organization === undefined) {
+      return { ...rest, organization: legacy };
+    }
+    return rest;
+  })
   .optional();
 
 const addStaffByEmailBaseSchema = z.object({
