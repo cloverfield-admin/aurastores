@@ -69,4 +69,5 @@ const nextConfig: NextConfig = {
   },
 };
 
+
 export default withSerwist(nextConfig);
