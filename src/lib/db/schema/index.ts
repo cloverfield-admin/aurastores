@@ -5,3 +5,4 @@ export * from "./idempotency.schema";
 export * from "./inventory.schema";
 export * from "./sales.schema";
 export * from "./onboarding.schema";
+export * from "./billing.schema";

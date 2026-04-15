@@ -1,5 +1,6 @@
 import type { MembershipCapabilities } from "@/lib/rbac/capabilities";
 import type { UserPreferences } from "@/lib/db/schema";
+import type { SubscriptionPlanFeatures } from "@/lib/db/schema/billing.schema";
 import {
   organizationMemberships,
   organizationOnboarding,
@@ -13,6 +14,16 @@ export type AuthContext = {
   organization: typeof organizations.$inferSelect;
   onboarding: typeof organizationOnboarding.$inferSelect | null;
   capabilities: MembershipCapabilities;
+  entitlements: SubscriptionPlanFeatures;
+  subscription: {
+    planCode: "free" | "basic" | "pro" | "enterprise";
+    interval: "monthly" | "quarterly" | "yearly";
+    status: "active" | "past_due" | "canceled" | "pending_payment";
+    currentPeriodStart: Date;
+    currentPeriodEnd: Date | null;
+    cancelAtPeriodEnd: boolean;
+    scheduledPlanCode: "free" | "basic" | "pro" | "enterprise" | null;
+  } | null;
   /**
    * Active `branch_staff_assignments` for this org (`[]` = no branches).
    * `null` means no SQL branch filter (legacy / tests only); resolved auth context

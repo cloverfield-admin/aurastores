@@ -10,6 +10,9 @@ export const ROUTES = {
     /** @deprecated Use `updatePassword`; kept for bookmarks. */
     changePassword: "/auth/change-password",
   },
+  marketing: {
+    pricing: "/#pricing",
+  },
   dashboard: {
     main: "/dashboard",
     staff: "/dashboard/staff",
@@ -36,5 +39,6 @@ export const ROUTES = {
   },
   demoSuccess: "/dashboard/demo/success",
   settings: "/dashboard/settings",
+  billingPortal: "/dashboard/settings/billing",
   features: "/dashboard/features",
 } as const;

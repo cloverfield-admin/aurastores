@@ -203,7 +203,7 @@ export async function GET(request: Request) {
       "lineTotalZMW",
     ]);
     const body = new TextEncoder().encode(csv);
-    return new Response(body as unknown as any, {
+    return new Response(body, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
         "Content-Disposition": `attachment; filename="${baseName}.csv"`,
@@ -233,7 +233,8 @@ export async function GET(request: Request) {
     XLSX.utils.book_append_sheet(wb, summarySheet, "Summary");
 
     const out = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as Uint8Array;
-    return new Response(out as unknown as any, {
+    const body = new Uint8Array(out).buffer;
+    return new Response(body, {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": `attachment; filename="${baseName}.xlsx"`,
@@ -276,7 +277,8 @@ export async function GET(request: Request) {
   }
 
   const pdfBytes = await pdfDoc.save();
-  return new Response(pdfBytes as unknown as any, {
+  const body = new Uint8Array(pdfBytes).buffer;
+  return new Response(body, {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="${baseName}.pdf"`,

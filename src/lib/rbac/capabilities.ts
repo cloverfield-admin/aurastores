@@ -40,7 +40,7 @@ export function fullCapabilities(): MembershipCapabilities {
 }
 
 export function defaultCapabilitiesForAppRole(role: string): MembershipCapabilities {
-  if (role === "owner" || role === "admin") {
+  if (role === "owner" || role === "admin" || role === "aurapharma_admin") {
     return fullCapabilities();
   }
   if (role === "pharmacist" || role === "manager") {
@@ -123,5 +123,5 @@ export function mergeCapabilitiesFromInput(
 
 /** Roles that default to all org branches when no `branch_staff_assignments` rows exist. */
 export function isOrgWideBranchRole(role: string): boolean {
-  return role === "owner" || role === "admin" || role === "manager";
+  return role === "owner" || role === "admin" || role === "aurapharma_admin" || role === "manager";
 }

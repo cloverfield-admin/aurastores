@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
+import { LockedCapabilityTease } from "@/components/dashboard/locked-capability-tease";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import {
   useArchiveProductCategoryMutation,
@@ -13,6 +14,7 @@ import {
   useUpdateProductCategoryMutation,
   type ProductCategoryDto,
 } from "@/lib/queries/product-categories";
+import { useAppMeQuery } from "@/lib/queries/staff";
 import { hasCapability } from "@/lib/rbac/capabilities";
 
 const dateTime = new Intl.DateTimeFormat("en-US", {
@@ -138,6 +140,8 @@ export function ProductCategoriesContent() {
   const searchParams = useSearchParams();
   const workspace = useDashboardWorkspaceAccess();
   const canCatalog = hasCapability(workspace.capabilities, "catalog");
+  const locked = !canCatalog;
+  const meQuery = useAppMeQuery();
   const includeArchived = (searchParams.get("includeArchived") ?? "0") === "1";
   const page = Math.max(1, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1);
   const pageSize = Math.min(50, Math.max(1, Number.parseInt(searchParams.get("pageSize") ?? "10", 10) || 10));
@@ -157,6 +161,11 @@ export function ProductCategoriesContent() {
   };
   const activeCount = categories.filter((c) => !c.archivedAt).length;
   const archivedCount = categories.filter((c) => Boolean(c.archivedAt)).length;
+
+  const categoryLimit = meQuery.data?.entitlements?.limits?.categories ?? null;
+  const categoryUsage = meQuery.data?.usage?.categories ?? null;
+  const isCategoryLimitReached =
+    categoryLimit != null && categoryUsage != null && categoryUsage >= categoryLimit;
 
   const [modal, setModal] = useState<
     | { open: false }
@@ -242,25 +251,7 @@ export function ProductCategoriesContent() {
     });
   }
 
-  if (!canCatalog) {
-    return (
-      <div className="px-4 pb-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-[1280px] space-y-8">
-          <div className="space-y-2">
-            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[var(--app-text)] sm:text-4xl">
-              Product Categories
-            </h1>
-            <p className="max-w-2xl text-base leading-relaxed text-[var(--app-text-secondary)]">
-              Maintain the category library used across stock and sales workflows.
-            </p>
-          </div>
-          <MissingCapabilityNotice capability="catalog" />
-        </div>
-      </div>
-    );
-  }
-
-  return (
+  const content = (
     <div className="px-4 pb-16 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1280px] space-y-10">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -275,15 +266,32 @@ export function ProductCategoriesContent() {
           <button
             type="button"
             onClick={() => {
+              if (isCategoryLimitReached) {
+                notify({
+                  variant: "info",
+                  title: "Category limit reached",
+                  description: `You’re at ${categoryUsage ?? 0}/${categoryLimit} active categories. Upgrade to add more.`,
+                });
+                return;
+              }
               setModalError(null);
               setModal({ open: true, mode: "create" });
             }}
-            className="inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-base font-semibold text-white shadow-[0px_10px_15px_-3px_rgba(20,184,166,0.2),0px_4px_6px_-4px_rgba(20,184,166,0.2)] transition hover:opacity-95"
+            title={
+              isCategoryLimitReached && categoryLimit != null
+                ? `Plan limit reached: ${categoryUsage ?? 0}/${categoryLimit} active categories. Upgrade to add more.`
+                : undefined
+            }
+            className={`inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-base font-semibold text-white shadow-[0px_10px_15px_-3px_rgba(20,184,166,0.2),0px_4px_6px_-4px_rgba(20,184,166,0.2)] transition ${
+              isCategoryLimitReached ? "opacity-50" : "hover:opacity-95"
+            }`}
             style={{
               background: "linear-gradient(137deg, rgb(15, 185, 177) 0%, rgb(99, 102, 241) 100%)",
             }}
           >
-            <span className="material-symbols-outlined notranslate text-lg">add</span>
+            <span className="material-symbols-outlined notranslate text-lg">
+              {isCategoryLimitReached ? "lock" : "add"}
+            </span>
             Add Category
           </button>
         </div>
@@ -371,12 +379,29 @@ export function ProductCategoriesContent() {
               <button
                 type="button"
                 onClick={() => {
+                  if (isCategoryLimitReached) {
+                    notify({
+                      variant: "info",
+                      title: "Category limit reached",
+                      description: `You’re at ${categoryUsage ?? 0}/${categoryLimit} active categories. Upgrade to add more.`,
+                    });
+                    return;
+                  }
                   setModalError(null);
                   setModal({ open: true, mode: "create" });
                 }}
-                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-5 py-2.5 text-sm font-semibold text-white"
+                title={
+                  isCategoryLimitReached && categoryLimit != null
+                    ? `Plan limit reached: ${categoryUsage ?? 0}/${categoryLimit} active categories. Upgrade to add more.`
+                    : undefined
+                }
+                className={`mt-5 inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-5 py-2.5 text-sm font-semibold text-white ${
+                  isCategoryLimitReached ? "opacity-50" : ""
+                }`}
               >
-                <span className="material-symbols-outlined notranslate text-lg">add</span>
+                <span className="material-symbols-outlined notranslate text-lg">
+                  {isCategoryLimitReached ? "lock" : "add"}
+                </span>
                 Create First Category
               </button>
             </div>
@@ -561,6 +586,19 @@ export function ProductCategoriesContent() {
         onSubmit={submitDraft}
       />
     </div>
+  );
+
+  if (!locked) {
+    return content;
+  }
+
+  return (
+    <LockedCapabilityTease capability="catalog">
+      <div className="mx-auto max-w-[1280px] space-y-6 px-4 pb-2 pt-4 sm:px-6 lg:px-8">
+        <MissingCapabilityNotice capability="catalog" variant="inline" className="max-w-3xl" />
+      </div>
+      {content}
+    </LockedCapabilityTease>
   );
 }
 

@@ -10,6 +10,7 @@ import {
   AuraInputWrap,
   auraInputClassName,
 } from "@/components/auth/aura-auth-chrome";
+import { PasswordRevealButton } from "@/components/auth/password-reveal-button";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { AuraInlineAlert } from "@/components/ui/aura-inline-alert";
 import { useSignInMutation } from "@/lib/queries/auth";
@@ -21,6 +22,7 @@ export function SignInForm() {
   const signInMutation = useSignInMutation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isBusy = isLoading("auth-sign-in");
@@ -88,13 +90,18 @@ export function SignInForm() {
               <input
                 id="password"
                 name="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 placeholder="Enter your password"
-                className={auraInputClassName()}
+                className={`${auraInputClassName()} pr-12`}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required
+              />
+              <PasswordRevealButton
+                passwordVisible={showPassword}
+                onToggle={() => setShowPassword((v) => !v)}
+                accessibleName="password"
               />
             </AuraInputWrap>
           </div>

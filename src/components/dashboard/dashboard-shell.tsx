@@ -2,7 +2,17 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import type { DashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
@@ -11,8 +21,9 @@ import { ROUTES } from "@/lib/routes";
 import { PharmacySearchField } from "@/components/dashboard/pharmacy-search-field";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
 import type { MembershipCapability } from "@/lib/rbac/capabilities";
-import { hasCapability } from "@/lib/rbac/capabilities";
+import { hasCapability, membershipCapabilityLabel } from "@/lib/rbac/capabilities";
 import { dashboardModuleCapabilityForPath } from "@/lib/rbac/dashboard-path-capability";
+import { isOrganizationOwnerOrAdmin } from "@/lib/membership-display";
 
 /** Breathing room between fixed header and main scroll area (px). */
 const MAIN_BELOW_HEADER_GAP_PX = 8;
@@ -29,12 +40,6 @@ const MODULE_NAV: { label: string; icon: string; href: string; capability: Membe
     capability: "catalog",
   },
   { label: "Staff", icon: "groups", href: ROUTES.dashboard.staff, capability: "staff" },
-  {
-    label: "Organization",
-    icon: "domain",
-    href: ROUTES.dashboard.organization,
-    capability: "organization",
-  },
 ];
 
 type DashboardShellProps = {
@@ -50,12 +55,25 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
   const [localSearch, setLocalSearch] = useState("");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const [userMenuAnchor, setUserMenuAnchor] = useState<null | "mobile" | "desktop">(null);
+  const [lockedFeature, setLockedFeature] = useState<{
+    capability: MembershipCapability;
+    label: string;
+    moduleLabel: string;
+  } | null>(null);
   const [headerHeightPx, setHeaderHeightPx] = useState<number | null>(null);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileNavCloseRef = useRef<HTMLButtonElement>(null);
   const mobileToolsToggleRef = useRef<HTMLButtonElement>(null);
   const mobileToolsPanelRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLElement>(null);
+  const userMenuRootMobileRef = useRef<HTMLDivElement>(null);
+  const userMenuRootDesktopRef = useRef<HTMLDivElement>(null);
+  const userMenuTriggerMobileRef = useRef<HTMLButtonElement>(null);
+  const userMenuTriggerDesktopRef = useRef<HTMLButtonElement>(null);
+  const userMenuBaseId = useId();
+  const userMenuPanelMobileId = `${userMenuBaseId}-account-panel-mobile`;
+  const userMenuPanelDesktopId = `${userMenuBaseId}-account-panel-desktop`;
 
   const closeMobileNav = useCallback(() => {
     setMobileNavOpen(false);
@@ -65,8 +83,18 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
     setMobileToolsOpen(false);
   }, []);
 
+  const userMenuOpen = userMenuAnchor != null;
+
+  const closeUserMenu = useCallback(() => {
+    setUserMenuAnchor(null);
+  }, []);
+
   const moduleNavItems = useMemo(
-    () => MODULE_NAV.filter((item) => hasCapability(workspaceAccess.capabilities, item.capability)),
+    () =>
+      MODULE_NAV.map((item) => ({
+        ...item,
+        locked: !hasCapability(workspaceAccess.capabilities, item.capability),
+      })),
     [workspaceAccess.capabilities],
   );
 
@@ -79,9 +107,10 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
     const id = requestAnimationFrame(() => {
       closeMobileNav();
       closeMobileTools();
+      closeUserMenu();
     });
     return () => cancelAnimationFrame(id);
-  }, [pathname, closeMobileNav, closeMobileTools]);
+  }, [pathname, closeMobileNav, closeMobileTools, closeUserMenu]);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 1024px)");
@@ -89,11 +118,12 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
       if (mq.matches) {
         closeMobileNav();
         closeMobileTools();
+        closeUserMenu();
       }
     };
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
-  }, [closeMobileNav, closeMobileTools]);
+  }, [closeMobileNav, closeMobileTools, closeUserMenu]);
 
   useEffect(() => {
     if (!mobileNavOpen) {
@@ -114,6 +144,40 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [mobileNavOpen, closeMobileNav]);
+
+  useEffect(() => {
+    if (!userMenuOpen) {
+      return;
+    }
+    const onPointerDown = (event: PointerEvent) => {
+      const mobileRoot = userMenuRootMobileRef.current;
+      const desktopRoot = userMenuRootDesktopRef.current;
+      const target = event.target;
+      if (target instanceof Node) {
+        if (mobileRoot?.contains(target) || desktopRoot?.contains(target)) {
+          return;
+        }
+      }
+      closeUserMenu();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeUserMenu();
+        if (userMenuAnchor === "mobile") {
+          userMenuTriggerMobileRef.current?.focus();
+        } else if (userMenuAnchor === "desktop") {
+          userMenuTriggerDesktopRef.current?.focus();
+        }
+      }
+    };
+    window.addEventListener("pointerdown", onPointerDown, true);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown, true);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [userMenuOpen, userMenuAnchor, closeUserMenu]);
 
   useEffect(() => {
     if (!mobileToolsOpen) {
@@ -160,7 +224,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
       ro.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [pathname, mobileNavOpen, mobileToolsOpen]);
+  }, [pathname, mobileNavOpen, mobileToolsOpen, userMenuOpen]);
 
   const isStock = pathname === ROUTES.dashboard.stock || pathname.startsWith(`${ROUTES.dashboard.stock}/`);
   const isSales = pathname === ROUTES.dashboard.sales || pathname.startsWith(`${ROUTES.dashboard.sales}/`);
@@ -169,7 +233,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
   const isProductCategories =
     pathname === ROUTES.dashboard.productCategories ||
     pathname.startsWith(`${ROUTES.dashboard.productCategories}/`);
-  const isSettings = pathname === ROUTES.settings;
+  const isSettings = pathname === ROUTES.settings || pathname.startsWith(`${ROUTES.settings}/`);
   const isOrganization =
     pathname === ROUTES.dashboard.organization
     || pathname.startsWith(`${ROUTES.dashboard.organization}/`);
@@ -311,6 +375,117 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
     );
   }
 
+  function accountUserMenu(opts: {
+    anchor: "mobile" | "desktop";
+    rootRef: RefObject<HTMLDivElement | null>;
+    triggerRef: RefObject<HTMLButtonElement | null>;
+    panelId: string;
+    /** Narrower popover on small header; roomier on lg+ */
+    variant: "compact" | "comfortable";
+  }) {
+    const { anchor, rootRef, triggerRef, panelId, variant } = opts;
+    const panelWidthClass =
+      variant === "compact"
+        ? "w-[min(18rem,calc(100vw-2rem))]"
+        : "w-[min(20rem,calc(100vw-2rem))]";
+    const isThisAnchor = userMenuAnchor === anchor;
+
+    return (
+      <div ref={rootRef} className="relative shrink-0">
+        <button
+          ref={triggerRef}
+          type="button"
+          className="inline-flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full shadow-[0_0_0_2px_rgba(20,184,166,0.2)] transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-link-teal)]"
+          aria-label="Account menu"
+          aria-haspopup="menu"
+          aria-expanded={isThisAnchor}
+          aria-controls={isThisAnchor ? panelId : undefined}
+          onClick={() => {
+            closeMobileNav();
+            closeMobileTools();
+            setUserMenuAnchor((current) => (current === anchor ? null : anchor));
+          }}
+        >
+          <AuraAvatar
+            name={workspaceAccess.userDisplayName}
+            photoUrl={workspaceAccess.userAvatarUrl}
+            decorative
+            className="size-full min-h-0 min-w-0 rounded-full text-[11px]"
+          />
+        </button>
+        {isThisAnchor ? (
+          <div
+            id={panelId}
+            role="menu"
+            aria-label="Account"
+            className={`absolute right-0 top-[calc(100%+0.5rem)] z-[130] ${panelWidthClass} origin-top-right rounded-2xl border border-[var(--app-border-ui-soft)] bg-[var(--app-surface)]/95 p-1 shadow-[var(--app-shadow-card)] backdrop-blur-md`}
+          >
+            <div className="rounded-xl bg-[var(--app-surface-subtle)]/70 p-3">
+              <div className="flex items-center gap-3">
+                <AuraAvatar
+                  name={workspaceAccess.userDisplayName}
+                  photoUrl={workspaceAccess.userAvatarUrl}
+                  decorative
+                  className="size-11 shrink-0 rounded-full text-sm ring-2 ring-[var(--app-surface)]"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-[family-name:var(--font-manrope)] text-sm font-extrabold text-[var(--app-text)]">
+                    {workspaceAccess.userDisplayName}
+                  </p>
+                  <p className="truncate text-xs font-medium text-[var(--app-text-muted)]">
+                    {workspaceAccess.membershipRoleLabel}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="p-1 pt-2">
+              <Link
+                href={ROUTES.settings}
+                role="menuitem"
+                onClick={closeUserMenu}
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition hover:bg-[var(--app-surface-subtle)]/90 ${
+                  isSettings ? "text-[var(--app-link-teal)]" : "text-[var(--app-text)]"
+                }`}
+              >
+                <span
+                  className={`material-symbols-outlined notranslate text-xl ${
+                    isSettings ? "text-[var(--app-link-teal)]" : "text-[var(--app-text-muted)]"
+                  }`}
+                >
+                  person
+                </span>
+                <span className="min-w-0 flex-1 text-left">Profile</span>
+                <span className="material-symbols-outlined notranslate text-lg text-[var(--app-text-faint)]">
+                  chevron_right
+                </span>
+              </Link>
+              <Link
+                href={ROUTES.dashboard.organization}
+                role="menuitem"
+                onClick={closeUserMenu}
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition hover:bg-[var(--app-surface-subtle)]/90 ${
+                  isOrganization ? "text-[var(--app-link-teal)]" : "text-[var(--app-text)]"
+                }`}
+              >
+                <span
+                  className={`material-symbols-outlined notranslate text-xl ${
+                    isOrganization ? "text-[var(--app-link-teal)]" : "text-[var(--app-text-muted)]"
+                  }`}
+                >
+                  domain
+                </span>
+                <span className="min-w-0 flex-1 text-left">Organization</span>
+                <span className="material-symbols-outlined notranslate text-lg text-[var(--app-text-faint)]">
+                  chevron_right
+                </span>
+              </Link>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="aura-landing min-h-dvh bg-[var(--app-canvas)] text-[var(--app-text)]">
       {mobileNavOpen ? (
@@ -325,7 +500,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
       {/* Sidebar: off-canvas below lg */}
       <aside
         id="dashboard-mobile-nav"
-        className={`fixed left-0 top-0 z-[100] flex h-dvh w-64 max-w-[min(100vw,20rem)] flex-col border-r border-[var(--app-surface-subtle)] bg-[var(--app-surface-muted)] px-4 pb-4 pt-2 shadow-[4px_0_24px_rgba(15,23,42,0.08)] transition-transform duration-200 ease-out motion-reduce:transition-none lg:z-40 lg:max-w-none lg:translate-x-0 lg:p-4 lg:shadow-none ${
+        className={`fixed left-0 top-0 z-[100] flex h-dvh w-64 max-w-[min(100vw,20rem)] flex-col border-r border-[var(--app-surface-subtle)] bg-white px-4 pb-4 pt-2 shadow-[4px_0_24px_rgba(15,23,42,0.08)] transition-transform duration-200 ease-out motion-reduce:transition-none lg:z-40 lg:max-w-none lg:translate-x-0 lg:p-4 lg:shadow-none ${
           mobileNavOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
@@ -382,6 +557,38 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                 item.href === ROUTES.dashboard.productCategories
                   ? navHref(item.href)
                   : item.href;
+
+              if (item.locked) {
+                const label = membershipCapabilityLabel(item.capability);
+                return (
+                  <button
+                    key={item.href}
+                    type="button"
+                    title={`Locked feature: ${label}. Click to learn more.`}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-[var(--app-text-faint)] opacity-70 transition hover:bg-[var(--app-surface-subtle)]/80 hover:text-[var(--app-text-muted)]"
+                    onClick={() => {
+                      closeMobileNav();
+                      setLockedFeature({
+                        capability: item.capability,
+                        label,
+                        moduleLabel: item.label,
+                      });
+                      notify({
+                        variant: "info",
+                        title: "Feature locked",
+                        description: `“${item.label}” is locked on your plan. See the upgrade options to unlock.`,
+                      });
+                    }}
+                  >
+                    <span className="material-symbols-outlined notranslate text-xl">lock</span>
+                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--app-text-faint)]">
+                      Upgrade
+                    </span>
+                  </button>
+                );
+              }
+
               return (
                 <Link
                   key={item.href}
@@ -408,22 +615,6 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
         <div className="mt-auto shrink-0 border-t border-[var(--app-border-ui-soft)] pt-4">
           <nav className="flex flex-col gap-1" aria-label="Account">
             <Link
-              href={ROUTES.settings}
-              onClick={closeMobileNav}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                isSettings
-                  ? "bg-[var(--app-surface)] text-[var(--app-link-teal)] shadow-sm"
-                  : "text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]/80"
-              }`}
-            >
-              <span
-                className={`material-symbols-outlined notranslate text-xl ${isSettings ? "text-[var(--app-link-teal)]" : ""}`}
-              >
-                settings
-              </span>
-              Profile & Settings
-            </Link>
-            <Link
               href={ROUTES.features}
               onClick={closeMobileNav}
               className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]/80"
@@ -441,11 +632,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
               Log out
             </Link>
           </nav>
-          <Link
-            href={ROUTES.settings}
-            onClick={closeMobileNav}
-            className="mt-3 block rounded-xl bg-[var(--app-surface-subtle)] p-3 transition hover:bg-[var(--app-cancel-hover)]"
-          >
+          <div className="mt-3 rounded-xl bg-[var(--app-surface-subtle)] p-3">
             <div className="flex items-center gap-3">
               <AuraAvatar
                 name={workspaceAccess.userDisplayName}
@@ -460,7 +647,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                 <p className="text-[10px] font-medium text-[var(--app-text-muted)]">{workspaceAccess.membershipRoleLabel}</p>
               </div>
             </div>
-          </Link>
+          </div>
         </div>
       </aside>
 
@@ -480,6 +667,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                 aria-controls="dashboard-mobile-nav"
                 onClick={() => {
                   closeMobileTools();
+                  closeUserMenu();
                   setMobileNavOpen((open) => !open);
                 }}
               >
@@ -499,6 +687,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                   aria-controls="dashboard-mobile-tools"
                   onClick={() => {
                     closeMobileNav();
+                    closeUserMenu();
                     setMobileToolsOpen((open) => !open);
                   }}
                 >
@@ -516,18 +705,13 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                     notifications
                   </span>
                 </button>
-                <Link
-                  href={ROUTES.settings}
-                  className="inline-flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full shadow-[0_0_0_2px_rgba(20,184,166,0.2)] transition hover:opacity-90"
-                  aria-label="Profile and settings"
-                >
-                  <AuraAvatar
-                    name={workspaceAccess.userDisplayName}
-                    photoUrl={workspaceAccess.userAvatarUrl}
-                    decorative
-                    className="size-full min-h-0 min-w-0 rounded-full text-[11px]"
-                  />
-                </Link>
+                {accountUserMenu({
+                  anchor: "mobile",
+                  rootRef: userMenuRootMobileRef,
+                  triggerRef: userMenuTriggerMobileRef,
+                  panelId: userMenuPanelMobileId,
+                  variant: "compact",
+                })}
               </div>
             </div>
           </div>
@@ -744,18 +928,13 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                     notifications
                   </span>
                 </button>
-                <Link
-                  href={ROUTES.settings}
-                  className="inline-flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full shadow-[0_0_0_2px_rgba(20,184,166,0.2)] transition hover:opacity-90"
-                  aria-label="Profile and settings"
-                >
-                  <AuraAvatar
-                    name={workspaceAccess.userDisplayName}
-                    photoUrl={workspaceAccess.userAvatarUrl}
-                    decorative
-                    className="size-full min-h-0 min-w-0 rounded-full text-[11px]"
-                  />
-                </Link>
+                {accountUserMenu({
+                  anchor: "desktop",
+                  rootRef: userMenuRootDesktopRef,
+                  triggerRef: userMenuTriggerDesktopRef,
+                  panelId: userMenuPanelDesktopId,
+                  variant: "comfortable",
+                })}
               </div>
             </div>
           </div>
@@ -774,6 +953,54 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
           {children}
         </div>
       </div>
+
+      {lockedFeature ? (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(99,102,241,0.12)]">
+                <span className="material-symbols-outlined notranslate text-xl text-[#6063ee]">lock</span>
+              </div>
+              <div className="min-w-0">
+                <p className="font-[family-name:var(--font-manrope)] text-lg font-extrabold text-[var(--app-text)]">
+                  {lockedFeature.moduleLabel} is locked
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-[var(--app-text-secondary)]">
+                  Your current plan doesn’t include{" "}
+                  <span className="font-semibold text-[var(--app-text)]">{lockedFeature.label}</span>. Upgrade to unlock this
+                  module, or ask an organization admin to enable access for your account.
+                </p>
+                <div className="mt-5 flex flex-wrap justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setLockedFeature(null)}
+                    className="rounded-xl bg-[var(--app-input-bg)] px-4 py-2 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-input-focus-bg)]"
+                  >
+                    Not now
+                  </button>
+                  {isOrganizationOwnerOrAdmin(workspaceAccess.membershipRole) ? (
+                    <Link
+                      href={ROUTES.billingPortal}
+                      prefetch={false}
+                      onClick={() => setLockedFeature(null)}
+                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-95"
+                    >
+                      <span className="material-symbols-outlined notranslate text-base">upgrade</span>
+                      View plans
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-label="Close"
+            className="absolute inset-0 cursor-default"
+            onClick={() => setLockedFeature(null)}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

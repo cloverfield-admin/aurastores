@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { PasswordRevealButton } from "@/components/auth/password-reveal-button";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
 import { AuraInlineAlert } from "@/components/ui/aura-inline-alert";
@@ -301,16 +302,11 @@ export function RegisterPortal() {
                         onChange={(event) => setPassword(event.target.value)}
                         required
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-[#6c7a78] transition hover:bg-[#e0e3e5]/80 hover:text-[var(--app-text)] disabled:cursor-not-allowed disabled:opacity-60"
-                        aria-label={showPassword ? "Hide password" : "Show password"}
-                      >
-                        <span className="material-symbols-outlined notranslate text-xl">
-                          {showPassword ? "visibility_off" : "visibility"}
-                        </span>
-                      </button>
+                      <PasswordRevealButton
+                        passwordVisible={showPassword}
+                        onToggle={() => setShowPassword((v) => !v)}
+                        accessibleName="password"
+                      />
                     </div>
                   </div>
                 </fieldset>

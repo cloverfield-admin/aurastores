@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
+import { LockedCapabilityTease } from "@/components/dashboard/locked-capability-tease";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import {
   useAdjustStockMutation,
@@ -118,6 +119,7 @@ export function ItemsNearExpiryContent() {
   const searchParams = useSearchParams();
   const workspace = useDashboardWorkspaceAccess();
   const canStock = hasCapability(workspace.capabilities, "stock");
+  const locked = !canStock;
   const { withLoading, notify } = useAuraFeedback();
   const branchId = searchParams.get("branch") ?? undefined;
   const [search, setSearch] = useState("");
@@ -261,23 +263,7 @@ export function ItemsNearExpiryContent() {
     });
   }
 
-  if (!canStock) {
-    return (
-      <div className="px-4 pb-14 pt-3 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-[1240px] space-y-8">
-          <div className="space-y-2">
-            <h1 className="font-[family-name:var(--font-manrope)] text-2xl font-bold text-[var(--app-text)]">
-              Items near expiry
-            </h1>
-            <p className="text-sm text-[var(--app-text-muted)]">Review batches approaching expiry and take action before loss.</p>
-          </div>
-          <MissingCapabilityNotice capability="stock" />
-        </div>
-      </div>
-    );
-  }
-
-  return (
+  const content = (
     <div className="px-4 pb-14 pt-3 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1240px]">
         <div className="space-y-6">
@@ -690,5 +676,18 @@ export function ItemsNearExpiryContent() {
         </div>
       </div>
     </div>
+  );
+
+  if (!locked) {
+    return content;
+  }
+
+  return (
+    <LockedCapabilityTease capability="stock">
+      <div className="mx-auto max-w-[1240px] space-y-6 px-4 pb-2 pt-4 sm:px-6 lg:px-8">
+        <MissingCapabilityNotice capability="stock" variant="inline" className="max-w-3xl" />
+      </div>
+      {content}
+    </LockedCapabilityTease>
   );
 }

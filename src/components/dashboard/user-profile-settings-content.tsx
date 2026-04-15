@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { useId, useMemo, useRef, useState } from "react";
+import { PasswordRevealButton } from "@/components/auth/password-reveal-button";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
 import { AuraInlineAlert } from "@/components/ui/aura-inline-alert";
 import type { MeResponse } from "@/lib/queries/me";
@@ -96,6 +97,9 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
@@ -331,40 +335,67 @@ export function UserProfileSettingsContent({ context, mePlaceholder }: UserProfi
                   <label className="absolute left-1 top-[7px] text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--app-text-muted)]">
                     Current Password
                   </label>
-                  <input
-                    type="password"
-                    autoComplete="current-password"
-                    placeholder="••••••••"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="mt-[19px] w-full rounded-lg bg-[var(--app-input-bg)] px-3 py-3.5 text-base text-[var(--app-text)] placeholder:text-[var(--app-placeholder)]"
-                  />
+                  <div className="relative mt-[19px]">
+                    <input
+                      type={showCurrentPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      placeholder="••••••••"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="w-full rounded-lg bg-[var(--app-input-bg)] py-3.5 pl-3 pr-12 text-base text-[var(--app-text)] placeholder:text-[var(--app-placeholder)]"
+                    />
+                    <PasswordRevealButton
+                      variant="dashboard"
+                      passwordVisible={showCurrentPassword}
+                      onToggle={() => setShowCurrentPassword((v) => !v)}
+                      accessibleName="current password"
+                      disabled={isSavingPassword}
+                    />
+                  </div>
                 </div>
                 <div className="relative">
                   <label className="absolute left-1 top-[7px] text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--app-text-muted)]">
                     New Password
                   </label>
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder="••••••••"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="mt-[19px] w-full rounded-lg bg-[var(--app-input-bg)] px-3 py-3.5 text-base text-[var(--app-text)] placeholder:text-[var(--app-placeholder)]"
-                  />
+                  <div className="relative mt-[19px]">
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      placeholder="••••••••"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full rounded-lg bg-[var(--app-input-bg)] py-3.5 pl-3 pr-12 text-base text-[var(--app-text)] placeholder:text-[var(--app-placeholder)]"
+                    />
+                    <PasswordRevealButton
+                      variant="dashboard"
+                      passwordVisible={showNewPassword}
+                      onToggle={() => setShowNewPassword((v) => !v)}
+                      accessibleName="new password"
+                      disabled={isSavingPassword}
+                    />
+                  </div>
                 </div>
                 <div className="relative">
                   <label className="absolute left-1 top-[7px] text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--app-text-muted)]">
                     Confirm New
                   </label>
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder="••••••••"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="mt-[19px] w-full rounded-lg bg-[var(--app-input-bg)] px-3 py-3.5 text-base text-[var(--app-text)] placeholder:text-[var(--app-placeholder)]"
-                  />
+                  <div className="relative mt-[19px]">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      placeholder="••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full rounded-lg bg-[var(--app-input-bg)] py-3.5 pl-3 pr-12 text-base text-[var(--app-text)] placeholder:text-[var(--app-placeholder)]"
+                    />
+                    <PasswordRevealButton
+                      variant="dashboard"
+                      passwordVisible={showConfirmPassword}
+                      onToggle={() => setShowConfirmPassword((v) => !v)}
+                      accessibleName="confirm password"
+                      disabled={isSavingPassword}
+                    />
+                  </div>
                 </div>
               </div>
               <div className="mt-8 rounded-xl border border-[var(--app-brand-border)] bg-[var(--app-brand-soft)] p-4">

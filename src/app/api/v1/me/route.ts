@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireAppApiContext } from "@/lib/auth/require-api-context";
 import { services } from "@/lib/di";
+import { and, count, eq, isNull } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { productCategories, products, sales } from "@/lib/db/schema";
 import { getUserAvatarPublicUrl } from "@/lib/supabase/user-avatar-public-url";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { DEFAULT_USER_PREFERENCES, patchMeSchema } from "@/lib/validation/me";
@@ -10,9 +13,37 @@ export async function GET() {
   if (!gate.ok) {
     return gate.response;
   }
-  const { capabilities, allowedBranchIds, membership, user } = gate.context;
+  const { capabilities, allowedBranchIds, membership, user, entitlements, subscription } = gate.context;
   const preferences = { ...DEFAULT_USER_PREFERENCES, ...(user.preferences ?? {}) };
   const avatarUrl = user.avatarStorageKey ? getUserAvatarPublicUrl(user.avatarStorageKey) : null;
+
+  const [productCountRow, activeCategoryCountRow, completedSalesCountRow] = await Promise.all([
+    db
+      .select({ value: count() })
+      .from(products)
+      .where(eq(products.organizationId, gate.context.organization.id))
+      .then((rows) => rows[0]),
+    db
+      .select({ value: count() })
+      .from(productCategories)
+      .where(
+        and(
+          eq(productCategories.organizationId, gate.context.organization.id),
+          isNull(productCategories.archivedAt),
+        ),
+      )
+      .then((rows) => rows[0]),
+    db
+      .select({ value: count() })
+      .from(sales)
+      .where(
+        and(
+          eq(sales.organizationId, gate.context.organization.id),
+          eq(sales.status, "completed"),
+        ),
+      )
+      .then((rows) => rows[0]),
+  ]);
 
   return NextResponse.json({
     capabilities,
@@ -24,6 +55,15 @@ export async function GET() {
     preferences,
     avatarUrl,
     avatarStorageKey: user.avatarStorageKey ?? null,
+    entitlements: {
+      limits: entitlements.limits,
+    },
+    subscription,
+    usage: {
+      products: productCountRow?.value ?? 0,
+      categories: activeCategoryCountRow?.value ?? 0,
+      salesTransactions: completedSalesCountRow?.value ?? 0,
+    },
   });
 }
 

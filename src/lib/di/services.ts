@@ -1,4 +1,5 @@
 import { authRepository } from "@/lib/repositories/auth/auth.repository.impl";
+import { billingRepository } from "@/lib/repositories/billing/billing.repository.impl";
 import { avatarStorageRepository } from "@/lib/repositories/avatar-storage/avatar-storage.repository.impl";
 import { documentStorageRepository } from "@/lib/repositories/document-storage/document-storage.repository.impl";
 import { networkRepository } from "@/lib/repositories/network/network.repository.impl";
@@ -9,6 +10,7 @@ import { salesRepository } from "@/lib/repositories/sales/sales.repository.impl"
 import { staffRepository } from "@/lib/repositories/staff/staff.repository.impl";
 import { stockRepository } from "@/lib/repositories/stock/stock.repository.impl";
 import { AuthService } from "@/lib/services/auth/auth.service";
+import { BillingService } from "@/lib/services/billing/billing.service";
 import { NetworkService } from "@/lib/services/network/network.service";
 import { PharmacySearchService } from "@/lib/services/pharmacy-search/pharmacy-search.service";
 import { OnboardingService } from "@/lib/services/onboarding/onboarding.service";
@@ -19,6 +21,7 @@ import { StockService } from "@/lib/services/stock/stock.service";
 
 export type AppServices = {
   auth: AuthService;
+  billing: BillingService;
   stock: StockService;
   sales: SalesService;
   onboarding: OnboardingService;
@@ -30,6 +33,7 @@ export type AppServices = {
 
 export const services: AppServices = {
   auth: new AuthService({ auth: authRepository, avatarStorage: avatarStorageRepository }),
+  billing: new BillingService({ billing: billingRepository }),
   stock: new StockService({ stock: stockRepository }),
   sales: new SalesService({ sales: salesRepository }),
   onboarding: new OnboardingService({

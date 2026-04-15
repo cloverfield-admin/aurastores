@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
+import { LockedCapabilityTease } from "@/components/dashboard/locked-capability-tease";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
 import { useStaffDirectoryQuery } from "@/lib/queries/staff";
 import { ROUTES } from "@/lib/routes";
@@ -47,6 +48,7 @@ export function StaffManagementContent() {
   const searchParams = useSearchParams();
   const workspace = useDashboardWorkspaceAccess();
   const canStaff = hasCapability(workspace.capabilities, "staff");
+  const locked = !canStaff;
   const [openActionsMenuId, setOpenActionsMenuId] = useState<string | null>(null);
   const urlQ = searchParams.get("q")?.trim() ?? "";
   const firstMatchRef = useRef<HTMLTableRowElement>(null);
@@ -84,25 +86,7 @@ export function StaffManagementContent() {
     }
   }, [urlQ, members.length]);
 
-  if (!canStaff) {
-    return (
-      <div className="px-4 pb-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-[1280px] space-y-8">
-          <div className="space-y-1">
-            <h1 className="font-[family-name:var(--font-manrope)] text-[30px] font-extrabold leading-9 tracking-[-0.75px] text-[var(--app-text)]">
-              Staff Management
-            </h1>
-            <p className="text-sm text-[var(--app-text-muted)]">
-              Monitor, verify, and coordinate your clinical workforce across the network.
-            </p>
-          </div>
-          <MissingCapabilityNotice capability="staff" />
-        </div>
-      </div>
-    );
-  }
-
-  return (
+  const content = (
     <div className="px-4 pb-16 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1280px] space-y-10">
         {/* Header */}
@@ -425,5 +409,18 @@ export function StaffManagementContent() {
         </div>
       </div>
     </div>
+  );
+
+  if (!locked) {
+    return content;
+  }
+
+  return (
+    <LockedCapabilityTease capability="staff">
+      <div className="mx-auto max-w-[1280px] space-y-6 px-4 pb-2 pt-4 sm:px-6 lg:px-8">
+        <MissingCapabilityNotice capability="staff" variant="inline" className="max-w-3xl" />
+      </div>
+      {content}
+    </LockedCapabilityTease>
   );
 }

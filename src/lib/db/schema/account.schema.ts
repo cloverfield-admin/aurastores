@@ -32,6 +32,7 @@ export const organizationStatusEnum = pgEnum("organization_status", [
 export const appRoleEnum = pgEnum("app_role", [
   "owner",
   "admin",
+  "aurapharma_admin",
   "manager",
   "pharmacist",
   "cashier",

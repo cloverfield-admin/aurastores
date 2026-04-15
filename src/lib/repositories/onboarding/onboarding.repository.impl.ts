@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   branchOperatingHours,
@@ -9,6 +9,7 @@ import {
 } from "@/lib/db/schema";
 import type { AuthRepository } from "@/lib/repositories/auth/auth.repository";
 import { authRepository } from "@/lib/repositories/auth/auth.repository.impl";
+import { assertWithinLimit } from "@/lib/billing/entitlements";
 import type {
   OnboardingComplianceDocumentPayload,
   OnboardingRepository,
@@ -212,10 +213,20 @@ export class OnboardingRepositoryImpl implements OnboardingRepository {
               .returning()
           )[0]
         : (
-            await tx
-              .insert(branches)
-              .values(branchValues)
-              .returning()
+            await (async () => {
+              const [{ value: branchCount }] = await tx
+                .select({ value: count() })
+                .from(branches)
+                .where(eq(branches.organizationId, context.organization.id));
+
+              assertWithinLimit({
+                kind: "branches",
+                current: branchCount,
+                limit: context.entitlements.limits.branches,
+              });
+
+              return tx.insert(branches).values(branchValues).returning();
+            })()
           )[0];
 
       await tx.delete(branchOperatingHours).where(eq(branchOperatingHours.branchId, branch.id));

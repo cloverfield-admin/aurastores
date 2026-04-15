@@ -1,11 +1,13 @@
 import {
   and,
   asc,
+  count,
   desc,
   eq,
   gt,
   ilike,
   inArray,
+  isNull,
   ne,
   or,
   sql,
@@ -27,6 +29,7 @@ import type {
   StockAdjustmentInput,
 } from "@/lib/validation/stock";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
+import { assertWithinLimit } from "@/lib/billing/entitlements";
 import { filterBranchesForContext } from "@/lib/rbac/branch-access";
 import type {
   StockCatalogData,
@@ -1543,6 +1546,22 @@ export class StockRepositoryImpl implements StockRepository {
       let categoryId = existingCategory?.id ?? null;
       let createdCategory = false;
       if (!categoryId && categoryName) {
+        const [{ value: activeCategoryCount }] = await tx
+          .select({ value: count() })
+          .from(productCategories)
+          .where(
+            and(
+              eq(productCategories.organizationId, context.organization.id),
+              isNull(productCategories.archivedAt),
+            ),
+          );
+
+        assertWithinLimit({
+          kind: "categories",
+          current: activeCategoryCount,
+          limit: context.entitlements.limits.categories,
+        });
+
         const [category] = await tx
           .insert(productCategories)
           .values({
@@ -1563,6 +1582,17 @@ export class StockRepositoryImpl implements StockRepository {
       }
 
       if (!product) {
+        const [{ value: productCount }] = await tx
+          .select({ value: count() })
+          .from(products)
+          .where(eq(products.organizationId, context.organization.id));
+
+        assertWithinLimit({
+          kind: "products",
+          current: productCount,
+          limit: context.entitlements.limits.products,
+        });
+
         [product] = await tx
           .insert(products)
           .values({
