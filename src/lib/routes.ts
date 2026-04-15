@@ -15,6 +15,7 @@ export const ROUTES = {
     staff: "/dashboard/staff",
     staffAdd: "/dashboard/staff/add",
     staffAddReview: "/dashboard/staff/add/review",
+    staffEdit: (membershipId: string) => `/dashboard/staff/${membershipId}/edit`,
     stock: "/dashboard/stock",
     stockAdd: "/dashboard/stock/add",
     stockBulkAdd: "/dashboard/stock/bulk-add",
@@ -25,6 +26,7 @@ export const ROUTES = {
     insights: "/dashboard/insights",
     productCategories: "/dashboard/product-categories",
     pay: "/dashboard/pay",
+    organization: "/dashboard/organization",
     onboarding: {
       root: "/dashboard/onboarding",
       pharmacyDetails: "/dashboard/onboarding/pharmacy-details",

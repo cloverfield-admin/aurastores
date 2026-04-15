@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
-import { getCurrentAppContext } from "@/lib/auth/session";
+import { requireAppApiCapability } from "@/lib/auth/require-api-context";
 import { services } from "@/lib/di";
 import { addStaffByEmailSchema, listStaffDirectorySchema } from "@/lib/validation/staff";
 
 export async function GET(request: Request) {
-  const context = await getCurrentAppContext();
-  if (!context) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const gate = await requireAppApiCapability("staff");
+  if (!gate.ok) {
+    return gate.response;
   }
+  const context = gate.context;
 
   const url = new URL(request.url);
   const parsed = listStaffDirectorySchema.safeParse({
@@ -29,10 +30,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const context = await getCurrentAppContext();
-  if (!context) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const gate = await requireAppApiCapability("staff");
+  if (!gate.ok) {
+    return gate.response;
   }
+  const context = gate.context;
 
   const body = await request.json().catch(() => null);
   const parsed = addStaffByEmailSchema.safeParse(body);
@@ -44,18 +46,37 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await services.staff.addMemberByEmail(context, {
+    const result = await services.staff.inviteMemberByEmail(context, {
       email: parsed.data.email,
       fullName: parsed.data.fullName,
       phone: parsed.data.phone ?? null,
       jobTitle: parsed.data.jobTitle ?? null,
       appRole: parsed.data.appRole,
-      branchId: parsed.data.branchId ?? null,
+      branchIds: parsed.data.branchIds,
+      capabilities: parsed.data.capabilities ?? undefined,
     });
-    return NextResponse.json(result, { status: 201 });
+    if (result.kind === "invited") {
+      return NextResponse.json(
+        { invitationId: result.invitationId, status: "invited" as const },
+        { status: 201 },
+      );
+    }
+    return NextResponse.json(
+      {
+        membershipId: result.membershipId,
+        staffEmployeeCode: result.staffEmployeeCode,
+        status: "added" as const,
+      },
+      { status: 201 },
+    );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Could not add staff member.";
-    const status = message.includes("No AuraPharma account") || message.includes("already") ? 400 : 500;
+    const message = error instanceof Error ? error.message : "Could not invite staff member.";
+    const status =
+      message.includes("No AuraPharma account") ||
+      message.includes("already") ||
+      message.includes("member")
+        ? 400
+        : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }

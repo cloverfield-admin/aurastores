@@ -27,6 +27,7 @@ import type {
   StockAdjustmentInput,
 } from "@/lib/validation/stock";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
+import { filterBranchesForContext } from "@/lib/rbac/branch-access";
 import type {
   StockCatalogData,
   StockCreateBatchResult,
@@ -231,14 +232,19 @@ function deriveBatchStatus(
   return "active" as const;
 }
 
-async function listOrganizationBranches(organizationId: string) {
-  return db.query.branches.findMany({
+async function loadBranchesForOrg(queryable: QueryableDb, organizationId: string) {
+  return queryable.query.branches.findMany({
     where: eq(branches.organizationId, organizationId),
     orderBy: (branchTable, { desc: orderDesc, asc: orderAsc }) => [
       orderDesc(branchTable.isPrimary),
       orderAsc(branchTable.name),
     ],
   });
+}
+
+async function branchesVisibleInContext(queryable: QueryableDb, context: AuthContext) {
+  const all = await loadBranchesForOrg(queryable, context.organization.id);
+  return filterBranchesForContext(context, all);
 }
 
 function pickResolvedBranch(
@@ -263,55 +269,16 @@ function pickResolvedBranch(
   return branch;
 }
 
-async function findOrganizationBranchById(
-  queryable: QueryableDb,
-  organizationId: string,
-  branchId: string,
-) {
-  return queryable.query.branches.findFirst({
-    where: and(eq(branches.id, branchId), eq(branches.organizationId, organizationId)),
-  });
-}
-
-async function findFallbackOrganizationBranch(queryable: QueryableDb, organizationId: string) {
-  return queryable.query.branches.findFirst({
-    where: eq(branches.organizationId, organizationId),
-    orderBy: (branchTable, { desc: orderDesc, asc: orderAsc }) => [
-      orderDesc(branchTable.isPrimary),
-      orderAsc(branchTable.name),
-    ],
-  });
-}
-
 async function resolveBranch(
   queryable: QueryableDb,
   context: AuthContext,
   preferredBranchId?: string,
 ): Promise<ResolvedBranch> {
-  if (preferredBranchId) {
-    const direct = await findOrganizationBranchById(queryable, context.organization.id, preferredBranchId);
-    if (direct) {
-      return direct;
-    }
+  const visible = await branchesVisibleInContext(queryable, context);
+  if (!visible.length) {
+    throw new Error("No branch access assigned for your account.");
   }
-
-  if (context.onboarding?.mainBranchId) {
-    const onboardingBranch = await findOrganizationBranchById(
-      queryable,
-      context.organization.id,
-      context.onboarding.mainBranchId,
-    );
-    if (onboardingBranch) {
-      return onboardingBranch;
-    }
-  }
-
-  const fallbackBranch = await findFallbackOrganizationBranch(queryable, context.organization.id);
-  if (fallbackBranch) {
-    return fallbackBranch;
-  }
-
-  throw new Error("Finish branch setup before using stock management.");
+  return pickResolvedBranch(context, preferredBranchId, visible);
 }
 
 async function fetchRecentEntriesForBranch(
@@ -1188,7 +1155,7 @@ export class StockRepositoryImpl implements StockRepository {
     context: AuthContext,
     options: GetDashboardOptions = {},
   ): Promise<StockDashboardData> {
-    const branchOptions = await listOrganizationBranches(context.organization.id);
+    const branchOptions = await branchesVisibleInContext(db, context);
     const branch = pickResolvedBranch(context, options.branchId, branchOptions);
     const today = startOfTodayUtc();
     const thirtyDaysAgo = new Date(today.getTime() - 30 * 86_400_000);
@@ -1437,7 +1404,7 @@ export class StockRepositoryImpl implements StockRepository {
     options: GetCatalogOptions = {},
   ): Promise<StockCatalogData> {
     const includeProducts = options.includeProducts ?? true;
-    const branchOptions = await listOrganizationBranches(context.organization.id);
+    const branchOptions = await branchesVisibleInContext(db, context);
     const branch = pickResolvedBranch(context, options.branchId, branchOptions);
     const productRowsPromise = includeProducts
       ? db
@@ -1522,7 +1489,7 @@ export class StockRepositoryImpl implements StockRepository {
   }
 
   async getBranches(context: AuthContext, preferredBranchId?: string) {
-    const branchOptions = await listOrganizationBranches(context.organization.id);
+    const branchOptions = await branchesVisibleInContext(db, context);
     const selectedBranch = pickResolvedBranch(context, preferredBranchId, branchOptions);
 
     return {

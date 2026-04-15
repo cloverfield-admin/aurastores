@@ -1,4 +1,5 @@
-import { and, asc, desc, eq, gt, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, ne, sql } from "drizzle-orm";
+import type { Column } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   branches,
@@ -11,6 +12,7 @@ import {
   users,
 } from "@/lib/db/schema";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
+import { filterBranchesForContext } from "@/lib/rbac/branch-access";
 import type {
   NetworkBranchSummary,
   NetworkDashboardData,
@@ -41,6 +43,16 @@ async function listOrganizationBranches(organizationId: string) {
     .orderBy(desc(branches.isPrimary), asc(branches.name));
 }
 
+function branchScopeWhere(context: AuthContext, branchColumn: Column) {
+  if (context.allowedBranchIds === null) {
+    return undefined;
+  }
+  if (context.allowedBranchIds.length === 0) {
+    return sql`false`;
+  }
+  return inArray(branchColumn, context.allowedBranchIds);
+}
+
 function numberByBranchId<T extends { branchId: string }>(
   rows: T[],
   getValue: (row: T) => number,
@@ -51,7 +63,8 @@ function numberByBranchId<T extends { branchId: string }>(
 export class NetworkRepositoryImpl implements NetworkRepository {
   async getDashboard(context: AuthContext): Promise<NetworkDashboardData> {
     const orgId = context.organization.id;
-    const branchRows = await listOrganizationBranches(orgId);
+    const allBranchRows = await listOrganizationBranches(orgId);
+    const branchRows = filterBranchesForContext(context, allBranchRows);
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 86_400_000);
     const sixtyDaysAgo = new Date(now.getTime() - 60 * 86_400_000);
@@ -68,7 +81,14 @@ export class NetworkRepositoryImpl implements NetworkRepository {
           ),
         })
         .from(inventoryBatches)
-        .where(eq(inventoryBatches.organizationId, orgId))
+        .where(
+          and(
+            eq(inventoryBatches.organizationId, orgId),
+            ...(branchScopeWhere(context, inventoryBatches.branchId)
+              ? [branchScopeWhere(context, inventoryBatches.branchId)!]
+              : []),
+          ),
+        )
         .groupBy(inventoryBatches.branchId, inventoryBatches.productId),
     );
 
@@ -96,6 +116,7 @@ export class NetworkRepositoryImpl implements NetworkRepository {
             eq(sales.organizationId, orgId),
             eq(sales.status, "completed"),
             sql`${sales.createdAt} >= ${sixtyDaysAgoIso}::timestamptz`,
+            ...(branchScopeWhere(context, sales.branchId) ? [branchScopeWhere(context, sales.branchId)!] : []),
           ),
         ),
       db
@@ -111,6 +132,7 @@ export class NetworkRepositoryImpl implements NetworkRepository {
             eq(sales.organizationId, orgId),
             eq(sales.status, "completed"),
             sql`${sales.createdAt} >= ${thirtyDaysAgoIso}::timestamptz`,
+            ...(branchScopeWhere(context, sales.branchId) ? [branchScopeWhere(context, sales.branchId)!] : []),
           ),
         ),
       db
@@ -150,6 +172,7 @@ export class NetworkRepositoryImpl implements NetworkRepository {
             eq(sales.organizationId, orgId),
             eq(sales.status, "completed"),
             sql`${sales.createdAt} >= ${thirtyDaysAgoIso}::timestamptz`,
+            ...(branchScopeWhere(context, sales.branchId) ? [branchScopeWhere(context, sales.branchId)!] : []),
           ),
         )
         .groupBy(sales.branchId),
@@ -167,6 +190,7 @@ export class NetworkRepositoryImpl implements NetworkRepository {
             eq(sales.organizationId, orgId),
             eq(sales.status, "completed"),
             sql`${sales.createdAt} >= ${thirtyDaysAgoIso}::timestamptz`,
+            ...(branchScopeWhere(context, sales.branchId) ? [branchScopeWhere(context, sales.branchId)!] : []),
           ),
         )
         .groupBy(sales.branchId),
@@ -181,6 +205,9 @@ export class NetworkRepositoryImpl implements NetworkRepository {
             eq(inventoryTransactions.organizationId, orgId),
             eq(inventoryTransactions.transactionType, "sale"),
             sql`${inventoryTransactions.occurredAt} >= ${thirtyDaysAgoIso}::timestamptz`,
+            ...(branchScopeWhere(context, inventoryTransactions.branchId)
+              ? [branchScopeWhere(context, inventoryTransactions.branchId)!]
+              : []),
           ),
         )
         .groupBy(inventoryTransactions.branchId),
@@ -208,6 +235,9 @@ export class NetworkRepositoryImpl implements NetworkRepository {
             eq(inventoryBatches.organizationId, orgId),
             ne(inventoryBatches.status, "disposed"),
             gt(inventoryBatches.quantityAvailable, 0),
+            ...(branchScopeWhere(context, inventoryBatches.branchId)
+              ? [branchScopeWhere(context, inventoryBatches.branchId)!]
+              : []),
           ),
         )
         .groupBy(inventoryBatches.branchId),

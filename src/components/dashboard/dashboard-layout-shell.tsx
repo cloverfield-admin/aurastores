@@ -2,12 +2,18 @@
 
 import { usePathname } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import type { DashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
+import { DashboardWorkspaceProvider } from "@/components/dashboard/dashboard-workspace";
 import { ROUTES } from "@/lib/routes";
+
+export type { DashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 
 export function DashboardLayoutShell({
   children,
+  workspaceAccess,
 }: {
   children: React.ReactNode;
+  workspaceAccess: DashboardWorkspaceAccess;
 }) {
   const pathname = usePathname();
   const isOnboarding = pathname === ROUTES.dashboard.onboarding.root
@@ -17,5 +23,9 @@ export function DashboardLayoutShell({
     return <>{children}</>;
   }
 
-  return <DashboardShell>{children}</DashboardShell>;
+  return (
+    <DashboardWorkspaceProvider value={workspaceAccess}>
+      <DashboardShell workspaceAccess={workspaceAccess}>{children}</DashboardShell>
+    </DashboardWorkspaceProvider>
+  );
 }

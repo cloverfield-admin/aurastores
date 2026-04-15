@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
+import { fullCapabilities } from "@/lib/rbac/capabilities";
 import { StockRepositoryImpl } from "@/lib/repositories/stock/stock.repository.impl";
 import type { CreateStockBatchesInput } from "@/lib/validation/stock";
 
@@ -8,7 +9,7 @@ const dbMock = vi.hoisted(() => ({
   select: vi.fn(),
   query: {
     branches: {
-      findFirst: vi.fn(),
+      findMany: vi.fn(),
     },
   },
 }));
@@ -83,7 +84,10 @@ function createMockTx(options: {
   const tx = {
     query: {
       branches: {
-        findFirst: vi.fn(async () => shiftQueue(options.branchQueue ?? [], "tx.query.branches.findFirst")),
+        findMany: vi.fn(async () => {
+          const branch = shiftQueue(options.branchQueue ?? [], "tx.query.branches.findMany");
+          return [branch];
+        }),
       },
     },
     select: createSelectMock(options.selectQueue ?? []),
@@ -102,18 +106,21 @@ function configureDb(options: {
   dbMock.transaction.mockImplementation(async (callback: (tx: object) => Promise<unknown>) =>
     callback(options.tx),
   );
-  dbMock.query.branches.findFirst.mockImplementation(async () =>
-    shiftQueue(options.dbBranchQueue ?? [], "db.query.branches.findFirst"),
-  );
+  dbMock.query.branches.findMany.mockImplementation(async () => {
+    const branch = shiftQueue(options.dbBranchQueue ?? [], "db.query.branches.findMany");
+    return [branch];
+  });
   dbMock.select.mockImplementation(createSelectMock(options.dbSelectQueue ?? []));
 }
 
 function createContext(): AuthContext {
   return {
     user: { id: "user-1" } as AuthContext["user"],
-    membership: { id: "membership-1" } as AuthContext["membership"],
+    membership: { id: "membership-1", role: "owner" } as AuthContext["membership"],
     organization: { id: "org-1" } as AuthContext["organization"],
     onboarding: null,
+    capabilities: fullCapabilities(),
+    allowedBranchIds: null,
   };
 }
 

@@ -1,4 +1,5 @@
 export * from "./account.schema";
+export * from "./staff-invitation.schema";
 export * from "./branch.schema";
 export * from "./idempotency.schema";
 export * from "./inventory.schema";

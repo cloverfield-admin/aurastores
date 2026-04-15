@@ -2,6 +2,8 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
+import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
+import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import {
   useArchiveProductCategoryMutation,
@@ -11,6 +13,7 @@ import {
   useUpdateProductCategoryMutation,
   type ProductCategoryDto,
 } from "@/lib/queries/product-categories";
+import { hasCapability } from "@/lib/rbac/capabilities";
 
 const dateTime = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
@@ -133,6 +136,8 @@ export function ProductCategoriesContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const workspace = useDashboardWorkspaceAccess();
+  const canCatalog = hasCapability(workspace.capabilities, "catalog");
   const includeArchived = (searchParams.get("includeArchived") ?? "0") === "1";
   const page = Math.max(1, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1);
   const pageSize = Math.min(50, Math.max(1, Number.parseInt(searchParams.get("pageSize") ?? "10", 10) || 10));
@@ -142,7 +147,7 @@ export function ProductCategoriesContent() {
     router.replace(query ? `${pathname}?${query}` : pathname);
   }
 
-  const categoriesQuery = useProductCategoriesQuery({ includeArchived, page, pageSize });
+  const categoriesQuery = useProductCategoriesQuery({ includeArchived, page, pageSize, enabled: canCatalog });
   const categories = useMemo(() => categoriesQuery.data?.categories ?? [], [categoriesQuery.data]);
   const pagination = categoriesQuery.data?.pagination ?? {
     page: 1,
@@ -235,6 +240,24 @@ export function ProductCategoriesContent() {
       title: "Category restored",
       description: `${category.name} is active again.`,
     });
+  }
+
+  if (!canCatalog) {
+    return (
+      <div className="px-4 pb-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1280px] space-y-8">
+          <div className="space-y-2">
+            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[#191c1e] sm:text-4xl">
+              Product Categories
+            </h1>
+            <p className="max-w-2xl text-base leading-relaxed text-[#3c4948]">
+              Maintain the category library used across stock and sales workflows.
+            </p>
+          </div>
+          <MissingCapabilityNotice capability="catalog" />
+        </div>
+      </div>
+    );
   }
 
   return (

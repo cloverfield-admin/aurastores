@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
+import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
+import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import {
   useAdjustStockMutation,
@@ -11,6 +13,7 @@ import {
 } from "@/lib/queries/stock";
 import type { StockDashboardResponse } from "@/lib/queries/stock";
 import { ROUTES } from "@/lib/routes";
+import { hasCapability } from "@/lib/rbac/capabilities";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -113,6 +116,8 @@ function formatExpiryDate(expiresAt: string) {
 export function ItemsNearExpiryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const workspace = useDashboardWorkspaceAccess();
+  const canStock = hasCapability(workspace.capabilities, "stock");
   const { withLoading, notify } = useAuraFeedback();
   const branchId = searchParams.get("branch") ?? undefined;
   const [search, setSearch] = useState("");
@@ -127,6 +132,7 @@ export function ItemsNearExpiryContent() {
     view: "all",
     page: 1,
     pageSize: 100,
+    enabled: canStock,
   });
 
   const adjustStockMutation = useAdjustStockMutation();
@@ -253,6 +259,22 @@ export function ItemsNearExpiryContent() {
         description: `${result.adjustedCount} product${result.adjustedCount === 1 ? "" : "s"} updated for ${label}.`,
       });
     });
+  }
+
+  if (!canStock) {
+    return (
+      <div className="px-4 pb-14 pt-3 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1240px] space-y-8">
+          <div className="space-y-2">
+            <h1 className="font-[family-name:var(--font-manrope)] text-2xl font-bold text-[#191c1e]">
+              Items near expiry
+            </h1>
+            <p className="text-sm text-[#64748b]">Review batches approaching expiry and take action before loss.</p>
+          </div>
+          <MissingCapabilityNotice capability="stock" />
+        </div>
+      </div>
+    );
   }
 
   return (

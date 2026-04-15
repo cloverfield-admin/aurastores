@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { useAddStaffMemberMutation } from "@/lib/queries/staff";
 import { useStockBranchesQuery } from "@/lib/queries/stock";
@@ -15,41 +15,41 @@ import type { AddStaffByEmailPayload } from "@/lib/validation/staff";
 import { ROUTES } from "@/lib/routes";
 
 const ACCESS_LABELS: Record<string, string> = {
-  inventory: "Inventory Access",
-  financial: "Financial Reports",
-  patient: "Patient Records",
-  settings: "System Settings",
+  stock: "Stock & inventory",
+  sales: "Sales & checkout",
+  insights: "Insights & analytics",
+  catalog: "Product categories",
+  staff: "Staff & directory",
+  pay: "Payments",
+  organization: "Organization management",
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  owner: "Owner",
+  admin: "Admin",
+  manager: "Manager",
+  pharmacist: "Pharmacist",
+  cashier: "Cashier",
+  analyst: "Analyst",
 };
 
 const labelClass =
   "text-[10px] font-semibold uppercase tracking-[0.1em] text-[#94a3b8]";
 const valueClass = "text-base font-semibold text-[#334155]";
 
-function mapProfessionalRole(role: string): AddStaffByEmailPayload["appRole"] {
-  const r = role.toLowerCase();
-  if (r.includes("pharmacist")) {
-    return "pharmacist";
-  }
-  if (r.includes("technician")) {
-    return "cashier";
-  }
-  if (r.includes("intern")) {
-    return "analyst";
-  }
-  return "pharmacist";
-}
-
 function emptyDraft(): StaffAddDraft {
   return {
     fullName: "",
-    staffId: "",
-    department: "",
-    professionalRole: "Pharmacist",
+    branchIds: [],
+    appRole: "pharmacist",
     accessLevels: {
-      inventory: true,
-      financial: false,
-      patient: true,
-      settings: false,
+      stock: true,
+      sales: true,
+      insights: true,
+      catalog: true,
+      staff: false,
+      pay: false,
+      organization: false,
     },
     email: "",
     phone: "",
@@ -62,18 +62,28 @@ export function StaffAddReviewContent() {
   const { notify, withLoading, isLoading } = useAuraFeedback();
   const addStaffMutation = useAddStaffMemberMutation();
   const branchesQuery = useStockBranchesQuery(undefined, true);
-  const primaryBranchId =
-    branchesQuery.data?.branches.find((b) => b.isPrimary)?.id ??
-    branchesQuery.data?.branches[0]?.id ??
-    null;
   const [draft, setDraft] = useState<StaffAddDraft | null>(null);
   const [certified, setCertified] = useState(false);
   const isBusy = isLoading("dashboard-add-staff") || addStaffMutation.isPending;
 
   useEffect(() => {
     const stored = getStaffAddDraft();
-    setDraft(stored ?? emptyDraft());
+    queueMicrotask(() => {
+      setDraft(stored ?? emptyDraft());
+    });
   }, []);
+
+  const isDraftValid = useMemo(() => {
+    if (!draft) return false;
+    if (!draft.fullName.trim()) return false;
+    if (!draft.branchIds.length) return false;
+    const emailTrim = draft.email.trim();
+    if (!emailTrim || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) return false;
+    const phoneTrim = draft.phone.trim();
+    if (!phoneTrim || phoneTrim.length > 32) return false;
+    if (draft.appRole === "pharmacist" && draft.files.length === 0) return false;
+    return true;
+  }, [draft]);
 
   const handleBackToEdit = () => {
     router.push(ROUTES.dashboard.staffAdd);
@@ -96,23 +106,85 @@ export function StaffAddReviewContent() {
       });
       return;
     }
+    const emailTrim = draft.email.trim();
+    if (!emailTrim) {
+      notify({
+        variant: "error",
+        title: "Email required",
+        description: "Please go back and enter an email address.",
+      });
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
+      notify({
+        variant: "error",
+        title: "Invalid email",
+        description: "Please enter a valid email address.",
+      });
+      return;
+    }
+    const phoneTrim = draft.phone.trim();
+    if (!phoneTrim) {
+      notify({
+        variant: "error",
+        title: "Phone required",
+        description: "Please go back and enter a phone number.",
+      });
+      return;
+    }
+    if (phoneTrim.length > 32) {
+      notify({
+        variant: "error",
+        title: "Phone too long",
+        description: "Use at most 32 characters for the phone number.",
+      });
+      return;
+    }
+    if (!draft.branchIds.length) {
+      notify({
+        variant: "error",
+        title: "Branch required",
+        description: "Go back and select at least one branch.",
+      });
+      return;
+    }
+    if (draft.appRole === "pharmacist" && draft.files.length === 0) {
+      notify({
+        variant: "error",
+        title: "Credentials required",
+        description: "Pharmacists must upload at least one license or credential. Go back to add files.",
+      });
+      return;
+    }
 
-    await withLoading("dashboard-add-staff", "Adding staff member...", async () => {
+    await withLoading("dashboard-add-staff", "Sending invitation email...", async () => {
       try {
-        await addStaffMutation.mutateAsync({
-          email: draft.email.trim(),
+        const result = await addStaffMutation.mutateAsync({
+          email: emailTrim,
           fullName: draft.fullName.trim(),
-          phone: draft.phone.trim() ? draft.phone.trim() : null,
-          jobTitle: draft.department.trim() ? draft.department.trim() : null,
-          appRole: mapProfessionalRole(draft.professionalRole),
-          branchId: primaryBranchId,
+          phone: phoneTrim,
+          jobTitle: null,
+          appRole: draft.appRole as AddStaffByEmailPayload["appRole"],
+          branchIds: draft.branchIds,
+          capabilities: draft.accessLevels,
         });
         clearStaffAddDraft();
-        notify({
-          variant: "success",
-          title: "Staff member added",
-          description: `${draft.fullName} has been added to the staff directory.`,
-        });
+        if (result.status === "invited") {
+          notify({
+            variant: "success",
+            title: "Invitation sent",
+            description: `${draft.fullName} will receive an email with a sign-in link and temporary password for your pharmacy. They must choose a new password before using the dashboard.`,
+          });
+        } else {
+          const codeNote = result.staffEmployeeCode
+            ? ` Staff ID: ${result.staffEmployeeCode}.`
+            : "";
+          notify({
+            variant: "success",
+            title: "Staff member added",
+            description: `${draft.fullName} has been added to the staff directory.${codeNote}`,
+          });
+        }
         router.push(ROUTES.dashboard.staff);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Could not add staff member.";
@@ -206,11 +278,17 @@ export function StaffAddReviewContent() {
               </div>
               <div className="space-y-1">
                 <p className={labelClass}>Staff ID Number</p>
-                <p className={valueClass}>{draft.staffId || "Not provided"}</p>
+                <p className={valueClass}>Assigned automatically when you save (e.g. AP-00001).</p>
               </div>
               <div className="space-y-1 sm:col-span-2">
-                <p className={labelClass}>Department</p>
-                <p className={valueClass}>{draft.department || "Not provided"}</p>
+                <p className={labelClass}>Branch</p>
+                <p className={valueClass}>
+                  {draft.branchIds.length
+                    ? draft.branchIds
+                        .map((id) => branchesQuery.data?.branches.find((b) => b.id === id)?.name ?? id)
+                        .join(", ")
+                    : "Not selected"}
+                </p>
               </div>
             </div>
           </div>
@@ -240,8 +318,8 @@ export function StaffAddReviewContent() {
             </div>
             <div className="space-y-6">
               <div className="space-y-1">
-                <p className={labelClass}>Professional Role</p>
-                <p className={valueClass}>{draft.professionalRole}</p>
+                <p className={labelClass}>Role</p>
+                <p className={valueClass}>{ROLE_LABELS[draft.appRole] ?? draft.appRole}</p>
               </div>
               <div className="space-y-1">
                 <p className={labelClass}>System Access Level</p>
@@ -338,6 +416,11 @@ export function StaffAddReviewContent() {
                   </li>
                 ))}
               </ul>
+            ) : draft.appRole === "pharmacist" ? (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-950">
+                No credentials uploaded. Pharmacist role requires at least one file—use Edit to go back and
+                upload licenses.
+              </p>
             ) : (
               <p className="text-sm text-[#64748b]">No credentials uploaded</p>
             )}
@@ -374,7 +457,7 @@ export function StaffAddReviewContent() {
             <button
               type="button"
               onClick={handleSaveToDb}
-              disabled={!certified || isBusy}
+              disabled={!certified || !isDraftValid || isBusy}
               className="inline-flex items-center justify-center gap-2 rounded-xl px-8 py-4 text-base font-semibold text-white shadow-[0px_10px_15px_-3px_rgba(0,106,101,0.2),0px_4px_6px_-4px_rgba(0,106,101,0.2)] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
               style={{
                 background:

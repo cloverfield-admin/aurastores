@@ -177,6 +177,7 @@ type StockDashboardQueryOptions = {
   view: "all" | "expiring";
   page: number;
   pageSize?: number;
+  enabled?: boolean;
 };
 
 type StockCatalogQueryOptions = {
@@ -204,6 +205,7 @@ export function useStockDashboardQuery({
   view,
   page,
   pageSize = 10,
+  enabled = true,
 }: StockDashboardQueryOptions) {
   return useQuery({
     queryKey: [...stockDashboardQueryKey, { branchId, search, view, page, pageSize }],
@@ -212,6 +214,7 @@ export function useStockDashboardQuery({
         `${apiUrl("/stock")}?branch=${encodeURIComponent(branchId ?? "")}&search=${encodeURIComponent(search)}&view=${encodeURIComponent(view)}&page=${page}&pageSize=${pageSize}`,
         { method: "GET" },
       ),
+    enabled,
     placeholderData: (previousData) => previousData,
     meta: {
       suppressGlobalLoading: true,

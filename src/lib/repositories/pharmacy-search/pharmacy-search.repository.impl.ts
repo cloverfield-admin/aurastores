@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { branches, products } from "@/lib/db/schema";
 import { ROUTES } from "@/lib/routes";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
+import { filterBranchesForContext } from "@/lib/rbac/branch-access";
+import { hasCapability } from "@/lib/rbac/capabilities";
 import { staffRepository } from "@/lib/repositories/staff/staff.repository.impl";
 import type {
   PharmacySearchHit,
@@ -12,12 +14,13 @@ import type {
 
 const LIMIT = 6;
 
-async function resolveDefaultStockBranchId(organizationId: string): Promise<string | null> {
-  const row = await db.query.branches.findFirst({
-    where: eq(branches.organizationId, organizationId),
+async function resolveDefaultStockBranchIdForContext(context: AuthContext): Promise<string | null> {
+  const rows = await db.query.branches.findMany({
+    where: eq(branches.organizationId, context.organization.id),
     orderBy: (b, { desc: orderDesc, asc: orderAsc }) => [orderDesc(b.isPrimary), orderAsc(b.name)],
   });
-  return row?.id ?? null;
+  const visible = filterBranchesForContext(context, rows);
+  return visible[0]?.id ?? null;
 }
 
 export class PharmacySearchRepositoryImpl implements PharmacySearchRepository {
@@ -29,37 +32,50 @@ export class PharmacySearchRepositoryImpl implements PharmacySearchRepository {
 
     const pattern = `%${trimmed}%`;
     const orgId = context.organization.id;
-    const defaultBranchId = await resolveDefaultStockBranchId(orgId);
+    const defaultBranchId = await resolveDefaultStockBranchIdForContext(context);
     const qLower = trimmed.toLowerCase();
 
+    const canStock = hasCapability(context.capabilities, "stock");
+    const canStaff = hasCapability(context.capabilities, "staff");
+    const canCatalog = hasCapability(context.capabilities, "catalog");
+
     const [branchRows, staffRows, productRows] = await Promise.all([
-      db
-        .select({ id: branches.id, name: branches.name })
-        .from(branches)
-        .where(and(eq(branches.organizationId, orgId), ilike(branches.name, pattern)))
-        .orderBy(desc(branches.isPrimary), asc(branches.name))
-        .limit(LIMIT),
-      staffRepository.searchDirectory(context, trimmed, LIMIT),
-      db
-        .select({
-          id: products.id,
-          name: products.name,
-          sku: products.sku,
-        })
-        .from(products)
-        .where(
-          and(
-            eq(products.organizationId, orgId),
-            or(ilike(products.name, pattern), ilike(products.sku, pattern)),
-          ),
-        )
-        .orderBy(asc(products.name))
-        .limit(LIMIT),
+      canStock
+        ? db
+            .select({ id: branches.id, name: branches.name })
+            .from(branches)
+            .where(and(eq(branches.organizationId, orgId), ilike(branches.name, pattern)))
+            .orderBy(desc(branches.isPrimary), asc(branches.name))
+            .limit(LIMIT)
+        : Promise.resolve([] as { id: string; name: string }[]),
+      canStaff ? staffRepository.searchDirectory(context, trimmed, LIMIT) : Promise.resolve([]),
+      canStock || canCatalog
+        ? db
+            .select({
+              id: products.id,
+              name: products.name,
+              sku: products.sku,
+            })
+            .from(products)
+            .where(
+              and(
+                eq(products.organizationId, orgId),
+                or(ilike(products.name, pattern), ilike(products.sku, pattern)),
+              ),
+            )
+            .orderBy(asc(products.name))
+            .limit(LIMIT)
+        : Promise.resolve([] as { id: string; name: string; sku: string | null }[]),
     ]);
+
+    const branchRowsFiltered = filterBranchesForContext(
+      context,
+      branchRows as { id: string; name: string }[],
+    );
 
     const hits: PharmacySearchHit[] = [];
 
-    for (const b of branchRows) {
+    for (const b of branchRowsFiltered) {
       hits.push({
         kind: "branch",
         id: b.id,
@@ -90,7 +106,7 @@ export class PharmacySearchRepositoryImpl implements PharmacySearchRepository {
         kind: "product",
         id: p.id,
         title: p.name,
-        subtitle: p.sku,
+        subtitle: p.sku ?? undefined,
         href: `${productHrefPrefix}${encodeURIComponent(p.name)}`,
       });
     }
