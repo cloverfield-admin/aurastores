@@ -3,12 +3,16 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { HomePageHeader } from "@/components/marketing/home-page-header";
 import { AURA_ASSETS } from "@/lib/aura-assets";
+import { services } from "@/lib/di";
 import { ROUTES } from "@/lib/routes";
 import { getSiteUrl } from "@/lib/site-url";
 
 const homeTitle = "AuraPharma — Clarity around every prescription";
 const homeDescription =
   "A cloud-based pharmacy management platform for inventory, pricing, payments, and every branch.";
+
+export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: { absolute: homeTitle },
@@ -54,8 +58,67 @@ function HomeJsonLd() {
   );
 }
 
-export default function HomePage() {
+const zwmFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "ZMW",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+export default async function HomePage() {
   const year = new Date().getFullYear();
+  const plans = await services.billing.listPublicPlans("ZMW");
+  const planOrder = ["free", "basic", "pro", "enterprise"] as const;
+  const orderedPlans = [...plans].sort(
+    (a, b) => planOrder.indexOf(a.code) - planOrder.indexOf(b.code),
+  );
+
+  const capabilityBullets: Array<{
+    key: keyof (typeof plans)[number]["features"]["capabilities"];
+    label: string;
+  }> = [
+    { key: "stock", label: "Aura Stock" },
+    { key: "sales", label: "Sales Tracking" },
+    // { key: "catalog", label: "Product Categories" },
+    { key: "insights", label: "Aura Insights" },
+    { key: "pay", label: "Aura Pay" },
+    { key: "staff", label: "Staff Management" },
+    { key: "organization", label: "Organization Controls" },
+  ];
+
+  function limitLabel(kind: "products" | "categories" | "salesTransactions", value: number | null | undefined) {
+    const suffix = kind === "salesTransactions" ? "Sales Transactions" : kind === "products" ? "Products" : "Categories";
+    return value != null ? `${value} ${suffix}` : `Unlimited ${suffix}`;
+  }
+
+  function buildPlanBullets(plan: (typeof plans)[number], prev?: (typeof plans)[number]) {
+    const out: string[] = [];
+    if (prev) {
+      out.push(`Everything in ${prev.name}`);
+    }
+
+    const caps = plan.features.capabilities;
+    const prevCaps = prev?.features.capabilities ?? null;
+    for (const item of capabilityBullets) {
+      const enabled = Boolean(caps[item.key]);
+      const wasEnabled = prevCaps ? Boolean(prevCaps[item.key]) : false;
+      if (!enabled) continue;
+      if (prev && wasEnabled) continue;
+      out.push(item.label);
+    }
+
+    const limits = plan.features.limits;
+
+    // Show numeric limits where they apply (and keep parity with previous design).
+    out.push(limits.branches != null ? `Multi-branch Sync (Up to ${limits.branches})` : "Multi-branch Sync (Unlimited)");
+    out.push(limitLabel("products", limits.products));
+    out.push(limitLabel("categories", limits.categories));
+    out.push(limitLabel("salesTransactions", limits.salesTransactions));
+    out.push(limits.staffUsers != null ? `${limits.staffUsers} Staff Users` : "Unlimited Staff Users");
+
+    // Keep cards even: show a consistent set.
+    return out.slice(0, 7);
+  }
 
   return (
     <div className="aura-landing min-h-screen bg-[#f7f9fb] text-[#191c1e]">
@@ -372,118 +435,87 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-3">
-              {/* Starter */}
-              <div className="flex h-full flex-col rounded-2xl border border-[#bbc9c7] bg-white p-8 shadow-sm">
-                <div className="space-y-2 border-b border-[#e2e8f0] pb-8">
-                  <h3 className="text-xl font-bold">Starter</h3>
-                  <p className="text-sm text-[#3c4948]">
-                    Perfect for independent, single-branch pharmacies.
-                  </p>
-                  <p className="pt-4 text-4xl font-semibold">
-                    $99<span className="text-base font-normal text-[#3c4948]">/month</span>
-                  </p>
-                </div>
-                <ul className="flex flex-1 flex-col gap-4 py-8">
-                  {[
-                    "Aura Stock Basic",
-                    "Sales Tracking",
-                    "2 Staff Users",
-                  ].map((t) => (
-                    <li key={t} className="flex items-center gap-3 text-sm">
-                      <span className="material-symbols-outlined notranslate text-lg text-[#006a65]">
-                        check_circle
-                      </span>
-                      {t}
-                    </li>
-                  ))}
-                  <li className="flex items-center gap-3 text-sm opacity-50">
-                    <span className="material-symbols-outlined notranslate text-lg text-[#94a3b8]">
-                      block
-                    </span>
-                    Multi-branch Syncing
-                  </li>
-                </ul>
-                <Link
-                  href={ROUTES.auth.register}
-                  className="block w-full rounded-xl border-2 border-[#006a65] py-3.5 text-center font-bold text-[#006a65] transition hover:bg-[#006a65]/5"
-                >
-                  Choose Starter
-                </Link>
-              </div>
+            <div className="grid grid-cols-1 items-stretch gap-8 lg:grid-cols-4">
+              {orderedPlans.map((plan, index) => {
+                const prev = index > 0 ? orderedPlans[index - 1] : undefined;
+                const monthly = plan.prices.monthly;
+                const highlight = plan.code === "pro";
+                const wrapper = highlight
+                  ? "flex h-full flex-col rounded-2xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] p-8 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]"
+                  : "flex h-full flex-col rounded-2xl border border-[#bbc9c7] bg-white p-8 shadow-sm";
+                const heading = highlight ? "text-xl font-bold text-white" : "text-xl font-bold";
+                const subText = highlight ? "text-sm text-white/80" : "text-sm text-[#3c4948]";
+                const priceText = highlight
+                  ? "pt-4 font-semibold text-white text-[clamp(1.6rem,2.8vw,2.2rem)] leading-none tracking-tight whitespace-nowrap"
+                  : "pt-4 font-semibold text-[clamp(1.6rem,2.8vw,2.2rem)] leading-none tracking-tight whitespace-nowrap";
+                const divider = highlight ? "border-b border-white/20 pb-8" : "border-b border-[#e2e8f0] pb-8";
+                const listText = highlight ? "flex items-center gap-3 text-sm text-white" : "flex items-center gap-3 text-sm";
+                const checkColor = highlight ? "text-white" : "text-[#006a65]";
+                const cta = highlight
+                  ? "block w-full rounded-xl bg-white py-3 text-center font-bold text-[#006a65] shadow-lg transition hover:bg-white/95"
+                  : "block w-full rounded-xl border-2 border-[#006a65] py-3.5 text-center font-bold text-[#006a65] transition hover:bg-[#006a65]/5";
 
-              {/* Professional */}
-              <div className="relative order-first lg:order-none">
-                <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#4648d4] px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-lg">
-                  Most Popular
-                </div>
-                <div className="flex h-full flex-col rounded-2xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] p-8 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]">
-                  <div className="space-y-2 border-b border-white/20 pb-8">
-                    <h3 className="text-xl font-bold text-white">Professional</h3>
-                    <p className="text-sm text-white/80">
-                      Built for growing pharmacy networks and clinics.
-                    </p>
-                    <p className="pt-4 text-4xl font-semibold text-white">
-                      $249
-                      <span className="text-base font-normal text-white/80">/month</span>
-                    </p>
+                const bullets = buildPlanBullets(plan, prev);
+
+                return (
+                  <div key={plan.code} className={plan.code === "pro" ? "relative order-first lg:order-none" : ""}>
+                    {plan.code === "pro" ? (
+                      <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#4648d4] px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-lg">
+                        Most Popular
+                      </div>
+                    ) : null}
+                    <div className={wrapper}>
+                      <div className={`space-y-2 ${divider}`}>
+                        <h3 className={heading}>{plan.name}</h3>
+                        <p className={subText}>
+                          {plan.code === "free"
+                            ? "Start with the essentials for a single location."
+                            : plan.code === "basic"
+                              ? "Built for small teams ready to scale."
+                              : plan.code === "pro"
+                                ? "Advanced analytics for growing pharmacy networks."
+                                : "Best for large networks and custom integrations."}
+                        </p>
+                        <p className={priceText}>
+                          {monthly ? (
+                            <>
+                              {zwmFormatter.format(monthly.amountCents / 100)}
+                              <span
+                                className={
+                                  highlight
+                                    ? "ml-1 align-baseline text-base font-normal text-white/80"
+                                    : "ml-1 align-baseline text-base font-normal text-[#3c4948]"
+                                }
+                              >
+                                /month
+                              </span>
+                            </>
+                          ) : (
+                            "Custom"
+                          )}
+                        </p>
+                      </div>
+                      <ul className="flex flex-1 flex-col gap-4 py-8">
+                        {bullets.map((t) => (
+                          <li key={t} className={listText}>
+                            <span className={`material-symbols-outlined notranslate text-lg ${checkColor}`}>
+                              check_circle
+                            </span>
+                            <span className="min-w-0 break-words">{t}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <Link href={ROUTES.auth.register} className={cta}>
+                        {plan.code === "free"
+                          ? "Get Started"
+                          : plan.code === "enterprise"
+                            ? "Contact Sales"
+                            : "Choose Plan"}
+                      </Link>
+                    </div>
                   </div>
-                  <ul className="flex flex-1 flex-col gap-4 py-8">
-                    {[
-                      "Full Aura Stock + Expiry Alerts",
-                      "Advanced Aura Sales Analytics",
-                      "Integrated Aura Pay",
-                      "Multi-branch Sync (Up to 5)",
-                      "Unlimited Staff Users",
-                    ].map((t) => (
-                      <li key={t} className="flex items-center gap-3 text-sm text-white">
-                        <span className="material-symbols-outlined notranslate text-lg text-white">
-                          check_circle
-                        </span>
-                        {t}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link
-                    href={ROUTES.auth.register}
-                    className="block w-full rounded-xl bg-white py-3 text-center font-bold text-[#006a65] shadow-lg transition hover:bg-white/95"
-                  >
-                    Go Professional
-                  </Link>
-                </div>
-              </div>
-
-              {/* Enterprise */}
-              <div className="flex h-full flex-col rounded-2xl border border-[#bbc9c7] bg-white p-8 shadow-sm">
-                <div className="space-y-2 border-b border-[#e2e8f0] pb-8">
-                  <h3 className="text-xl font-bold">Enterprise</h3>
-                  <p className="text-sm text-[#3c4948]">
-                    Total visibility for national pharmacy chains.
-                  </p>
-                  <p className="pt-4 text-4xl font-semibold">Custom</p>
-                </div>
-                <ul className="flex flex-1 flex-col gap-4 py-8">
-                  {[
-                    "Unlimited Branch Syncing",
-                    "Custom API Integrations",
-                    "Dedicated Account Manager",
-                    "Aura Insights Predictive Engine",
-                  ].map((t) => (
-                    <li key={t} className="flex items-center gap-3 text-sm">
-                      <span className="material-symbols-outlined notranslate text-lg text-[#006a65]">
-                        check_circle
-                      </span>
-                      {t}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href={ROUTES.auth.register}
-                  className="block w-full rounded-xl bg-[#2d3133] py-3 text-center font-bold text-[#eff1f3] transition hover:bg-[#1a1d1f]"
-                >
-                  Contact Sales
-                </Link>
-              </div>
+                );
+              })}
             </div>
 
             <p className="flex flex-wrap items-center justify-center gap-2 text-center text-sm text-[#3c4948]">

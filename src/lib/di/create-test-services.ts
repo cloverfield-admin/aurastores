@@ -18,7 +18,10 @@ import type { StaffRepository } from "@/lib/repositories/staff/staff.repository"
 import { staffRepository } from "@/lib/repositories/staff/staff.repository.impl";
 import type { StockRepository } from "@/lib/repositories/stock/stock.repository";
 import { stockRepository } from "@/lib/repositories/stock/stock.repository.impl";
+import type { BillingRepository } from "@/lib/repositories/billing/billing.repository";
+import { billingRepository } from "@/lib/repositories/billing/billing.repository.impl";
 import { AuthService } from "@/lib/services/auth/auth.service";
+import { BillingService } from "@/lib/services/billing/billing.service";
 import { NetworkService } from "@/lib/services/network/network.service";
 import { OnboardingService } from "@/lib/services/onboarding/onboarding.service";
 import { ProductCategoriesService } from "@/lib/services/product-categories/product-categories.service";
@@ -31,6 +34,7 @@ import type { AppServices } from "@/lib/di/services";
 /** Builds services with optional repository overrides; uses production impl singletons for the rest (requires env e.g. DATABASE_URL when loaded). */
 export type TestServiceOverrides = Partial<{
   auth: AuthRepository;
+  billing: BillingRepository;
   avatarStorage: AvatarStorageRepository;
   stock: StockRepository;
   sales: SalesRepository;
@@ -44,6 +48,7 @@ export type TestServiceOverrides = Partial<{
 
 export function createTestServices(overrides: TestServiceOverrides = {}): AppServices {
   const auth = overrides.auth ?? authRepository;
+  const billing = overrides.billing ?? billingRepository;
   const avatarStorage = overrides.avatarStorage ?? avatarStorageRepository;
   const stock = overrides.stock ?? stockRepository;
   const sales = overrides.sales ?? salesRepository;
@@ -56,6 +61,7 @@ export function createTestServices(overrides: TestServiceOverrides = {}): AppSer
 
   return {
     auth: new AuthService({ auth, avatarStorage }),
+    billing: new BillingService({ billing }),
     stock: new StockService({ stock }),
     sales: new SalesService({ sales }),
     onboarding: new OnboardingService({ onboarding, documentStorage }),

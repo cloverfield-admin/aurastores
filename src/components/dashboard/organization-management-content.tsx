@@ -4,12 +4,15 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
+import { LockedCapabilityTease } from "@/components/dashboard/locked-capability-tease";
 import {
   useOrganizationOverviewQuery,
   usePatchOrganizationSettingsMutation,
 } from "@/lib/queries/organization";
+import { useAppMeQuery } from "@/lib/queries/staff";
 import { ROUTES } from "@/lib/routes";
 import { hasCapability } from "@/lib/rbac/capabilities";
+import { isOrganizationOwnerOrAdmin } from "@/lib/membership-display";
 
 /** Serializable org fields passed from the server page (avoids client flash). */
 export type OrganizationPageSnapshot = {
@@ -63,6 +66,8 @@ const TAB_LABELS: Record<OrgTabId, string> = {
 export function OrganizationManagementContent({ organization }: { organization: OrganizationPageSnapshot }) {
   const workspace = useDashboardWorkspaceAccess();
   const canManageOrg = hasCapability(workspace.capabilities, "organization");
+  const locked = !canManageOrg;
+  const meQuery = useAppMeQuery();
   const branchesQuery = useOrganizationOverviewQuery({ enabled: canManageOrg });
   const [branchSearch, setBranchSearch] = useState("");
   const [activeTab, setActiveTab] = useState<OrgTabId>("overview");
@@ -158,28 +163,10 @@ export function OrganizationManagementContent({ organization }: { organization: 
 
   const hq = hqSummary(organization);
 
-  if (!canManageOrg) {
-    return (
-      <div className="px-4 pb-16 pt-5 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-[1280px] space-y-8">
-          <div className="space-y-2">
-            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[var(--app-text)] sm:text-4xl">
-              Organization
-            </h1>
-            <p className="max-w-2xl text-base leading-relaxed text-[var(--app-text-secondary)]">
-              Branches, licensing, onboarding, and other organization-wide controls will appear here.
-            </p>
-          </div>
-          <MissingCapabilityNotice capability="organization" />
-        </div>
-      </div>
-    );
-  }
-
   const taxRatePercent = (salesTax.rateBps / 100).toFixed(2).replace(/\.00$/, "");
   const effectiveTaxDraft = taxRateDraftPct !== "" ? taxRateDraftPct : taxRatePercent;
 
-  return (
+  const content = (
     <div className="px-4 pb-16 pt-5 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1280px] space-y-10">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -567,17 +554,100 @@ export function OrganizationManagementContent({ organization }: { organization: 
               Manage your plan, invoices, and billing details.
             </p>
 
-            <div className="mt-6 rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-input-bg)] p-4">
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-[var(--app-text)]">Subscriptions</p>
-                <p className="text-xs text-[var(--app-text-muted)]">
-                  Billing portal is disabled in this app (Stripe removed).
+            <div className="mt-6 grid gap-4 lg:grid-cols-3">
+              <div className="rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-input-bg)] p-4 lg:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--app-text-faint)]">
+                  Current plan
                 </p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <p className="font-[family-name:var(--font-manrope)] text-xl font-extrabold text-[var(--app-text)]">
+                    {meQuery.isLoading
+                      ? "Loading…"
+                      : (meQuery.data?.subscription?.planCode ?? "free").toUpperCase()}
+                  </p>
+                  <span className="rounded-full bg-[var(--app-surface)] px-2 py-1 text-[11px] font-semibold text-[var(--app-text-muted)]">
+                    {meQuery.data?.subscription?.interval ?? "monthly"}
+                  </span>
+                  <span className="rounded-full bg-[#f0fdfa] px-2 py-1 text-[11px] font-semibold text-[var(--app-link-teal)]">
+                    {meQuery.data?.subscription?.status ?? "active"}
+                  </span>
+                </div>
+                {meQuery.data?.subscription?.scheduledPlanCode ? (
+                  <p className="mt-2 text-sm text-[var(--app-text-muted)]">
+                    Scheduled change:{" "}
+                    <span className="font-semibold text-[var(--app-text)]">
+                      {meQuery.data.subscription.scheduledPlanCode.toUpperCase()}
+                    </span>
+                  </p>
+                ) : null}
+                <p className="mt-3 text-sm text-[var(--app-text-muted)]">
+                  Upgrade anytime to unlock more limits and modules.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  {isOrganizationOwnerOrAdmin(workspace.membershipRole) ? (
+                    <Link
+                      href={ROUTES.billingPortal}
+                      prefetch={false}
+                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-95"
+                    >
+                      <span className="material-symbols-outlined notranslate text-base">upgrade</span>
+                      View plans
+                    </Link>
+                  ) : null}
+                  <Link
+                    href={ROUTES.billingPortal}
+                    prefetch={false}
+                    className="inline-flex items-center gap-2 rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] px-4 py-2 text-sm font-semibold text-[var(--app-text)] shadow-sm transition hover:bg-[var(--app-input-bg)]"
+                  >
+                    <span className="material-symbols-outlined notranslate text-base">credit_card</span>
+                    Open billing portal
+                  </Link>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-input-bg)] p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--app-text-faint)]">
+                  Plan limits
+                </p>
+                <div className="mt-3 space-y-2 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[var(--app-text-muted)]">Products</span>
+                    <span className="font-semibold text-[var(--app-text)]">
+                      {meQuery.data?.usage?.products ?? "—"} / {meQuery.data?.entitlements?.limits?.products ?? "∞"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[var(--app-text-muted)]">Categories</span>
+                    <span className="font-semibold text-[var(--app-text)]">
+                      {meQuery.data?.usage?.categories ?? "—"} / {meQuery.data?.entitlements?.limits?.categories ?? "∞"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[var(--app-text-muted)]">Sales</span>
+                    <span className="font-semibold text-[var(--app-text)]">
+                      {meQuery.data?.usage?.salesTransactions ?? "—"} /{" "}
+                      {meQuery.data?.entitlements?.limits?.salesTransactions ?? "∞"}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
         ) : null}
       </div>
     </div>
+  );
+
+  if (!locked) {
+    return content;
+  }
+
+  return (
+    <LockedCapabilityTease capability="organization">
+      <div className="mx-auto max-w-[1280px] space-y-6 px-4 pb-2 pt-4 sm:px-6 lg:px-8">
+        <MissingCapabilityNotice capability="organization" variant="inline" className="max-w-3xl" />
+      </div>
+      {content}
+    </LockedCapabilityTease>
   );
 }

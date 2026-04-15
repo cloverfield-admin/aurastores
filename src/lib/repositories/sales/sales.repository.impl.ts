@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   branches,
@@ -13,6 +13,7 @@ import {
 } from "@/lib/db/schema";
 import type { CreateSaleInput } from "@/lib/validation/sales";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
+import { assertWithinLimit } from "@/lib/billing/entitlements";
 import { filterBranchesForContext } from "@/lib/rbac/branch-access";
 import type {
   SalesCatalogData,
@@ -682,6 +683,19 @@ export class SalesRepositoryImpl implements SalesRepository {
       const discountCents = 0;
       const totalCents = subtotalCents + taxCents - discountCents;
       const saleNumber = buildSaleNumber();
+
+      if (input.status === "completed") {
+        const [{ value: completedCount }] = await tx
+          .select({ value: count() })
+          .from(sales)
+          .where(and(eq(sales.organizationId, context.organization.id), eq(sales.status, "completed")));
+
+        assertWithinLimit({
+          kind: "salesTransactions",
+          current: completedCount,
+          limit: context.entitlements.limits.salesTransactions,
+        });
+      }
 
       const [sale] = await tx
         .insert(sales)

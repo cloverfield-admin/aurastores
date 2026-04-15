@@ -276,12 +276,14 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
   useEffect(() => {
     if (variant !== "edit") return;
     const m = props.initialMember;
-    setFullName(m.fullName);
-    setPhone(m.phone ?? "");
-    setBranchIds(m.branchIds);
-    setAppRole(m.appRole as StaffFormAppRole);
-    setAccessLevels({ ...m.capabilities });
-    setEmail(m.email);
+    queueMicrotask(() => {
+      setFullName(m.fullName);
+      setPhone(m.phone ?? "");
+      setBranchIds(m.branchIds);
+      setAppRole(m.appRole as StaffFormAppRole);
+      setAccessLevels({ ...m.capabilities });
+      setEmail(m.email);
+    });
   }, [variant, membershipId]);
 
   useEffect(() => {

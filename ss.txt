@@ -1,0 +1,49 @@
+Lets plan on implementing a subscription model for Aura.
+
+We will use the following plans:
+
+- Free Plan
+- Basic Plan
+- Pro Plan
+- Enterprise Plan
+
+The Free Plan will be free for all users.
+The Basic Plan will be ZMW300/month.
+The Pro Plan will be ZMW500/month.
+The Enterprise Plan will be ZMW1000/month.
+
+# Plan Features
+-> Free Plan Features
+- Aura Stock Free (Up to 20 Products)
+- Sales Tracking (Up to 50 Sales Transactions)
+- Product Categories (Up to 20 categories)
+- 1 User
+- Single Branch Syncing
+
+-> Basic Plan Features
+- Aura Stock
+- Sales Tracking
+- Product Categories (Up to 20 categories)
+- 5 Staff Users
+- Multi-branch Syncing (Up to 5 branches)
+
+-> Pro Plan Features
+- All Basic Plan Features
+- Aura Insights
+- Multi-branch Syncing (Up to 15 branches)
+- 15 Staff Users
+- Unlimited Product Categories
+
+-> Enterprise Plan Features
+- All Pro Plan Features
+- Aura Pay (Accept Mobile Money Payments)
+- Multi-branch Syncing (Unlimited branches)
+- Unlimited Staff Users
+
+I want to be able to alter the pricing of the plans at any time.
+I also want to update the pricing plans on the landing page.
+I want users to be able to upgrade and downgrade their plan at any time.
+I want users to subscribe monthly, quarterly, and yearly.
+
+create a new role aurapharma_admin.
+This role will have all rights and the ability to manage the subscription plans and pricing.

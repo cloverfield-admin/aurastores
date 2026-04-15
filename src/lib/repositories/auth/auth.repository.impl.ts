@@ -7,6 +7,9 @@ import {
   organizationMemberships,
   organizationOnboarding,
   organizations,
+  organizationSubscriptions,
+  subscriptionPlanFeatures,
+  subscriptionPlans,
   users,
 } from "@/lib/db/schema";
 import { ROUTES } from "@/lib/routes";
@@ -14,6 +17,7 @@ import { uniqueSlug } from "@/lib/utils/slug";
 import { DEFAULT_USER_PREFERENCES } from "@/lib/validation/me";
 import type { UserPreferences } from "@/lib/db/schema";
 import type { AuthContext, AuthRepository, RegisteredUserParams } from "@/lib/repositories/auth/auth.repository";
+import { capabilitiesFromPlan, intersectCapabilities } from "@/lib/billing/entitlements";
 import { resolveAllowedBranchIdsFromAssignments } from "@/lib/rbac/branch-access";
 import {
   fullCapabilities,
@@ -50,6 +54,88 @@ function buildAuthContextSlice(
   return {
     capabilities: normalizeStoredCapabilities(membership.capabilities, membership.role),
     allowedBranchIds,
+  };
+}
+
+async function loadSubscriptionSlice(
+  organizationId: string,
+): Promise<Pick<AuthContext, "entitlements" | "subscription">> {
+  const base = await db
+    .select({
+      planId: subscriptionPlans.id,
+      planCode: subscriptionPlans.code,
+      interval: organizationSubscriptions.interval,
+      status: organizationSubscriptions.status,
+      currentPeriodStart: organizationSubscriptions.currentPeriodStart,
+      currentPeriodEnd: organizationSubscriptions.currentPeriodEnd,
+      cancelAtPeriodEnd: organizationSubscriptions.cancelAtPeriodEnd,
+      scheduledPlanId: organizationSubscriptions.scheduledPlanId,
+      entitlements: subscriptionPlanFeatures.features,
+    })
+    .from(organizationSubscriptions)
+    .innerJoin(subscriptionPlans, eq(subscriptionPlans.id, organizationSubscriptions.planId))
+    .innerJoin(subscriptionPlanFeatures, eq(subscriptionPlanFeatures.planId, subscriptionPlans.id))
+    .where(eq(organizationSubscriptions.organizationId, organizationId))
+    .limit(1)
+    .then((rows) => rows[0] ?? null);
+
+  if (!base) {
+    // If backfill hasn't run yet (or tests), fall back to free plan entitlements if present.
+    const free = await db
+      .select({
+        planCode: subscriptionPlans.code,
+        entitlements: subscriptionPlanFeatures.features,
+      })
+      .from(subscriptionPlans)
+      .innerJoin(subscriptionPlanFeatures, eq(subscriptionPlanFeatures.planId, subscriptionPlans.id))
+      .where(eq(subscriptionPlans.code, "free"))
+      .limit(1)
+      .then((rows) => rows[0] ?? null);
+
+    return {
+      entitlements:
+        free?.entitlements ??
+        ({
+          capabilities: {
+            stock: true,
+            sales: true,
+            catalog: true,
+            insights: false,
+            pay: false,
+            staff: false,
+            organization: true,
+          },
+          limits: {
+            products: 20,
+            salesTransactions: 50,
+            categories: 20,
+            staffUsers: 1,
+            branches: 1,
+          },
+        } as const),
+      subscription: null,
+    };
+  }
+
+  const scheduledPlanId =
+    typeof base.scheduledPlanId === "string" && base.scheduledPlanId.trim().length > 0
+      ? base.scheduledPlanId
+      : null;
+  const scheduledPlan = scheduledPlanId
+    ? await db.query.subscriptionPlans.findFirst({ where: eq(subscriptionPlans.id, scheduledPlanId) })
+    : null;
+
+  return {
+    entitlements: base.entitlements,
+    subscription: {
+      planCode: base.planCode,
+      interval: base.interval,
+      status: base.status,
+      currentPeriodStart: base.currentPeriodStart,
+      currentPeriodEnd: base.currentPeriodEnd ?? null,
+      cancelAtPeriodEnd: base.cancelAtPeriodEnd,
+      scheduledPlanCode: scheduledPlan?.code ?? null,
+    },
   };
 }
 
@@ -128,12 +214,25 @@ export class AuthRepositoryImpl implements AuthRepository {
       allowedBranchIds = orgBranchRows.length === 1 ? [orgBranchRows[0]!.id] : [];
     }
 
-    return {
+    const subscriptionSlice = await loadSubscriptionSlice(organization.id);
+    const planCapabilities = capabilitiesFromPlan(subscriptionSlice.entitlements);
+    const baseContext = {
       user,
       membership,
       organization,
       onboarding: onboarding ?? null,
       ...buildAuthContextSlice(membership, allowedBranchIds),
+      ...subscriptionSlice,
+    } satisfies Omit<AuthContext, "capabilities"> & { capabilities: AuthContext["capabilities"] };
+
+    const isBypassRole = membership.role === "aurapharma_admin";
+    const effectiveCapabilities = isBypassRole
+      ? fullCapabilities()
+      : intersectCapabilities(baseContext.capabilities, planCapabilities);
+
+    return {
+      ...baseContext,
+      capabilities: effectiveCapabilities,
     };
   }
 
@@ -163,6 +262,24 @@ export class AuthRepositoryImpl implements AuthRepository {
           primaryEmail: params.email,
         })
         .returning();
+
+      const freePlan = await tx.query.subscriptionPlans.findFirst({
+        where: eq(subscriptionPlans.code, "free"),
+      });
+      if (freePlan) {
+        await tx.insert(organizationSubscriptions).values({
+          organizationId: organization.id,
+          planId: freePlan.id,
+          interval: "monthly",
+          status: "active",
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: null,
+          cancelAtPeriodEnd: false,
+          scheduledPlanId: null,
+          updatedAt: new Date(),
+          createdAt: new Date(),
+        });
+      }
 
       const [membership] = await tx
         .insert(organizationMemberships)
@@ -194,6 +311,25 @@ export class AuthRepositoryImpl implements AuthRepository {
         organization,
         onboarding,
         ...buildAuthContextSlice(membership, []),
+        entitlements: {
+          capabilities: {
+            stock: true,
+            sales: true,
+            catalog: true,
+            insights: false,
+            pay: false,
+            staff: false,
+            organization: true,
+          },
+          limits: {
+            products: 20,
+            salesTransactions: 50,
+            categories: 20,
+            staffUsers: 1,
+            branches: 1,
+          },
+        },
+        subscription: null,
       };
     });
   }

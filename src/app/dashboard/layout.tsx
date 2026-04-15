@@ -38,6 +38,7 @@ export default async function DashboardLayout({
         allowedBranchIds: appContext.allowedBranchIds,
         accessibleBranches: await loadAccessibleBranchTabs(appContext),
         userDisplayName: appContext.user.fullName?.trim() || appContext.user.email || "User",
+        membershipRole: appContext.membership.role,
         membershipRoleLabel: formatMembershipRole(appContext.membership.role),
         userAvatarUrl: appContext.user.avatarStorageKey
           ? getUserAvatarPublicUrl(appContext.user.avatarStorageKey)
@@ -49,6 +50,7 @@ export default async function DashboardLayout({
         allowedBranchIds: [],
         accessibleBranches: [],
         userDisplayName: user.email ?? "User",
+        membershipRole: "",
         membershipRoleLabel: "—",
         userAvatarUrl: null,
         initialTheme,

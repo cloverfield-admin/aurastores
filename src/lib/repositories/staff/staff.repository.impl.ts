@@ -9,6 +9,7 @@ import {
   users,
 } from "@/lib/db/schema";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
+import { assertWithinLimit } from "@/lib/billing/entitlements";
 import {
   STAFF_CREDENTIAL_METADATA_KIND,
   type AddStaffByEmailInput,
@@ -40,6 +41,24 @@ function sqlCountToNumber(value: unknown): number {
 }
 
 export class StaffRepositoryImpl implements StaffRepository {
+  private async assertStaffUserLimit(context: AuthContext) {
+    const [{ value: memberCount }] = await db
+      .select({ value: count() })
+      .from(organizationMemberships)
+      .where(
+        and(
+          eq(organizationMemberships.organizationId, context.organization.id),
+          ne(organizationMemberships.status, "removed"),
+        ),
+      );
+
+    assertWithinLimit({
+      kind: "staffUsers",
+      current: memberCount,
+      limit: context.entitlements.limits.staffUsers,
+    });
+  }
+
   async listDirectory(
     context: AuthContext,
     options?: { q?: string; page?: number; pageSize?: number },
@@ -249,6 +268,7 @@ export class StaffRepositoryImpl implements StaffRepository {
     }
 
     if (existing?.status === "removed") {
+      await this.assertStaffUserLimit(context);
       return await db.transaction(async (tx) => {
         let staffEmployeeCode = existing.staffEmployeeCode;
         if (!staffEmployeeCode) {
@@ -285,6 +305,7 @@ export class StaffRepositoryImpl implements StaffRepository {
       });
     }
 
+    await this.assertStaffUserLimit(context);
     return await db.transaction(async (tx) => {
       const staffEmployeeCode = await this.allocateNextStaffEmployeeCode(tx, context.organization.id);
 
@@ -417,6 +438,7 @@ export class StaffRepositoryImpl implements StaffRepository {
   }
 
   async createStaffInvitation(context: AuthContext, input: AddStaffByEmailInput): Promise<string> {
+    await this.assertStaffUserLimit(context);
     const emailLower = input.email.trim().toLowerCase();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 14);

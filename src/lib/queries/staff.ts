@@ -84,6 +84,27 @@ export type AppMeResponse = {
   role: string;
   fullName: string;
   phone: string | null;
+  entitlements?: {
+    limits?: {
+      products?: number | null;
+      categories?: number | null;
+      salesTransactions?: number | null;
+    };
+  };
+  usage?: {
+    products: number;
+    categories: number;
+    salesTransactions: number;
+  };
+  subscription?: {
+    planCode: "free" | "basic" | "pro" | "enterprise";
+    interval: "monthly" | "quarterly" | "yearly";
+    status: "active" | "past_due" | "canceled" | "pending_payment";
+    currentPeriodStart: string | Date;
+    currentPeriodEnd: string | Date | null;
+    cancelAtPeriodEnd: boolean;
+    scheduledPlanCode: "free" | "basic" | "pro" | "enterprise" | null;
+  } | null;
 };
 
 export function useAppMeQuery() {

@@ -5,7 +5,10 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
+import { LockedCapabilityTease } from "@/components/dashboard/locked-capability-tease";
+import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { type SalesDateRangeInput, useSalesDashboardQuery, useSalesRecentSalesQuery } from "@/lib/queries/sales";
+import { useAppMeQuery } from "@/lib/queries/staff";
 import { ROUTES } from "@/lib/routes";
 import { hasCapability } from "@/lib/rbac/capabilities";
 
@@ -197,6 +200,9 @@ export function SalesPerformanceContent() {
   const searchParams = useSearchParams();
   const workspace = useDashboardWorkspaceAccess();
   const canSales = hasCapability(workspace.capabilities, "sales");
+  const locked = !canSales;
+  const { notify } = useAuraFeedback();
+  const meQuery = useAppMeQuery();
   const branch = searchParams.get("branch") ?? undefined;
   const addSaleHref = branch ? `${ROUTES.dashboard.salesAdd}?branch=${branch}` : ROUTES.dashboard.salesAdd;
 
@@ -245,6 +251,10 @@ export function SalesPerformanceContent() {
 
   const salesDashboardQuery = useSalesDashboardQuery(branch, canSales, range);
   const salesRecentQuery = useSalesRecentSalesQuery(branch, canSales);
+
+  const salesLimit = meQuery.data?.entitlements?.limits?.salesTransactions ?? null;
+  const salesUsage = meQuery.data?.usage?.salesTransactions ?? null;
+  const isSalesLimitReached = salesLimit != null && salesUsage != null && salesUsage >= salesLimit;
 
   const downloadExport = async (format: "csv" | "xlsx" | "pdf") => {
     setExportingFormat(format);
@@ -342,25 +352,7 @@ export function SalesPerformanceContent() {
       ? ((metrics.unitsSoldLast30Days - previousUnitsSoldLast30Days) / previousUnitsSoldLast30Days) * 100
       : 0;
 
-  if (!canSales) {
-    return (
-      <div className="relative px-4 pb-24 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-[1280px] space-y-8">
-          <div className="space-y-1">
-            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[var(--app-text)] sm:text-4xl">
-              Monthly Sales Performance
-            </h1>
-            <p className="max-w-xl text-base text-[var(--app-text-secondary)]">
-              Real-time clinical intelligence and financial tracking for the current branch.
-            </p>
-          </div>
-          <MissingCapabilityNotice capability="sales" />
-        </div>
-      </div>
-    );
-  }
-
-  return (
+  const content = (
     <div className="relative px-4 pb-24 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1280px] space-y-10">
         {/* Page header */}
@@ -375,13 +367,39 @@ export function SalesPerformanceContent() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link
-              href={addSaleHref}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-5 py-2.5 text-base font-semibold text-white shadow-sm transition hover:opacity-95"
-            >
-              <span className="material-symbols-outlined notranslate text-lg">add_shopping_cart</span>
-              Add Sale
-            </Link>
+            {isSalesLimitReached ? (
+              <button
+                type="button"
+                aria-disabled="true"
+                title={
+                  salesLimit != null
+                    ? `Plan limit reached: ${salesUsage ?? 0}/${salesLimit} sales transactions. Upgrade to add more.`
+                    : "Plan limit reached. Upgrade to add more."
+                }
+                onClick={() => {
+                  notify({
+                    variant: "info",
+                    title: "Sales limit reached",
+                    description:
+                      salesLimit != null
+                        ? `You’re at ${salesUsage ?? 0}/${salesLimit} sales transactions. Upgrade to add more.`
+                        : "You’ve reached your sales limit. Upgrade to add more.",
+                  });
+                }}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-5 py-2.5 text-base font-semibold text-white opacity-50"
+              >
+                <span className="material-symbols-outlined notranslate text-lg">lock</span>
+                Add Sale
+              </button>
+            ) : (
+              <Link
+                href={addSaleHref}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-5 py-2.5 text-base font-semibold text-white shadow-sm transition hover:opacity-95"
+              >
+                <span className="material-symbols-outlined notranslate text-lg">add_shopping_cart</span>
+                Add Sale
+              </Link>
+            )}
             <div className="relative">
               <button
                 type="button"
@@ -869,5 +887,18 @@ export function SalesPerformanceContent() {
         </footer>
       </div>
     </div>
+  );
+
+  if (!locked) {
+    return content;
+  }
+
+  return (
+    <LockedCapabilityTease capability="sales">
+      <div className="mx-auto max-w-[1280px] space-y-6 px-4 pb-2 pt-4 sm:px-6 lg:px-8">
+        <MissingCapabilityNotice capability="sales" variant="inline" className="max-w-3xl" />
+      </div>
+      {content}
+    </LockedCapabilityTease>
   );
 }

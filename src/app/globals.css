@@ -115,6 +115,16 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 /* AuraPharma marketing page (Figma: Manrope headings, Inter body) */
 .aura-landing {
   font-family: var(--font-inter), system-ui, sans-serif;

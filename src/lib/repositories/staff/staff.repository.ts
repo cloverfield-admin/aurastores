@@ -14,7 +14,14 @@ export type StaffDirectoryMember = {
   branchName: string | null;
 };
 
-export type StaffAppRole = "owner" | "admin" | "manager" | "pharmacist" | "cashier" | "analyst";
+export type StaffAppRole =
+  | "owner"
+  | "admin"
+  | "aurapharma_admin"
+  | "manager"
+  | "pharmacist"
+  | "cashier"
+  | "analyst";
 
 export type AddStaffByEmailInput = {
   email: string;

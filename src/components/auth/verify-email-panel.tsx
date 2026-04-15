@@ -27,7 +27,7 @@ export function VerifyEmailPanel() {
   useEffect(() => {
     const fromQuery = searchParams.get("email")?.trim();
     if (fromQuery) {
-      setEmail(fromQuery);
+      queueMicrotask(() => setEmail(fromQuery));
     }
   }, [searchParams]);
 

@@ -5,9 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
+import { LockedCapabilityTease } from "@/components/dashboard/locked-capability-tease";
 import { OutboxFeatureStatus } from "@/components/outbox/outbox-detail-dialog";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { isOfflineQueuedError } from "@/lib/offline/offline-queued-error";
+import { useAppMeQuery } from "@/lib/queries/staff";
 import { ROUTES } from "@/lib/routes";
 import { hasCapability } from "@/lib/rbac/capabilities";
 import {
@@ -127,12 +129,14 @@ const StockAdjustDialog = memo(function StockAdjustDialog({
 
   useEffect(() => {
     if (open) {
-      setQuantityInput("1");
+      queueMicrotask(() => setQuantityInput("1"));
     } else {
-      setQuantityInput("1");
-      setNote("");
-      setError(null);
-      setSuccessMessage(null);
+      queueMicrotask(() => {
+        setQuantityInput("1");
+        setNote("");
+        setError(null);
+        setSuccessMessage(null);
+      });
     }
   }, [open]);
 
@@ -262,7 +266,9 @@ export function StockInventoryContent() {
   const searchParams = useSearchParams();
   const workspace = useDashboardWorkspaceAccess();
   const canStock = hasCapability(workspace.capabilities, "stock");
+  const locked = !canStock;
   const { withLoading, notify } = useAuraFeedback();
+  const meQuery = useAppMeQuery();
   const [selectedBatchIds, setSelectedBatchIds] = useState<string[]>([]);
   const [optimisticAdjustments, setOptimisticAdjustments] = useState<
     Record<string, { quantityAvailable: number; status: StockDashboardResponse["inventory"][number]["status"] }>
@@ -328,11 +334,13 @@ export function StockInventoryContent() {
     selectableRowIds.length > 0 && selectableRowIds.every((rowId) => selectedBatchIds.includes(rowId));
 
   useEffect(() => {
-    setSelectedBatchIds((current) => current.filter((batchId) => rowById.has(batchId)));
+    queueMicrotask(() => {
+      setSelectedBatchIds((current) => current.filter((batchId) => rowById.has(batchId)));
+    });
   }, [rowById]);
 
   useEffect(() => {
-    setOptimisticAdjustments({});
+    queueMicrotask(() => setOptimisticAdjustments({}));
   }, [stockQuery.data?.lastSyncedAt]);
 
   useEffect(() => {
@@ -356,7 +364,7 @@ export function StockInventoryContent() {
       params.delete("page");
       router.replace(params.toString() ? `${window.location.pathname}?${params}` : window.location.pathname);
     },
-    [router],
+    [router, setPage],
   );
 
   const metrics = stockQuery.data?.metrics ?? {
@@ -375,6 +383,11 @@ export function StockInventoryContent() {
   const stockExpiringHref = branchId
     ? `${ROUTES.dashboard.stockExpiring}?branch=${encodeURIComponent(branchId)}`
     : ROUTES.dashboard.stockExpiring;
+
+  const productLimit = meQuery.data?.entitlements?.limits?.products ?? null;
+  const productUsage = meQuery.data?.usage?.products ?? null;
+  const isProductLimitReached =
+    productLimit != null && productUsage != null && productUsage >= productLimit;
 
   const metricCards = [
     {
@@ -462,25 +475,7 @@ export function StockInventoryContent() {
     });
   }
 
-  if (!canStock) {
-    return (
-      <div className="relative px-4 pb-24 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-[1280px] space-y-8">
-          <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--app-brand)]">Inventory Management</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[var(--app-text)] sm:text-4xl">
-                Stock Inventory
-              </h1>
-            </div>
-          </div>
-          <MissingCapabilityNotice capability="stock" />
-        </div>
-      </div>
-    );
-  }
-
-  return (
+  const content = (
     <div className="relative px-4 pb-24 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1280px] space-y-10">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
@@ -558,20 +553,72 @@ export function StockInventoryContent() {
               <span className="material-symbols-outlined notranslate text-lg">sync</span>
               Refresh Inventory
             </button>
-            <Link
-              href={ROUTES.dashboard.stockBulkAdd}
-              className="inline-flex items-center gap-2 rounded-xl bg-[var(--app-surface)] px-5 py-2.5 text-base font-semibold text-[var(--app-text)] shadow-sm ring-1 ring-[rgba(187,201,199,0.25)] transition hover:bg-[var(--app-surface-muted)]"
-            >
-              <span className="material-symbols-outlined notranslate text-lg">playlist_add</span>
-              Bulk Add
-            </Link>
-            <Link
-              href={ROUTES.dashboard.stockAdd}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-5 py-2.5 text-base font-semibold text-white shadow-sm transition hover:opacity-95"
-            >
-              <span className="material-symbols-outlined notranslate text-lg">add</span>
-              Add New Product
-            </Link>
+            {isProductLimitReached ? (
+              <button
+                type="button"
+                aria-disabled="true"
+                title={
+                  productLimit != null
+                    ? `Plan limit reached: ${productUsage ?? 0}/${productLimit} products. Upgrade to add more.`
+                    : "Plan limit reached. Upgrade to add more."
+                }
+                onClick={() => {
+                  notify({
+                    variant: "info",
+                    title: "Product limit reached",
+                    description:
+                      productLimit != null
+                        ? `You’re at ${productUsage ?? 0}/${productLimit} products. Upgrade to add more.`
+                        : "You’ve reached your product limit. Upgrade to add more.",
+                  });
+                }}
+                className="inline-flex items-center gap-2 rounded-xl bg-[var(--app-surface)] px-5 py-2.5 text-base font-semibold text-[var(--app-text)] shadow-sm ring-1 ring-[rgba(187,201,199,0.25)] opacity-60"
+              >
+                <span className="material-symbols-outlined notranslate text-lg">lock</span>
+                Bulk Add
+              </button>
+            ) : (
+              <Link
+                href={ROUTES.dashboard.stockBulkAdd}
+                className="inline-flex items-center gap-2 rounded-xl bg-[var(--app-surface)] px-5 py-2.5 text-base font-semibold text-[var(--app-text)] shadow-sm ring-1 ring-[rgba(187,201,199,0.25)] transition hover:bg-[var(--app-surface-muted)]"
+              >
+                <span className="material-symbols-outlined notranslate text-lg">playlist_add</span>
+                Bulk Add
+              </Link>
+            )}
+            {isProductLimitReached ? (
+              <button
+                type="button"
+                aria-disabled="true"
+                title={
+                  productLimit != null
+                    ? `Plan limit reached: ${productUsage ?? 0}/${productLimit} products. Upgrade to add more.`
+                    : "Plan limit reached. Upgrade to add more."
+                }
+                onClick={() => {
+                  notify({
+                    variant: "info",
+                    title: "Product limit reached",
+                    description:
+                      productLimit != null
+                        ? `You’re at ${productUsage ?? 0}/${productLimit} products. Upgrade to add more.`
+                        : "You’ve reached your product limit. Upgrade to add more.",
+                  });
+                }}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-5 py-2.5 text-base font-semibold text-white opacity-50"
+              >
+                <span className="material-symbols-outlined notranslate text-lg">lock</span>
+                Add New Product
+              </button>
+            ) : (
+              <Link
+                href={ROUTES.dashboard.stockAdd}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-5 py-2.5 text-base font-semibold text-white shadow-sm transition hover:opacity-95"
+              >
+                <span className="material-symbols-outlined notranslate text-lg">add</span>
+                Add New Product
+              </Link>
+            )}
           </div>
         </div>
 
@@ -1193,5 +1240,18 @@ export function StockInventoryContent() {
         }}
       />
     </div>
+  );
+
+  if (!locked) {
+    return content;
+  }
+
+  return (
+    <LockedCapabilityTease capability="stock">
+      <div className="mx-auto max-w-[1280px] space-y-8 px-4 pb-6 pt-4 sm:px-6 lg:px-8">
+        <MissingCapabilityNotice capability="stock" variant="inline" className="max-w-3xl" />
+      </div>
+      {content}
+    </LockedCapabilityTease>
   );
 }

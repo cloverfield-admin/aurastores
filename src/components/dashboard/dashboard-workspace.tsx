@@ -11,6 +11,8 @@ export type DashboardWorkspaceAccess = {
   /** Branches the user may see in the shell and home overview (RBAC-scoped). */
   accessibleBranches: WorkspaceBranchTab[];
   userDisplayName: string;
+  /** Raw membership role from the server (e.g. `owner`, `admin`, `pharmacist`). */
+  membershipRole: string;
   membershipRoleLabel: string;
   /** Public URL for profile photo when `users.avatar_storage_key` is set; otherwise null. */
   userAvatarUrl: string | null;

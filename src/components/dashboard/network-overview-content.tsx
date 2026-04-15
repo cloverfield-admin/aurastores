@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
+import { LockedCapabilityTease } from "@/components/dashboard/locked-capability-tease";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
 import { useNetworkDashboardQuery } from "@/lib/queries/network";
@@ -27,6 +28,7 @@ export function NetworkOverviewContent() {
   const { withLoading, notify } = useAuraFeedback();
   const workspace = useDashboardWorkspaceAccess();
   const canInsights = hasCapability(workspace.capabilities, "insights");
+  const locked = !canInsights;
   const networkQuery = useNetworkDashboardQuery({ enabled: canInsights });
   const data = networkQuery.data;
   const totals = data?.totals;
@@ -48,25 +50,7 @@ export function NetworkOverviewContent() {
       ? Math.max(0, totals.activeStaffCount - data.staffPreviewNames.length)
       : 0;
 
-  if (!canInsights) {
-    return (
-      <div className="px-4 pb-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-[1280px] space-y-8">
-          <div className="space-y-2">
-            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[var(--app-text)] sm:text-4xl sm:tracking-[-0.025em]">
-              Network Overview
-            </h1>
-            <p className="max-w-xl text-base leading-relaxed text-[var(--app-text-secondary)]">
-              Real-time clinical and operational pulse across all active branches.
-            </p>
-          </div>
-          <MissingCapabilityNotice capability="insights" />
-        </div>
-      </div>
-    );
-  }
-
-  return (
+  const content = (
     <div className="px-4 pb-16 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1280px] space-y-10">
         {/* Page header */}
@@ -322,6 +306,19 @@ export function NetworkOverviewContent() {
         </footer>
       </div>
     </div>
+  );
+
+  if (!locked) {
+    return content;
+  }
+
+  return (
+    <LockedCapabilityTease capability="insights">
+      <div className="mx-auto max-w-[1280px] space-y-6 px-4 pb-2 pt-4 sm:px-6 lg:px-8">
+        <MissingCapabilityNotice capability="insights" variant="inline" className="max-w-3xl" />
+      </div>
+      {content}
+    </LockedCapabilityTease>
   );
 }
 
