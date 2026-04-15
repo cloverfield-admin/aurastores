@@ -134,7 +134,7 @@ export function LicenseUploadStepForm() {
   }, [pharmacyPreviewUrl]);
 
   if (loading && !draft) {
-    return <div className="py-12 text-sm text-[#64748b]">Loading onboarding details...</div>;
+    return <div className="py-12 text-sm text-[var(--app-text-muted)]">Loading onboarding details...</div>;
   }
 
   return (
@@ -251,13 +251,13 @@ export function LicenseUploadStepForm() {
                     />
                   ) : (
                     <div className="flex items-center gap-2 text-sm text-[#3c4948]">
-                      <span className="material-symbols-outlined notranslate text-[#64748b]">
+                      <span className="material-symbols-outlined notranslate text-[var(--app-text-muted)]">
                         picture_as_pdf
                       </span>
                       {pharmacyFile.name}
                     </div>
                   )}
-                  <span className="text-xs text-[#64748b]">{formatSize(pharmacyFile.size)}</span>
+                  <span className="text-xs text-[var(--app-text-muted)]">{formatSize(pharmacyFile.size)}</span>
                 </div>
               ) : (
                 <p className="text-center text-xs text-[rgba(60,73,72,0.6)]">

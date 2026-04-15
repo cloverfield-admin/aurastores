@@ -87,7 +87,7 @@ function ToastCard({
       <button
         type="button"
         onClick={() => onDismiss(toast.id)}
-        className="rounded-lg p-1 text-[#94a3b8] transition hover:bg-slate-100 hover:text-[#475569]"
+        className="rounded-lg p-1 text-[var(--app-text-faint)] transition hover:bg-[var(--app-surface-subtle)] hover:text-[var(--app-text-muted)]"
         aria-label="Dismiss notification"
       >
         <span className="material-symbols-outlined notranslate text-lg">close</span>

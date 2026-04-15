@@ -150,7 +150,7 @@ export function ReviewStepForm() {
   }
 
   if (loading && !draft) {
-    return <div className="py-12 text-sm text-[#64748b]">Loading onboarding details...</div>;
+    return <div className="py-12 text-sm text-[var(--app-text-muted)]">Loading onboarding details...</div>;
   }
 
   return (
@@ -163,7 +163,7 @@ export function ReviewStepForm() {
         <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[#191c1e]">
           Final Review
         </h1>
-        <p className="max-w-2xl text-base leading-relaxed text-[#64748b]">
+        <p className="max-w-2xl text-base leading-relaxed text-[var(--app-text-muted)]">
           Please ensure all medical facility details and licensing data are accurate. This
           information will be used for regulatory reporting and insurance claims processing.
         </p>
@@ -228,7 +228,7 @@ export function ReviewStepForm() {
             </h2>
             <Link
               href={ROUTES.dashboard.onboarding.license}
-              className="rounded-lg p-2 text-[#64748b] hover:bg-slate-50 hover:text-[#006a65]"
+              className="rounded-lg p-2 text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)] hover:text-[var(--app-brand)]"
               aria-label="Edit documents"
             >
               <span className="material-symbols-outlined notranslate">edit_square</span>
@@ -241,12 +241,12 @@ export function ReviewStepForm() {
                 className="flex items-center justify-between gap-3 rounded-lg bg-[#f8fafc] p-3"
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="material-symbols-outlined notranslate shrink-0 text-[#64748b]">
+                  <span className="material-symbols-outlined notranslate shrink-0 text-[var(--app-text-muted)]">
                     description
                   </span>
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-[#334155]">{doc.title}</p>
-                    <p className="truncate text-[10px] text-[#64748b]">{doc.fileName}</p>
+                    <p className="truncate text-[10px] text-[var(--app-text-muted)]">{doc.fileName}</p>
                   </div>
                 </div>
                 <span className="material-symbols-outlined notranslate shrink-0 text-[#006a65]">
@@ -262,7 +262,7 @@ export function ReviewStepForm() {
           <div className="grid grid-cols-1 divide-y divide-[#f8fafc] md:grid-cols-3 md:divide-x md:divide-y-0">
             <div className="space-y-6 p-8">
               <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined notranslate text-[#64748b]">
+                <span className="material-symbols-outlined notranslate text-[var(--app-text-muted)]">
                   hub
                 </span>
                 <h3 className="font-[family-name:var(--font-manrope)] text-lg font-bold text-[#1e293b]">
@@ -285,7 +285,7 @@ export function ReviewStepForm() {
 
             <div className="space-y-6 p-8">
               <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined notranslate text-[#64748b]">
+                <span className="material-symbols-outlined notranslate text-[var(--app-text-muted)]">
                   location_on
                 </span>
                 <h3 className="font-[family-name:var(--font-manrope)] text-lg font-bold text-[#1e293b]">
@@ -296,7 +296,7 @@ export function ReviewStepForm() {
                 latitude={branch?.latitude ?? null}
                 longitude={branch?.longitude ?? null}
               />
-              <p className="text-sm leading-relaxed text-[#475569]">
+              <p className="text-sm leading-relaxed text-[var(--app-text-muted)]">
                 {branch?.branchLocation || "Not provided"}
               </p>
             </div>
@@ -304,7 +304,7 @@ export function ReviewStepForm() {
             <div className="bg-[rgba(248,250,252,0.5)] p-8">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined notranslate text-[#64748b]">
+                  <span className="material-symbols-outlined notranslate text-[var(--app-text-muted)]">
                     schedule
                   </span>
                   <h3 className="font-[family-name:var(--font-manrope)] text-lg font-bold text-[#1e293b]">
@@ -321,7 +321,7 @@ export function ReviewStepForm() {
               <ul className="mt-6 space-y-2 text-sm">
                 {hoursLines.map((line) => (
                   <li key={line.label} className="flex justify-between gap-4">
-                    <span className="text-[#64748b]">{line.label}</span>
+                    <span className="text-[var(--app-text-muted)]">{line.label}</span>
                     <span
                       className={`font-semibold ${line.emphasize ? "text-[#ba1a1a]" : "text-[#334155]"}`}
                     >
@@ -356,7 +356,7 @@ export function ReviewStepForm() {
             onChange={(e) => setCertified(e.target.checked)}
             className="mt-1 size-4 shrink-0 rounded border-[#cbd5e1] text-[#006a65] accent-[#006a65]"
           />
-          <span className="text-sm leading-relaxed text-[#64748b]">
+          <span className="text-sm leading-relaxed text-[var(--app-text-muted)]">
             I certify that all provided information is accurate to the best of my knowledge.
           </span>
         </label>
@@ -364,7 +364,7 @@ export function ReviewStepForm() {
         <div className="flex flex-col items-center gap-4 sm:flex-row">
           <Link
             href={ROUTES.dashboard.onboarding.license}
-            className={`px-8 py-4 text-center text-base font-semibold text-[#475569] transition hover:text-[#1e293b] ${isBusy ? "pointer-events-none opacity-60" : ""}`}
+            className={`px-8 py-4 text-center text-base font-semibold text-[var(--app-text-muted)] transition hover:text-[#1e293b] ${isBusy ? "pointer-events-none opacity-60" : ""}`}
           >
             Back to Documents
           </Link>
@@ -386,10 +386,10 @@ export function ReviewStepForm() {
 
       <button
         type="button"
-        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] z-50 flex size-12 items-center justify-center rounded-full border border-[#f1f5f9] bg-white shadow-lg transition hover:bg-slate-50"
+        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] z-50 flex size-12 items-center justify-center rounded-full border border-[var(--app-surface-subtle)] bg-white shadow-lg transition hover:bg-[var(--app-surface-subtle)]"
         aria-label="Chat support"
       >
-        <span className="material-symbols-outlined notranslate text-[#475569]">chat</span>
+        <span className="material-symbols-outlined notranslate text-[var(--app-text-muted)]">chat</span>
       </button>
     </form>
   );

@@ -1,9 +1,85 @@
 @import "@material-symbols/font-400";
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
+  --background: #fafafa;
   --foreground: #18181b;
+  /* Dashboard / app shell (light) */
+  --app-canvas: #f7f9fb;
+  --app-surface: #ffffff;
+  --app-surface-muted: #f8fafc;
+  --app-surface-subtle: #f1f5f9;
+  --app-input-bg: #f2f4f6;
+  --app-text: #191c1e;
+  --app-text-secondary: #3c4948;
+  --app-text-muted: #64748b;
+  --app-text-faint: #94a3b8;
+  --app-border: rgba(187, 201, 199, 0.15);
+  --app-border-ui: #e2e8f0;
+  --app-border-ui-soft: rgba(226, 232, 240, 0.8);
+  --app-brand: #006a65;
+  --app-brand-soft: rgba(0, 106, 101, 0.08);
+  --app-brand-border: rgba(0, 106, 101, 0.12);
+  --app-shadow-card: 0px 1px 2px 0px rgba(0, 0, 0, 0.05);
+  --app-overlay-scrim: rgba(0, 0, 0, 0.4);
+  --app-switch-off: #e2e8f0;
+  --app-cancel-bg: #e0e3e5;
+  --app-cancel-hover: #d1d5db;
+  --app-activity-bg: #f2f4f6;
+  --app-soft-gradient-start: #f0fdfa;
+  --app-soft-gradient-end: #f5f3ff;
+  --app-link-teal: #0d9488;
+  --app-branch-active-border: #14b8a6;
+  --app-header-title: #0f172a;
+  --app-cta-bg: #0fb9b1;
+  --app-cta-text: #004340;
+  --app-placeholder: #6b7280;
+  --app-input-focus-bg: #e8eaed;
+  --app-readonly-field: rgba(230, 232, 234, 0.55);
+  --app-outline-variant: #d1d5db;
+  --app-list-hover: #f8fafc;
+  --app-search-hit-active: #f0fdfa;
+}
+
+html.dark {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --app-canvas: #0c1117;
+  --app-surface: #151b22;
+  --app-surface-muted: #12181f;
+  --app-surface-subtle: #1c2430;
+  --app-input-bg: #1c2430;
+  --app-text: #e8eaed;
+  --app-text-secondary: #cbd5e1;
+  --app-text-muted: #94a3b8;
+  --app-text-faint: #64748b;
+  --app-border: rgba(148, 163, 184, 0.12);
+  --app-border-ui: #2d3a47;
+  --app-border-ui-soft: rgba(45, 58, 71, 0.9);
+  --app-brand: #2dd4bf;
+  --app-brand-soft: rgba(45, 212, 191, 0.12);
+  --app-brand-border: rgba(45, 212, 191, 0.2);
+  --app-shadow-card: 0px 1px 2px 0px rgba(0, 0, 0, 0.35);
+  --app-overlay-scrim: rgba(0, 0, 0, 0.55);
+  --app-switch-off: #334155;
+  --app-cancel-bg: #2d3a47;
+  --app-cancel-hover: #3d4d5c;
+  --app-activity-bg: #12181f;
+  --app-soft-gradient-start: rgba(15, 118, 110, 0.15);
+  --app-soft-gradient-end: rgba(91, 33, 182, 0.15);
+  --app-link-teal: #2dd4bf;
+  --app-branch-active-border: #5eead4;
+  --app-header-title: #f1f5f9;
+  --app-cta-bg: #14b8a6;
+  --app-cta-text: #ecfdf5;
+  --app-placeholder: #94a3b8;
+  --app-input-focus-bg: #243040;
+  --app-readonly-field: rgba(51, 65, 85, 0.45);
+  --app-outline-variant: #475569;
+  --app-list-hover: #1c2430;
+  --app-search-hit-active: rgba(15, 118, 110, 0.22);
 }
 
 @theme inline {
@@ -27,6 +103,10 @@
   --color-on-error-container: #991b1b;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+html.dark .aura-soft-gradient {
+  background: linear-gradient(145deg, var(--app-soft-gradient-start), var(--app-soft-gradient-end));
 }
 
 body {
@@ -70,6 +150,12 @@ body {
   box-shadow:
     0 14px 32px -14px rgba(13, 148, 136, 0.55),
     0 8px 22px -16px rgba(124, 58, 237, 0.4);
+}
+
+html.dark .aura-glow {
+  box-shadow:
+    0 14px 32px -14px rgba(45, 212, 191, 0.25),
+    0 8px 22px -16px rgba(167, 139, 250, 0.2);
 }
 
 .auth-gradient {

@@ -31,7 +31,7 @@ function generateProductRef(): string {
 const fieldLabel =
   "mb-2 block text-xs font-normal uppercase tracking-[0.1em] text-[#6c7a78]";
 const inputClass =
-  "w-full rounded-lg border-0 bg-[#f2f4f6] px-4 py-4 text-base text-[#191c1e] outline-none placeholder:text-[#6c7a78]/60 focus:ring-2 focus:ring-[#006a65]/20";
+  "w-full rounded-lg border-0 bg-[var(--app-input-bg)] px-4 py-4 text-base text-[var(--app-text)] outline-none placeholder:text-[#6c7a78]/60 focus:ring-2 focus:ring-[var(--app-brand)]/20";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -249,18 +249,18 @@ export function AddNewBatchContent() {
             <nav className="flex items-center gap-2" aria-label="Breadcrumb">
               <Link
                 href={backToStockHref}
-                className="text-xs font-normal uppercase tracking-[0.1em] text-[#6c7a78] hover:text-[#006a65]"
+                className="text-xs font-normal uppercase tracking-[0.1em] text-[#6c7a78] hover:text-[var(--app-brand)]"
               >
                 Aura Stock
               </Link>
               <span className="material-symbols-outlined notranslate text-sm text-[#bbc9c7]">
                 chevron_right
               </span>
-              <span className="text-xs font-semibold uppercase tracking-[0.1em] text-[#006a65]">
+              <span className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--app-brand)]">
                 New Product
               </span>
             </nav>
-            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-bold tracking-tight text-[#191c1e] sm:text-[30px] sm:leading-9 sm:tracking-[-0.025em]">
+            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-bold tracking-tight text-[var(--app-text)] sm:text-[30px] sm:leading-9 sm:tracking-[-0.025em]">
               Add New Product
             </h1>
           </div>
@@ -268,7 +268,7 @@ export function AddNewBatchContent() {
             <button
               type="button"
               onClick={() => router.push(backToStockHref)}
-              className="rounded-xl px-6 py-2.5 text-base font-medium text-[#3c4948] transition hover:bg-[#f2f4f6]"
+              className="rounded-xl px-6 py-2.5 text-base font-medium text-[var(--app-text-secondary)] transition hover:bg-[var(--app-input-bg)]"
             >
               Cancel
             </button>
@@ -363,14 +363,14 @@ export function AddNewBatchContent() {
           {/* Left: forms */}
           <div className="flex flex-col gap-8 lg:col-span-8">
             {/* Product Specification */}
-            <section className="rounded-xl bg-white p-8 shadow-sm">
+            <section className="rounded-xl bg-[var(--app-surface)] p-8 shadow-sm">
               <div className="mb-8 flex items-center gap-3">
                 <div className="flex size-10 items-center justify-center rounded-lg bg-[rgba(0,106,101,0.1)]">
-                  <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">
+                  <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">
                     medication
                   </span>
                 </div>
-                <h2 className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]">
+                <h2 className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[var(--app-text)]">
                   Product Specification
                 </h2>
               </div>
@@ -400,12 +400,12 @@ export function AddNewBatchContent() {
                       <div
                         id="add-batch-product-suggestions"
                         role="listbox"
-                        className="absolute left-0 right-12 top-full z-20 mt-1 max-h-56 overflow-auto rounded-lg border border-[#e2e8f0] bg-white py-1 shadow-lg"
+                        className="absolute left-0 right-12 top-full z-20 mt-1 max-h-56 overflow-auto rounded-lg border border-[var(--app-border-ui)] bg-[var(--app-surface)] py-1 shadow-lg"
                       >
                         {productSuggestQuery.isFetching && productSuggestions.length === 0 ? (
-                          <p className="px-4 py-3 text-sm text-[#64748b]">Searching products…</p>
+                          <p className="px-4 py-3 text-sm text-[var(--app-text-muted)]">Searching products…</p>
                         ) : productSuggestions.length === 0 ? (
-                          <p className="px-4 py-3 text-sm text-[#64748b]">
+                          <p className="px-4 py-3 text-sm text-[var(--app-text-muted)]">
                             No matches. You can still use this as a new product name.
                           </p>
                         ) : (
@@ -415,11 +415,11 @@ export function AddNewBatchContent() {
                               type="button"
                               role="option"
                               aria-selected={false}
-                              className="flex w-full flex-col items-start gap-0.5 px-4 py-2.5 text-left text-sm hover:bg-[#f8fafc]"
+                              className="flex w-full flex-col items-start gap-0.5 px-4 py-2.5 text-left text-sm hover:bg-[var(--app-surface-muted)]"
                       onClick={() => pickProductSuggestion(product)}
                     >
-                      <span className="font-medium text-[#0f172a]">{product.name}</span>
-                      <span className="text-xs text-[#64748b]">
+                      <span className="font-medium text-[var(--app-header-title)]">{product.name}</span>
+                      <span className="text-xs text-[var(--app-text-muted)]">
                                 {product.sku} · {product.categoryName}
                                 {product.barcode ? ` · ${product.barcode}` : ""}
                               </span>
@@ -450,12 +450,12 @@ export function AddNewBatchContent() {
                     the name above and save to attach this barcode to a new product.
                   </p>
                   {isBarcodeLookupPending ? (
-                    <p className="mt-2 text-[11px] font-medium text-[#006a65]">
+                    <p className="mt-2 text-[11px] font-medium text-[var(--app-brand)]">
                       Looking up this barcode and checking existing products...
                     </p>
                   ) : null}
                   {productBarcode && barcodeLookupNeedsMedicationName ? (
-                    <div className="mt-4 space-y-2 rounded-lg border border-[#e2e8f0] bg-[#f8fafc] p-4">
+                    <div className="mt-4 space-y-2 rounded-lg border border-[var(--app-border-ui)] bg-[var(--app-surface-muted)] p-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <label className={fieldLabel} htmlFor="captured-barcode">
                           Barcode
@@ -463,7 +463,7 @@ export function AddNewBatchContent() {
                         <button
                           type="button"
                           onClick={clearProductBarcode}
-                          className="text-[11px] font-semibold text-[#64748b] underline decoration-[#64748b]/40 hover:text-[#0f172a]"
+                          className="text-[11px] font-semibold text-[var(--app-text-muted)] underline decoration-[#64748b]/40 hover:text-[var(--app-header-title)]"
                         >
                           Clear barcode
                         </button>
@@ -472,10 +472,10 @@ export function AddNewBatchContent() {
                         id="captured-barcode"
                         readOnly
                         value={productBarcode}
-                        className={`${inputClass} cursor-default bg-[#e2e8f0]/60 text-[#0f172a]`}
+                        className={`${inputClass} cursor-default bg-[#e2e8f0]/60 text-[var(--app-header-title)]`}
                         aria-readonly="true"
                       />
-                      <p className="text-[11px] leading-relaxed text-[#64748b]">
+                      <p className="text-[11px] leading-relaxed text-[var(--app-text-muted)]">
                         No product uses this barcode yet. Enter the medication name in the field
                         above, then save to create the product with this barcode.
                       </p>
@@ -489,7 +489,7 @@ export function AddNewBatchContent() {
                       <button
                         type="button"
                         onClick={clearProductBarcode}
-                        className="text-[11px] font-semibold text-[#64748b] underline decoration-[#64748b]/40 hover:text-[#0f172a]"
+                        className="text-[11px] font-semibold text-[var(--app-text-muted)] underline decoration-[#64748b]/40 hover:text-[var(--app-header-title)]"
                       >
                         Clear
                       </button>
@@ -524,7 +524,7 @@ export function AddNewBatchContent() {
                         className={inputClass}
                         autoComplete="off"
                       />
-                      <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#64748b]">
+                      <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--app-text-muted)]">
                         calendar_today
                       </span>
                     </div>
@@ -548,14 +548,14 @@ export function AddNewBatchContent() {
             </section>
 
             {/* Logistics & Pricing */}
-            <section className="rounded-xl bg-white p-8 shadow-sm">
+            <section className="rounded-xl bg-[var(--app-surface)] p-8 shadow-sm">
               <div className="mb-8 flex items-center gap-3">
                 <div className="flex size-10 items-center justify-center rounded-lg bg-[rgba(70,72,212,0.1)]">
                   <span className="material-symbols-outlined notranslate text-xl text-[#4648d4]">
                     local_shipping
                   </span>
                 </div>
-                <h2 className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]">
+                <h2 className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[var(--app-text)]">
                   Logistics &amp; Pricing
                 </h2>
               </div>
@@ -628,7 +628,7 @@ export function AddNewBatchContent() {
                       list="stock-supplier-suggestions"
                       value={supplier}
                       onChange={(e) => setSupplier(e.target.value)}
-                      className={`${inputClass} pr-10 ${supplier ? "text-[#191c1e]" : "text-[#6b7280]"}`}
+                      className={`${inputClass} pr-10 ${supplier ? "text-[var(--app-text)]" : "text-[#6b7280]"}`}
                       placeholder="Search or enter supplier"
                     />
                     <datalist id="stock-supplier-suggestions">
@@ -636,7 +636,7 @@ export function AddNewBatchContent() {
                         <option key={s.id} value={s.name} />
                       ))}
                     </datalist>
-                    <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#64748b]">
+                    <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--app-text-muted)]">
                       expand_more
                     </span>
                   </div>
@@ -693,9 +693,9 @@ export function AddNewBatchContent() {
           {/* Right column */}
           <div className="flex flex-col gap-8 lg:col-span-4">
             {/* Pro Tip */}
-            <div className="relative overflow-hidden rounded-xl bg-[#006a65] p-6">
+            <div className="relative overflow-hidden rounded-xl bg-[var(--app-brand)] p-6">
               <div
-                className="pointer-events-none absolute -bottom-4 -right-4 size-28 rounded-full bg-white/10 blur-2xl"
+                className="pointer-events-none absolute -bottom-4 -right-4 size-28 rounded-full bg-[var(--app-surface)]/10 blur-2xl"
                 aria-hidden
               />
               <div className="relative">
@@ -715,21 +715,21 @@ export function AddNewBatchContent() {
             </div>
 
             {/* Product preview */}
-            <div className="relative rounded-xl border border-[rgba(0,106,101,0.05)] bg-[#f2f4f6] p-6 shadow-md">
+            <div className="relative rounded-xl border border-[rgba(0,106,101,0.05)] bg-[var(--app-input-bg)] p-6 shadow-md">
               <div className="mb-6 flex items-center justify-between">
                 <h3 className="text-xs font-semibold uppercase tracking-[0.1em] text-[#6c7a78]">
                   Product Preview
                 </h3>
-                <span className="rounded-full border border-[rgba(0,106,101,0.2)] bg-[rgba(0,106,101,0.1)] px-2.5 py-1 text-[10px] font-semibold tracking-wide text-[#006a65]">
+                <span className="rounded-full border border-[rgba(0,106,101,0.2)] bg-[rgba(0,106,101,0.1)] px-2.5 py-1 text-[10px] font-semibold tracking-wide text-[var(--app-brand)]">
                   DRAFT
                 </span>
               </div>
 
-              <div className="space-y-6 border-b border-[rgba(187,201,199,0.2)] pb-5">
+              <div className="space-y-6 border-b border-[var(--app-border)] pb-5">
                 <p className="text-[10px] font-normal uppercase tracking-wider text-[#6c7a78]">
                   Selected Medication
                 </p>
-                <p className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#191c1e]">
+                <p className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[var(--app-text)]">
                   {previewMedication}
                 </p>
                 {category.trim() ? (
@@ -738,19 +738,19 @@ export function AddNewBatchContent() {
               </div>
 
               <div className="mt-6 grid grid-cols-2 gap-4">
-                <div className="rounded-lg border border-[rgba(187,201,199,0.1)] bg-white/50 p-3 shadow-sm">
+                <div className="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)]/50 p-3 shadow-sm">
                   <p className="text-[10px] font-normal uppercase tracking-wider text-[#6c7a78]">
                     Total Value
                   </p>
-                  <p className="mt-1 font-[family-name:var(--font-manrope)] text-xl font-extrabold tracking-tight text-[#006a65]">
+                  <p className="mt-1 font-[family-name:var(--font-manrope)] text-xl font-extrabold tracking-tight text-[var(--app-brand)]">
                     {totalValue > 0 ? currencyFormatter.format(totalValue) : currencyFormatter.format(0)}
                   </p>
                 </div>
-                <div className="rounded-lg border border-[rgba(187,201,199,0.1)] bg-white/50 p-3 shadow-sm">
+                <div className="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)]/50 p-3 shadow-sm">
                   <p className="text-[10px] font-normal uppercase tracking-wider text-[#6c7a78]">
                     Stock Load
                   </p>
-                  <p className="mt-1 font-[family-name:var(--font-manrope)] text-xl font-extrabold tracking-tight text-[#191c1e]">
+                  <p className="mt-1 font-[family-name:var(--font-manrope)] text-xl font-extrabold tracking-tight text-[var(--app-text)]">
                     {q > 0 ? q : 0}{" "}
                     <span className="text-sm font-normal text-[#6c7a78]">units</span>
                   </p>
@@ -762,9 +762,9 @@ export function AddNewBatchContent() {
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-[#6c7a78]">
                     Form Completion
                   </span>
-                  <span className="text-[10px] font-semibold text-[#006a65]">{completion}%</span>
+                  <span className="text-[10px] font-semibold text-[var(--app-brand)]">{completion}%</span>
                 </div>
-                <div className="h-2.5 overflow-hidden rounded-full bg-[#e0e3e5] shadow-inner">
+                <div className="h-2.5 overflow-hidden rounded-full bg-[var(--app-cancel-bg)] shadow-inner">
                   <div
                     className="h-full rounded-full"
                     style={{
@@ -800,14 +800,14 @@ export function AddNewBatchContent() {
                         batch={`Ref #${entry.batchNumber}`}
                         batchClass={
                           index === 0
-                            ? "bg-[rgba(0,106,101,0.05)] text-[#191c1e]"
+                            ? "bg-[rgba(0,106,101,0.05)] text-[var(--app-text)]"
                             : index === 1
                               ? "bg-[rgba(70,72,212,0.05)] text-[#2f2ebe]"
-                              : "bg-[#e0e3e5] text-[#6c7a78]"
+                              : "bg-[var(--app-cancel-bg)] text-[#6c7a78]"
                         }
                         dotClass={
                           index === 0
-                            ? "bg-[#006a65]"
+                            ? "bg-[var(--app-brand)]"
                             : index === 1
                               ? "bg-[#4648d4]"
                               : "bg-[#bbc9c7]"
@@ -845,10 +845,10 @@ function RecentEntry({
   return (
     <li className="relative">
       <span
-        className={`absolute -left-[17px] top-1 size-3 rounded-full border-2 border-[#f7f9fb] ${dotClass}`}
+        className={`absolute -left-[17px] top-1 size-3 rounded-full border-2 border-[var(--app-canvas)] ${dotClass}`}
         aria-hidden
       />
-      <p className="text-xs font-semibold text-[#191c1e]">{title}</p>
+      <p className="text-xs font-semibold text-[var(--app-text)]">{title}</p>
       <p className="mt-1 text-[11px] text-[#6c7a78]">{meta}</p>
       <span className={`mt-2 inline-block rounded px-1.5 py-0.5 text-[10px] ${batchClass}`}>
         {batch}

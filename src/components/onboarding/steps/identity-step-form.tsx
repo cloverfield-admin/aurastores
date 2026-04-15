@@ -19,7 +19,7 @@ export function IdentityStepForm() {
   const { draft, loading } = useOnboardingProgress();
 
   if (loading && !draft) {
-    return <div className="py-12 text-sm text-[#64748b]">Loading onboarding details...</div>;
+    return <div className="py-12 text-sm text-[var(--app-text-muted)]">Loading onboarding details...</div>;
   }
 
   if (!draft) {

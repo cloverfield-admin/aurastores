@@ -53,7 +53,7 @@ export function SalesPerformanceContent() {
       value: currencyFormatter.format((metrics?.totalRevenueCents ?? 0) / 100),
       sub: `Vs. ${currencyFormatter.format((metrics?.previousRevenueCents ?? 0) / 100)} previous period`,
       badge: `${revenueDeltaPct.startsWith("-") ? "" : "+"}${revenueDeltaPct}%`,
-      badgeClass: revenueDeltaPct.startsWith("-") ? "bg-[#fff1f2] text-[#e11d48]" : "bg-[#f0fdfa] text-[#0d9488]",
+      badgeClass: revenueDeltaPct.startsWith("-") ? "bg-[#fff1f2] text-[#e11d48]" : "bg-[#f0fdfa] text-[var(--app-link-teal)]",
       icon: "payments",
     },
     {
@@ -69,7 +69,7 @@ export function SalesPerformanceContent() {
       value: (metrics?.totalSalesCount ?? 0).toLocaleString(),
       sub: `Avg. order ${currencyFormatter.format((metrics?.averageOrderValueCents ?? 0) / 100)}`,
       badge: "Live",
-      badgeClass: "bg-[#f0fdfa] text-[#0d9488]",
+      badgeClass: "bg-[#f0fdfa] text-[var(--app-link-teal)]",
       icon: "receipt_long",
     },
     {
@@ -104,10 +104,10 @@ export function SalesPerformanceContent() {
       <div className="relative px-4 pb-24 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[1280px] space-y-8">
           <div className="space-y-1">
-            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[#191c1e] sm:text-4xl">
+            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[var(--app-text)] sm:text-4xl">
               Monthly Sales Performance
             </h1>
-            <p className="max-w-xl text-base text-[#3c4948]">
+            <p className="max-w-xl text-base text-[var(--app-text-secondary)]">
               Real-time clinical intelligence and financial tracking for the current branch (rolling 30-day window in
               metrics below).
             </p>
@@ -124,10 +124,10 @@ export function SalesPerformanceContent() {
         {/* Page header */}
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1">
-            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[#191c1e] sm:text-4xl">
+            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[var(--app-text)] sm:text-4xl">
               Monthly Sales Performance
             </h1>
-            <p className="max-w-xl text-base text-[#3c4948]">
+            <p className="max-w-xl text-base text-[var(--app-text-secondary)]">
               Real-time clinical intelligence and financial tracking for the current branch (rolling
               30-day window in metrics below).
             </p>
@@ -142,14 +142,14 @@ export function SalesPerformanceContent() {
             </Link>
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-xl bg-[#f2f4f6] px-5 py-2.5 text-base font-semibold text-[#191c1e] transition hover:bg-[#e8eaed]"
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--app-input-bg)] px-5 py-2.5 text-base font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-input-focus-bg)]"
             >
               <span className="material-symbols-outlined notranslate text-lg">calendar_month</span>
               This Month
             </button>
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-xl border border-[#e2e8f0] bg-white px-5 py-2.5 text-base font-semibold text-[#191c1e] shadow-sm transition hover:bg-[#f8fafc]"
+              className="inline-flex items-center gap-2 rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] px-5 py-2.5 text-base font-semibold text-[var(--app-text)] shadow-sm transition hover:bg-[var(--app-surface-muted)]"
             >
               <span className="material-symbols-outlined notranslate text-lg">download</span>
               Export Data
@@ -162,11 +162,11 @@ export function SalesPerformanceContent() {
           {SALES_KPIS.map((m) => (
             <article
               key={m.label}
-              className="rounded-xl border border-[rgba(187,201,199,0.15)] bg-white p-6 shadow-sm"
+              className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-sm"
             >
               <div className="mb-4 flex items-start justify-between">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-[#f1f5f9]">
-                  <span className="material-symbols-outlined notranslate text-xl text-[#64748b]">
+                <div className="flex size-9 items-center justify-center rounded-lg bg-[var(--app-surface-subtle)]">
+                  <span className="material-symbols-outlined notranslate text-xl text-[var(--app-text-muted)]">
                     {m.icon}
                   </span>
                 </div>
@@ -174,13 +174,13 @@ export function SalesPerformanceContent() {
                   {m.badge}
                 </span>
               </div>
-              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#3c4948]">
+              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--app-text-secondary)]">
                 {m.label}
               </p>
-              <p className="mt-1 font-[family-name:var(--font-manrope)] text-2xl font-extrabold text-[#191c1e]">
+              <p className="mt-1 font-[family-name:var(--font-manrope)] text-2xl font-extrabold text-[var(--app-text)]">
                 {m.value}
               </p>
-              <p className="mt-2 text-[10px] text-[#94a3b8]">{m.sub}</p>
+              <p className="mt-2 text-[10px] text-[var(--app-text-faint)]">{m.sub}</p>
             </article>
           ))}
         </div>
@@ -190,19 +190,19 @@ export function SalesPerformanceContent() {
           {/* Left column (2/3) */}
           <div className="space-y-8 lg:col-span-2">
             {/* Sales Analytics Trend */}
-            <section className="rounded-xl border border-[rgba(187,201,199,0.15)] bg-white p-6 shadow-sm">
+            <section className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-sm">
               <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]">
+                <h2 className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[var(--app-text)]">
                   Sales Analytics Trend
                 </h2>
-                <div className="flex rounded-lg bg-[#f2f4f6] p-1">
+                <div className="flex rounded-lg bg-[var(--app-input-bg)] p-1">
                   <button
                     type="button"
                     onClick={() => setChartMode("revenue")}
                     className={`rounded-md px-4 py-1.5 text-xs font-semibold transition ${
                       chartMode === "revenue"
-                        ? "bg-white text-[#191c1e] shadow-sm"
-                        : "font-medium text-[#64748b] hover:text-[#191c1e]"
+                        ? "bg-[var(--app-surface)] text-[var(--app-text)] shadow-sm"
+                        : "font-medium text-[var(--app-text-muted)] hover:text-[var(--app-text)]"
                     }`}
                   >
                     Revenue
@@ -212,8 +212,8 @@ export function SalesPerformanceContent() {
                     onClick={() => setChartMode("volume")}
                     className={`rounded-md px-4 py-1.5 text-xs transition ${
                       chartMode === "volume"
-                        ? "bg-white font-semibold text-[#191c1e] shadow-sm"
-                        : "font-medium text-[#64748b] hover:text-[#191c1e]"
+                        ? "bg-[var(--app-surface)] font-semibold text-[var(--app-text)] shadow-sm"
+                        : "font-medium text-[var(--app-text-muted)] hover:text-[var(--app-text)]"
                     }`}
                   >
                     Volume
@@ -235,15 +235,15 @@ export function SalesPerformanceContent() {
                         }}
                       />
                       <div
-                        className="h-8 w-full rounded-t bg-[#f1f5f9] opacity-60"
+                        className="h-8 w-full rounded-t bg-[var(--app-surface-subtle)] opacity-60"
                         style={{ height: `${(d.value - 0.5) * 14}%` }}
                       />
                     </div>
-                    <span className="text-[10px] font-medium text-[#94a3b8]">{d.day}</span>
+                    <span className="text-[10px] font-medium text-[var(--app-text-faint)]">{d.day}</span>
                   </div>
                 ))}
                 {chartPoints.length === 0 && (
-                  <div className="flex w-full items-center justify-center text-sm text-[#94a3b8]">
+                  <div className="flex w-full items-center justify-center text-sm text-[var(--app-text-faint)]">
                     No trend data yet.
                   </div>
                 )}
@@ -262,7 +262,7 @@ export function SalesPerformanceContent() {
                   }}
                 />
                 <div className="relative">
-                  <span className="inline-block rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider">
+                  <span className="inline-block rounded-full bg-[var(--app-surface)]/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider">
                     Monthly Insights
                   </span>
                   <p className="mt-4 text-sm font-medium leading-relaxed opacity-95">
@@ -270,10 +270,10 @@ export function SalesPerformanceContent() {
                     high-margin products.
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <span className="rounded-full bg-white/20 px-2 py-1 text-[10px] font-semibold">
+                    <span className="rounded-full bg-[var(--app-surface)]/20 px-2 py-1 text-[10px] font-semibold">
                       Inventory Optimization Suggested
                     </span>
-                    <span className="rounded-full bg-white/20 px-2 py-1 text-[10px] font-semibold">
+                    <span className="rounded-full bg-[var(--app-surface)]/20 px-2 py-1 text-[10px] font-semibold">
                       High Margin
                     </span>
                   </div>
@@ -281,14 +281,14 @@ export function SalesPerformanceContent() {
               </article>
 
               {/* Recent Transactions */}
-              <section className="rounded-xl border border-[rgba(187,201,199,0.15)] bg-white p-6 shadow-sm">
+              <section className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-sm">
                 <div className="mb-4 flex items-center justify-between">
-                  <h2 className="font-[family-name:var(--font-manrope)] text-lg font-bold text-[#191c1e]">
+                  <h2 className="font-[family-name:var(--font-manrope)] text-lg font-bold text-[var(--app-text)]">
                     Recent Transactions
                   </h2>
                   <Link
                     href="#"
-                    className="text-xs font-semibold text-[#0d9488] underline decoration-[rgba(20,184,166,0.3)] hover:text-[#0f766e]"
+                    className="text-xs font-semibold text-[var(--app-link-teal)] underline decoration-[rgba(20,184,166,0.3)] hover:text-[var(--app-link-teal)]"
                   >
                     View All
                   </Link>
@@ -297,7 +297,7 @@ export function SalesPerformanceContent() {
                   {RECENT_TXS.map((tx) => (
                     <li
                       key={tx.id}
-                      className="flex items-center justify-between rounded-lg bg-[#f8fafc] px-4 py-3"
+                      className="flex items-center justify-between rounded-lg bg-[var(--app-surface-muted)] px-4 py-3"
                     >
                       <div className="flex items-center gap-3">
                         <div className="flex size-8 items-center justify-center rounded-lg bg-[#e0f2fe]">
@@ -306,15 +306,15 @@ export function SalesPerformanceContent() {
                           </span>
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-[#191c1e]">
+                          <p className="text-sm font-semibold text-[var(--app-text)]">
                             {tx.patientName ?? "Walk-in Customer"}
                           </p>
-                          <p className="text-[10px] text-[#94a3b8]">
+                          <p className="text-[10px] text-[var(--app-text-faint)]">
                             {formatRelativeTime(tx.createdAt)} · {tx.saleNumber}
                           </p>
                         </div>
                       </div>
-                      <p className="text-sm font-bold text-[#191c1e]">
+                      <p className="text-sm font-bold text-[var(--app-text)]">
                         {currencyFormatter.format(tx.totalCents / 100)}
                       </p>
                     </li>
@@ -327,20 +327,20 @@ export function SalesPerformanceContent() {
           {/* Right column (1/3) */}
           <div className="space-y-6">
             {/* Top Performing Drugs */}
-            <section className="rounded-xl border border-[rgba(187,201,199,0.15)] bg-white p-6 shadow-sm">
-              <h2 className="mb-4 font-[family-name:var(--font-manrope)] text-lg font-bold text-[#191c1e]">
+            <section className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-sm">
+              <h2 className="mb-4 font-[family-name:var(--font-manrope)] text-lg font-bold text-[var(--app-text)]">
                 Top Performing Drugs
               </h2>
               <ul className="space-y-4">
                 {TOP_DRUGS.map((d) => (
                   <li key={d.name}>
                     <div className="mb-1.5 flex justify-between text-xs">
-                      <span className="font-semibold text-[#191c1e]">{d.name}</span>
-                      <span className="font-bold text-[#0d9488]">
+                      <span className="font-semibold text-[var(--app-text)]">{d.name}</span>
+                      <span className="font-bold text-[var(--app-link-teal)]">
                         {currencyFormatter.format(d.amountCents / 100)}
                       </span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-[#f1f5f9]">
+                    <div className="h-2 overflow-hidden rounded-full bg-[var(--app-surface-subtle)]">
                       <div
                         className="h-full rounded-full"
                         style={{
@@ -355,15 +355,15 @@ export function SalesPerformanceContent() {
               </ul>
               <button
                 type="button"
-                className="mt-4 w-full rounded-lg border border-[#e2e8f0] bg-white py-2.5 text-sm font-semibold text-[#191c1e] transition hover:bg-[#f8fafc]"
+                className="mt-4 w-full rounded-lg border border-[var(--app-border-ui)] bg-[var(--app-surface)] py-2.5 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-surface-muted)]"
               >
                 Download Full Inventory Report
               </button>
             </section>
 
             {/* Branch Distribution */}
-            <section className="rounded-xl border border-[rgba(187,201,199,0.15)] bg-white p-6 shadow-sm">
-              <h2 className="mb-4 font-[family-name:var(--font-manrope)] text-lg font-bold text-[#191c1e]">
+            <section className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-sm">
+              <h2 className="mb-4 font-[family-name:var(--font-manrope)] text-lg font-bold text-[var(--app-text)]">
                 Branch Distribution
               </h2>
               <ul className="space-y-3">
@@ -373,8 +373,8 @@ export function SalesPerformanceContent() {
                     className="flex items-center justify-between rounded-lg border-l-4 py-2 pl-4"
                     style={{ borderLeftColor: "#14b8a6" }}
                   >
-                    <span className="text-sm font-semibold text-[#191c1e]">{b.name}</span>
-                    <span className="text-sm font-bold text-[#64748b]">
+                    <span className="text-sm font-semibold text-[var(--app-text)]">{b.name}</span>
+                    <span className="text-sm font-bold text-[var(--app-text-muted)]">
                       {currencyFormatter.format(b.amountCents / 100)} ({b.pct}%)
                     </span>
                   </li>
@@ -402,16 +402,16 @@ export function SalesPerformanceContent() {
         </div>
 
         {/* Footer strip */}
-        <footer className="flex flex-col gap-4 border-t border-[#f1f5f9] pt-6 text-[11px] uppercase tracking-[0.1em] text-[#94a3b8] sm:flex-row sm:items-center sm:justify-between">
+        <footer className="flex flex-col gap-4 border-t border-[var(--app-surface-subtle)] pt-6 text-[11px] uppercase tracking-[0.1em] text-[var(--app-text-faint)] sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <span className="font-semibold text-[#cbd5e1]">AuraPharma v1.0.0</span>
             <span>© {new Date().getFullYear()} Clinical Intelligence</span>
           </div>
           <div className="flex flex-wrap gap-4">
-            <Link href="#" className="underline decoration-[rgba(20,184,166,0.3)] hover:text-[#64748b]">
+            <Link href="#" className="underline decoration-[rgba(20,184,166,0.3)] hover:text-[var(--app-text-muted)]">
               Privacy Policy
             </Link>
-            <Link href="#" className="underline decoration-[rgba(20,184,166,0.3)] hover:text-[#64748b]">
+            <Link href="#" className="underline decoration-[rgba(20,184,166,0.3)] hover:text-[var(--app-text-muted)]">
               System Status
             </Link>
           </div>

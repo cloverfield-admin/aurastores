@@ -31,9 +31,9 @@ type LineItem = {
 };
 
 const fieldLabel =
-  "mb-2 block text-xs font-semibold uppercase tracking-[0.06em] text-[#64748b]";
+  "mb-2 block text-xs font-semibold uppercase tracking-[0.06em] text-[var(--app-text-muted)]";
 const inputClass =
-  "w-full rounded-2xl border-0 bg-[#f2f4f6] px-4 py-3.5 text-sm text-[#191c1e] outline-none placeholder:text-[#6b7280] focus:ring-2 focus:ring-[#006a65]/20";
+  "w-full rounded-2xl border-0 bg-[var(--app-input-bg)] px-4 py-3.5 text-sm text-[var(--app-text)] outline-none placeholder:text-[var(--app-placeholder)] focus:ring-2 focus:ring-[var(--app-brand)]/20";
 
 type ProductOption = {
   id: string;
@@ -254,9 +254,9 @@ function MedicationCombobox({
           aria-expanded={open}
           aria-controls={listboxId}
           aria-autocomplete="list"
-          className="min-w-0 w-full rounded-xl border-0 bg-[#f2f4f6] px-3 py-2 pr-10 text-sm text-[#191c1e] outline-none focus:ring-2 focus:ring-[#006a65]/20 disabled:cursor-not-allowed disabled:opacity-60"
+          className="min-w-0 w-full rounded-xl border-0 bg-[var(--app-input-bg)] px-3 py-2 pr-10 text-sm text-[var(--app-text)] outline-none focus:ring-2 focus:ring-[var(--app-brand)]/20 disabled:cursor-not-allowed disabled:opacity-60"
         />
-        <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#64748b]">
+        <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--app-text-muted)]">
           search
         </span>
       </div>
@@ -271,10 +271,10 @@ function MedicationCombobox({
             width: panelStyle.width,
             maxHeight: panelStyle.maxHeight,
           }}
-          className="fixed z-[1000] overflow-auto rounded-xl border border-[#e2e8f0] bg-white py-1 shadow-lg"
+          className="fixed z-[1000] overflow-auto rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] py-1 shadow-lg"
         >
           {filtered.length === 0 ? (
-            <p className="px-3 py-2.5 text-sm text-[#64748b]">No matches.</p>
+            <p className="px-3 py-2.5 text-sm text-[var(--app-text-muted)]">No matches.</p>
           ) : (
             filtered.map((product, index) => {
               const active = index === listActiveIndex;
@@ -286,7 +286,7 @@ function MedicationCombobox({
                   role="option"
                   aria-selected={selected}
                   className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition ${
-                    active ? "bg-[#f0fdfa]" : "hover:bg-[#f8fafc]"
+                    active ? "bg-[#f0fdfa]" : "hover:bg-[var(--app-surface-muted)]"
                   }`}
                   onMouseEnter={() => setHighlightedIndex(index)}
                   onMouseDown={(e) => {
@@ -295,16 +295,16 @@ function MedicationCombobox({
                   }}
                   onClick={() => selectProduct(product.id)}
                 >
-                  <span className="min-w-0 flex-1 truncate font-medium text-[#0f172a]">
+                  <span className="min-w-0 flex-1 truncate font-medium text-[var(--app-header-title)]">
                     {product.name}
                     {product.categoryName ? (
-                      <span className="ml-2 align-middle text-xs font-medium text-[#64748b]">
+                      <span className="ml-2 align-middle text-xs font-medium text-[var(--app-text-muted)]">
                         ({product.categoryName})
                       </span>
                     ) : null}
                   </span>
                   {selected ? (
-                    <span className="material-symbols-outlined notranslate text-base text-[#006a65]">
+                    <span className="material-symbols-outlined notranslate text-base text-[var(--app-brand)]">
                       check
                     </span>
                   ) : null}
@@ -869,7 +869,7 @@ export function NewSaleContent() {
     return message;
   }
 
-  const sectionShell = "rounded-[20px] bg-white p-4 shadow-sm sm:p-6 lg:p-8";
+  const sectionShell = "rounded-[20px] bg-[var(--app-surface)] p-4 shadow-sm sm:p-6 lg:p-8";
 
   return (
     <div className="min-w-0 px-3 pb-24 pt-2 sm:px-6 lg:px-8">
@@ -933,19 +933,19 @@ export function NewSaleContent() {
             <nav className="flex min-w-0 flex-wrap items-center gap-2" aria-label="Breadcrumb">
               <Link
                 href={salesHref}
-                className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#94a3b8] hover:text-[#006a65]"
+                className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--app-text-faint)] hover:text-[var(--app-brand)]"
               >
                 Aura Sales
               </Link>
               <span className="material-symbols-outlined notranslate text-sm text-[#cbd5e1]">
                 chevron_right
               </span>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[#006a65]">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--app-brand)]">
                 New Sale
               </span>
             </nav>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-[family-name:var(--font-manrope)] text-2xl font-extrabold tracking-tight text-[#191c1e] sm:text-3xl sm:leading-9 md:text-[30px]">
+              <h1 className="font-[family-name:var(--font-manrope)] text-2xl font-extrabold tracking-tight text-[var(--app-text)] sm:text-3xl sm:leading-9 md:text-[30px]">
                 New Sale
               </h1>
               <OutboxFeatureStatus feature="sales" />
@@ -955,7 +955,7 @@ export function NewSaleContent() {
             <button
               type="button"
               onClick={() => router.push(salesHref)}
-              className="w-full rounded-xl px-6 py-2.5 text-sm font-medium text-[#3c4948] transition hover:bg-[#f2f4f6] sm:w-auto sm:text-base"
+              className="w-full rounded-xl px-6 py-2.5 text-sm font-medium text-[var(--app-text-secondary)] transition hover:bg-[var(--app-input-bg)] sm:w-auto sm:text-base"
             >
               Cancel
             </button>
@@ -969,11 +969,11 @@ export function NewSaleContent() {
             <section className={sectionShell}>
               <div className="mb-6 flex items-center gap-3">
                 <div className="flex size-10 items-center justify-center rounded-full bg-[rgba(0,106,101,0.1)]">
-                  <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">
+                  <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">
                     person
                   </span>
                 </div>
-                <h2 className="min-w-0 font-[family-name:var(--font-manrope)] text-base font-bold text-[#191c1e] sm:text-lg">
+                <h2 className="min-w-0 font-[family-name:var(--font-manrope)] text-base font-bold text-[var(--app-text)] sm:text-lg">
                   Customer Information
                 </h2>
               </div>
@@ -992,11 +992,11 @@ export function NewSaleContent() {
                       placeholder="Search by name or ID..."
                       className={`${inputClass} pr-12`}
                     />
-                    <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#64748b]">
+                    <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--app-text-muted)]">
                       search
                     </span>
                   </div>
-                  <p className="mt-2 text-[11px] text-[#94a3b8]">
+                  <p className="mt-2 text-[11px] text-[var(--app-text-faint)]">
                     Search existing records to auto-fill details.
                   </p>
                 </div>
@@ -1044,11 +1044,11 @@ export function NewSaleContent() {
               <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[rgba(0,106,101,0.1)]">
-                    <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">
+                    <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">
                       medication_liquid
                     </span>
                   </div>
-                  <h2 className="font-[family-name:var(--font-manrope)] text-base font-bold text-[#191c1e] sm:text-lg">
+                  <h2 className="font-[family-name:var(--font-manrope)] text-base font-bold text-[var(--app-text)] sm:text-lg">
                     Items &amp; Prescription
                   </h2>
                 </div>
@@ -1057,7 +1057,7 @@ export function NewSaleContent() {
                     type="button"
                     onClick={() => setScannerLineId("add")}
                     disabled={salesCatalogQuery.isLoading}
-                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#e2e8f0] py-2.5 text-xs font-semibold text-[#4648d4] transition hover:bg-[#f8fafc] hover:text-[#2f2ebe] disabled:cursor-not-allowed disabled:text-[#94a3b8] min-[400px]:w-auto min-[400px]:border-0 min-[400px]:py-0 sm:text-sm"
+                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--app-border-ui)] py-2.5 text-xs font-semibold text-[#4648d4] transition hover:bg-[var(--app-surface-muted)] hover:text-[#2f2ebe] disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)] min-[400px]:w-auto min-[400px]:border-0 min-[400px]:py-0 sm:text-sm"
                   >
                     <span className="material-symbols-outlined notranslate text-lg">barcode_scanner</span>
                     Scan to add
@@ -1066,7 +1066,7 @@ export function NewSaleContent() {
                     type="button"
                     onClick={addItem}
                     disabled={salesCatalogQuery.isLoading}
-                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#e2e8f0] py-2.5 text-xs font-semibold text-[#006a65] transition hover:bg-[#f8fafc] hover:text-[#004d49] disabled:cursor-not-allowed disabled:text-[#94a3b8] min-[400px]:w-auto min-[400px]:border-0 min-[400px]:py-0 sm:text-sm"
+                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--app-border-ui)] py-2.5 text-xs font-semibold text-[var(--app-brand)] transition hover:bg-[var(--app-surface-muted)] hover:text-[#004d49] disabled:cursor-not-allowed disabled:text-[var(--app-text-faint)] min-[400px]:w-auto min-[400px]:border-0 min-[400px]:py-0 sm:text-sm"
                   >
                     <span className="material-symbols-outlined notranslate text-lg">add</span>
                     Add Item
@@ -1075,9 +1075,9 @@ export function NewSaleContent() {
               </div>
 
               {items.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-[#e2e8f0] bg-[#fafbfc] py-8 text-center text-sm leading-relaxed text-[#64748b] md:hidden">
-                  No medications yet. Use <span className="font-semibold text-[#191c1e]">Add Item</span> or{" "}
-                  <span className="font-semibold text-[#191c1e]">Scan to add</span>.
+                <p className="rounded-xl border border-dashed border-[var(--app-border-ui)] bg-[#fafbfc] py-8 text-center text-sm leading-relaxed text-[var(--app-text-muted)] md:hidden">
+                  No medications yet. Use <span className="font-semibold text-[var(--app-text)]">Add Item</span> or{" "}
+                  <span className="font-semibold text-[var(--app-text)]">Scan to add</span>.
                 </p>
               ) : null}
 
@@ -1089,7 +1089,7 @@ export function NewSaleContent() {
                     <div
                       key={row.id}
                       className={`rounded-xl border p-4 ${
-                        rowIssue ? "border-[#fecaca] bg-[#fff7f7]" : "border-[#f1f5f9] bg-[#fafbfc]"
+                        rowIssue ? "border-[#fecaca] bg-[#fff7f7]" : "border-[var(--app-surface-subtle)] bg-[#fafbfc]"
                       }`}
                     >
                       <div className="space-y-2">
@@ -1109,7 +1109,7 @@ export function NewSaleContent() {
                             type="button"
                             onClick={() => setScannerLineId(row.id)}
                             disabled={salesCatalogQuery.isLoading}
-                            className="inline-flex shrink-0 items-center justify-center rounded-xl border border-[#e2e8f0] bg-white px-2.5 py-2 text-[#006a65] transition hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-50"
+                            className="inline-flex shrink-0 items-center justify-center rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] px-2.5 py-2 text-[var(--app-brand)] transition hover:bg-[var(--app-surface-muted)] disabled:cursor-not-allowed disabled:opacity-50"
                             aria-label="Scan barcode for this line"
                             title="Scan barcode"
                           >
@@ -1121,19 +1121,19 @@ export function NewSaleContent() {
                         {row.nameLines.filter(Boolean).map((line, i) => (
                           <p
                             key={`${row.id}-m-line-${i}`}
-                            className="text-sm font-medium leading-tight text-[#191c1e]"
+                            className="text-sm font-medium leading-tight text-[var(--app-text)]"
                           >
                             {line}
                           </p>
                         ))}
-                        <p className="text-[11px] text-[#94a3b8]">
+                        <p className="text-[11px] text-[var(--app-text-faint)]">
                           Ref: {row.batch} | Exp: {row.expiry}
                         </p>
                         {rowIssue ? <p className="text-[11px] font-medium text-[#ba1a1a]">{rowIssue}</p> : null}
                       </div>
-                      <div className="mt-4 grid grid-cols-2 gap-3 gap-y-4 border-t border-[#f1f5f9] pt-4">
+                      <div className="mt-4 grid grid-cols-2 gap-3 gap-y-4 border-t border-[var(--app-surface-subtle)] pt-4">
                         <div>
-                          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-[#94a3b8]">
+                          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
                             Qty
                           </span>
                           <input
@@ -1143,37 +1143,37 @@ export function NewSaleContent() {
                             onChange={(e) =>
                               updateQty(row.id, Number.parseInt(e.target.value, 10) || 1)
                             }
-                            className="w-full max-w-[5.5rem] rounded-2xl border-0 bg-[#f2f4f6] px-2 py-1.5 text-center text-sm text-[#191c1e] outline-none focus:ring-2 focus:ring-[#006a65]/20"
+                            className="w-full max-w-[5.5rem] rounded-2xl border-0 bg-[var(--app-input-bg)] px-2 py-1.5 text-center text-sm text-[var(--app-text)] outline-none focus:ring-2 focus:ring-[var(--app-brand)]/20"
                           />
                         </div>
                         <div className="text-right">
-                          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-[#94a3b8]">
+                          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
                             Unit price
                           </span>
-                          <p className="text-sm font-medium text-[#191c1e]">
+                          <p className="text-sm font-medium text-[var(--app-text)]">
                             {currencyFormatter.format(row.unitPrice)}
                           </p>
                         </div>
                         <div>
-                          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-[#94a3b8]">
+                          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
                             Tax
                           </span>
-                          <p className="text-xs text-[#64748b]">{Math.round(TAX_RATE * 100)}%</p>
+                          <p className="text-xs text-[var(--app-text-muted)]">{Math.round(TAX_RATE * 100)}%</p>
                         </div>
                         <div className="text-right">
-                          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-[#94a3b8]">
+                          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
                             Line total
                           </span>
-                          <p className="text-sm font-semibold text-[#006a65]">
+                          <p className="text-sm font-semibold text-[var(--app-brand)]">
                             {currencyFormatter.format(lineSubtotal(row))}
                           </p>
                         </div>
                       </div>
-                      <div className="mt-3 flex justify-end border-t border-[#f1f5f9] pt-3">
+                      <div className="mt-3 flex justify-end border-t border-[var(--app-surface-subtle)] pt-3">
                         <button
                           type="button"
                           onClick={() => removeItem(row.id)}
-                          className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-[#94a3b8] transition hover:bg-[#fef2f2] hover:text-[#e11d48]"
+                          className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-[var(--app-text-faint)] transition hover:bg-[#fef2f2] hover:text-[#e11d48]"
                           aria-label={`Remove ${row.name}`}
                         >
                           <span className="material-symbols-outlined notranslate text-lg">close</span>
@@ -1185,23 +1185,23 @@ export function NewSaleContent() {
                 })}
               </div>
 
-              <div className="hidden overflow-x-auto overflow-y-visible overscroll-x-contain rounded-xl border border-[#f1f5f9] md:block">
+              <div className="hidden overflow-x-auto overflow-y-visible overscroll-x-contain rounded-xl border border-[var(--app-surface-subtle)] md:block">
                 <table className="w-full min-w-[640px] border-collapse text-left">
                   <thead>
-                    <tr className="border-b border-[#f1f5f9]">
-                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.06em] text-[#94a3b8]">
+                    <tr className="border-b border-[var(--app-surface-subtle)]">
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
                         Medication Name
                       </th>
-                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.06em] text-[#94a3b8]">
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
                         Qty
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.06em] text-[#94a3b8]">
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
                         Unit Price
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.06em] text-[#94a3b8]">
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
                         Tax
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.06em] text-[#94a3b8]">
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
                         Subtotal
                       </th>
                       <th className="w-12 px-2 py-3" aria-hidden />
@@ -1229,7 +1229,7 @@ export function NewSaleContent() {
                               type="button"
                               onClick={() => setScannerLineId(row.id)}
                               disabled={salesCatalogQuery.isLoading}
-                              className="inline-flex shrink-0 items-center justify-center rounded-xl border border-[#e2e8f0] bg-white px-2.5 py-2 text-[#006a65] transition hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-50"
+                              className="inline-flex shrink-0 items-center justify-center rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] px-2.5 py-2 text-[var(--app-brand)] transition hover:bg-[var(--app-surface-muted)] disabled:cursor-not-allowed disabled:opacity-50"
                               aria-label="Scan barcode for this line"
                               title="Scan barcode"
                             >
@@ -1241,12 +1241,12 @@ export function NewSaleContent() {
                             {row.nameLines.filter(Boolean).map((line, i) => (
                               <p
                                 key={`${row.id}-line-${i}`}
-                                className="text-sm font-medium leading-tight text-[#191c1e]"
+                                className="text-sm font-medium leading-tight text-[var(--app-text)]"
                               >
                                 {line}
                               </p>
                             ))}
-                            <p className="text-[11px] text-[#94a3b8]">
+                            <p className="text-[11px] text-[var(--app-text-faint)]">
                               Ref: {row.batch} | Exp: {row.expiry}
                             </p>
                             {rowIssue ? <p className="text-[11px] font-medium text-[#ba1a1a]">{rowIssue}</p> : null}
@@ -1260,23 +1260,23 @@ export function NewSaleContent() {
                             onChange={(e) =>
                               updateQty(row.id, Number.parseInt(e.target.value, 10) || 1)
                             }
-                            className="w-16 rounded-2xl border-0 bg-[#f2f4f6] px-2 py-1.5 text-center text-sm text-[#191c1e] outline-none focus:ring-2 focus:ring-[#006a65]/20"
+                            className="w-16 rounded-2xl border-0 bg-[var(--app-input-bg)] px-2 py-1.5 text-center text-sm text-[var(--app-text)] outline-none focus:ring-2 focus:ring-[var(--app-brand)]/20"
                           />
                         </td>
-                        <td className="px-4 py-5 align-middle text-right text-sm font-medium text-[#191c1e]">
+                        <td className="px-4 py-5 align-middle text-right text-sm font-medium text-[var(--app-text)]">
                           {currencyFormatter.format(row.unitPrice)}
                         </td>
-                        <td className="px-4 py-5 align-middle text-right text-xs text-[#64748b]">
+                        <td className="px-4 py-5 align-middle text-right text-xs text-[var(--app-text-muted)]">
                           {Math.round(TAX_RATE * 100)}%
                         </td>
-                        <td className="px-4 py-5 align-middle text-right text-sm font-semibold text-[#006a65]">
+                        <td className="px-4 py-5 align-middle text-right text-sm font-semibold text-[var(--app-brand)]">
                           {currencyFormatter.format(lineSubtotal(row))}
                         </td>
                         <td className="px-2 py-5 align-middle">
                           <button
                             type="button"
                             onClick={() => removeItem(row.id)}
-                            className="rounded-lg p-1.5 text-[#94a3b8] transition hover:bg-[#fef2f2] hover:text-[#e11d48]"
+                            className="rounded-lg p-1.5 text-[var(--app-text-faint)] transition hover:bg-[#fef2f2] hover:text-[#e11d48]"
                             aria-label={`Remove ${row.name}`}
                           >
                             <span className="material-symbols-outlined notranslate text-lg">
@@ -1296,11 +1296,11 @@ export function NewSaleContent() {
             <section className={sectionShell}>
               <div className="mb-6 flex items-center gap-3">
                 <div className="flex size-10 items-center justify-center rounded-full bg-[rgba(0,106,101,0.1)]">
-                  <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">
+                  <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">
                     credit_card
                   </span>
                 </div>
-                <h2 className="min-w-0 font-[family-name:var(--font-manrope)] text-base font-bold text-[#191c1e] sm:text-lg">
+                <h2 className="min-w-0 font-[family-name:var(--font-manrope)] text-base font-bold text-[var(--app-text)] sm:text-lg">
                   Payment Details
                 </h2>
               </div>
@@ -1322,7 +1322,7 @@ export function NewSaleContent() {
                       <option value="cash">Cash</option>
                       <option value="insurance">Insurance</option>
                     </select>
-                    <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#64748b]">
+                    <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--app-text-muted)]">
                       expand_more
                     </span>
                   </div>
@@ -1348,10 +1348,10 @@ export function NewSaleContent() {
           <aside className="min-w-0 lg:col-span-4 lg:sticky lg:top-28">
             <div className="relative overflow-hidden rounded-[20px] border border-white/50 bg-[rgba(255,255,255,0.85)] p-4 shadow-[0_25px_50px_-12px_rgba(0,106,101,0.08)] backdrop-blur-md sm:p-6 lg:p-8">
               <div className="mb-8 flex items-center gap-2">
-                <span className="material-symbols-outlined notranslate text-2xl text-[#006a65]">
+                <span className="material-symbols-outlined notranslate text-2xl text-[var(--app-brand)]">
                   shopping_basket
                 </span>
-                <h2 className="min-w-0 font-[family-name:var(--font-manrope)] text-lg font-extrabold text-[#191c1e] sm:text-xl">
+                <h2 className="min-w-0 font-[family-name:var(--font-manrope)] text-lg font-extrabold text-[var(--app-text)] sm:text-xl">
                   Cart Summary
                 </h2>
               </div>
@@ -1359,7 +1359,7 @@ export function NewSaleContent() {
               <div className="space-y-6">
                 <div>
                   <label
-                    className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.1em] text-[#94a3b8]"
+                    className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--app-text-faint)]"
                     htmlFor="discountCode"
                   >
                     Discount Code
@@ -1370,7 +1370,7 @@ export function NewSaleContent() {
                       type="text"
                       value={discountCode}
                       onChange={(e) => setDiscountCode(e.target.value)}
-                      className="min-w-0 flex-1 rounded-2xl border-0 bg-[#f2f4f6] px-4 py-2.5 text-sm text-[#191c1e] outline-none placeholder:text-[#6b7280] focus:ring-2 focus:ring-[#006a65]/20"
+                      className="min-w-0 flex-1 rounded-2xl border-0 bg-[var(--app-input-bg)] px-4 py-2.5 text-sm text-[var(--app-text)] outline-none placeholder:text-[var(--app-placeholder)] focus:ring-2 focus:ring-[var(--app-brand)]/20"
                       placeholder="Enter code"
                     />
                     <button
@@ -1390,21 +1390,21 @@ export function NewSaleContent() {
                           },
                         );
                       }}
-                      className="shrink-0 rounded-2xl bg-[#f1f5f9] px-4 py-2.5 text-xs font-semibold text-[#191c1e] transition hover:bg-[#e2e8f0]"
+                      className="shrink-0 rounded-2xl bg-[var(--app-surface-subtle)] px-4 py-2.5 text-xs font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-cancel-hover)]"
                     >
                       Apply
                     </button>
                   </div>
                 </div>
 
-                <div className="space-y-3 border-t border-[#f1f5f9] pt-6">
+                <div className="space-y-3 border-t border-[var(--app-surface-subtle)] pt-6">
                   <div className="flex justify-between text-sm">
-                    <span className="text-[#64748b]">Subtotal</span>
-                    <span className="font-medium text-[#191c1e]">{currencyFormatter.format(subtotal)}</span>
+                    <span className="text-[var(--app-text-muted)]">Subtotal</span>
+                    <span className="font-medium text-[var(--app-text)]">{currencyFormatter.format(subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-[#64748b]">Tax ({Math.round(TAX_RATE * 100)}%)</span>
-                    <span className="font-medium text-[#191c1e]">{currencyFormatter.format(tax)}</span>
+                    <span className="text-[var(--app-text-muted)]">Tax ({Math.round(TAX_RATE * 100)}%)</span>
+                    <span className="font-medium text-[var(--app-text)]">{currencyFormatter.format(tax)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="font-medium text-[#4648d4]">Total Discount</span>
@@ -1412,16 +1412,16 @@ export function NewSaleContent() {
                   </div>
                 </div>
 
-                <div className="space-y-4 border-t border-[#f1f5f9] pt-6">
+                <div className="space-y-4 border-t border-[var(--app-surface-subtle)] pt-6">
                   <div className="flex min-w-0 items-end justify-between gap-3 sm:gap-4">
-                    <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.12em] text-[#94a3b8]">
+                    <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--app-text-faint)]">
                       Grand Total
                     </span>
                     <div className="min-w-0 text-right">
-                      <p className="font-[family-name:var(--font-manrope)] text-2xl font-extrabold tracking-tight text-[#191c1e] sm:text-3xl md:text-4xl">
+                      <p className="font-[family-name:var(--font-manrope)] text-2xl font-extrabold tracking-tight text-[var(--app-text)] sm:text-3xl md:text-4xl">
                         {currencyFormatter.format(grandTotal)}
                       </p>
-                      <p className="text-[10px] font-semibold text-[#006a65]">
+                      <p className="text-[10px] font-semibold text-[var(--app-brand)]">
                         {auraPoints} Aura Points Earned
                       </p>
                     </div>
@@ -1507,7 +1507,7 @@ export function NewSaleContent() {
                           });
                         }
                       }}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-2xl bg-[#f1f5f9] py-3 text-xs font-semibold text-[#191c1e] transition hover:bg-[#e2e8f0]"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-2xl bg-[var(--app-surface-subtle)] py-3 text-xs font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-cancel-hover)]"
                     >
                       <span className="material-symbols-outlined notranslate text-sm">save</span>
                       Save as Draft
@@ -1515,7 +1515,7 @@ export function NewSaleContent() {
                     <button
                       type="button"
                       onClick={handlePrintReceipt}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-2xl bg-[#f1f5f9] py-3 text-xs font-semibold text-[#191c1e] transition hover:bg-[#e2e8f0]"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-2xl bg-[var(--app-surface-subtle)] py-3 text-xs font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-cancel-hover)]"
                     >
                       <span className="material-symbols-outlined notranslate text-sm">print</span>
                       Print Receipt
@@ -1525,12 +1525,12 @@ export function NewSaleContent() {
 
                 <div className="rounded-2xl border border-[rgba(0,106,101,0.1)] bg-[rgba(0,106,101,0.05)] p-4">
                   <div className="flex min-w-0 gap-3">
-                    <span className="material-symbols-outlined notranslate shrink-0 text-[#006a65]">
+                    <span className="material-symbols-outlined notranslate shrink-0 text-[var(--app-brand)]">
                       auto_awesome
                     </span>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-[#006a65]">Interaction Check</p>
-                      <p className="mt-1 text-[10px] leading-relaxed text-[#3c4948]">
+                      <p className="text-xs font-semibold text-[var(--app-brand)]">Interaction Check</p>
+                      <p className="mt-1 text-[10px] leading-relaxed text-[var(--app-text-secondary)]">
                         No contraindications detected between selected items for this patient
                         profile.
                       </p>

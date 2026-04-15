@@ -11,11 +11,11 @@ export function AuraInsightsContent() {
   return (
     <div className="relative px-4 pb-28 pt-2 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1280px] space-y-6">
-        <div className="rounded-xl border border-[rgba(187,201,199,0.15)] bg-white p-8 shadow-sm">
-          <h1 className="font-[family-name:var(--font-manrope)] text-2xl font-bold text-[#191c1e]">
+        <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-8 shadow-sm">
+          <h1 className="font-[family-name:var(--font-manrope)] text-2xl font-bold text-[var(--app-text)]">
             Aura Insights
           </h1>
-          <p className="mt-3 max-w-2xl text-base leading-relaxed text-[#3c4948]">
+          <p className="mt-3 max-w-2xl text-base leading-relaxed text-[var(--app-text-secondary)]">
             Organization-wide insight charts (clinical trends, AI summaries, and heatmaps) are not
             wired to live aggregates yet. Your sales and stock dashboards already expose real
             metrics per branch.
@@ -30,7 +30,7 @@ export function AuraInsightsContent() {
             </Link>
             <Link
               href={ROUTES.dashboard.stock}
-              className="inline-flex items-center gap-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-6 py-3 text-base font-semibold text-[#334155] transition hover:bg-[#f1f5f9]"
+              className="inline-flex items-center gap-2 rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface-muted)] px-6 py-3 text-base font-semibold text-[#334155] transition hover:bg-[var(--app-surface-subtle)]"
             >
               <span className="material-symbols-outlined notranslate text-lg">inventory_2</span>
               Open Aura Stock

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTheme } from "next-themes";
 import { fetchJson } from "@/lib/api/client";
 import { apiUrl } from "@/lib/api/version";
 import type { MembershipCapabilities } from "@/lib/rbac/capabilities";
@@ -47,6 +48,7 @@ export function useMeQuery(placeholderData?: MeResponse) {
 
 export function usePatchMeMutation() {
   const queryClient = useQueryClient();
+  const { setTheme } = useTheme();
   return useMutation({
     mutationFn: (body: PatchMeInput) =>
       fetchJson<{ ok: true; fullName: string; preferences: UserPreferencesInput }>(apiUrl("/me"), {
@@ -54,8 +56,11 @@ export function usePatchMeMutation() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: meQueryKey });
+      if (data.preferences?.theme) {
+        setTheme(data.preferences.theme);
+      }
     },
   });
 }

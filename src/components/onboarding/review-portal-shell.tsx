@@ -26,9 +26,9 @@ export function ReviewPortalShell({
   const { furthestStepIndex } = useOnboardingProgress();
 
   return (
-    <div className="aura-landing relative min-h-dvh bg-[#f7f9fb] text-[#191c1e]">
+    <div className="aura-landing relative min-h-dvh bg-[var(--app-canvas)] text-[var(--app-text)]">
       {/* Sidebar */}
-      <aside className="fixed left-0 top-0 z-40 hidden h-full w-64 flex-col justify-between border-r border-[#f1f5f9] bg-[#f8fafc] px-4 py-8 lg:flex">
+      <aside className="fixed left-0 top-0 z-40 hidden h-full w-64 flex-col justify-between border-r border-[var(--app-surface-subtle)] bg-[var(--app-surface-muted)] px-4 py-8 lg:flex">
         <div>
           <Link href="/" className="flex items-center gap-3 px-4 pb-10">
             <div
@@ -43,10 +43,10 @@ export function ReviewPortalShell({
               </span>
             </div>
             <div>
-              <p className="font-[family-name:var(--font-manrope)] text-xl font-bold tracking-tight text-[#0d9488]">
+              <p className="font-[family-name:var(--font-manrope)] text-xl font-bold tracking-tight text-[var(--app-link-teal)]">
                 AuraPharma
               </p>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#94a3b8]">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--app-text-faint)]">
                 Onboarding Portal
               </p>
             </div>
@@ -63,7 +63,7 @@ export function ReviewPortalShell({
                 return (
                   <span
                     key={step.id}
-                    className="flex cursor-not-allowed items-center gap-3 rounded-lg px-4 py-3 text-[#94a3b8]"
+                    className="flex cursor-not-allowed items-center gap-3 rounded-lg px-4 py-3 text-[var(--app-text-faint)]"
                     title="Complete the previous steps first"
                   >
                     <span className="material-symbols-outlined notranslate text-lg">lock</span>
@@ -82,10 +82,10 @@ export function ReviewPortalShell({
                     aria-current="page"
                     className="flex items-center gap-3 rounded-lg bg-white px-4 py-3 shadow-sm"
                   >
-                    <span className="material-symbols-outlined notranslate text-lg text-[#0f766e]">
+                    <span className="material-symbols-outlined notranslate text-lg text-[var(--app-link-teal)]">
                       {step.icon}
                     </span>
-                    <span className="font-[family-name:var(--font-manrope)] text-sm font-semibold text-[#0f766e]">
+                    <span className="font-[family-name:var(--font-manrope)] text-sm font-semibold text-[var(--app-link-teal)]">
                       {step.label}
                     </span>
                   </Link>
@@ -95,14 +95,14 @@ export function ReviewPortalShell({
                 <Link
                   key={step.id}
                   href={step.href}
-                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-[#64748b] transition hover:bg-white/60"
+                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface)]/60"
                 >
                   {isComplete ? (
-                    <span className="material-symbols-outlined notranslate text-lg text-[#0d9488]">
+                    <span className="material-symbols-outlined notranslate text-lg text-[var(--app-link-teal)]">
                       check_circle
                     </span>
                   ) : (
-                    <span className="material-symbols-outlined notranslate text-lg text-[#94a3b8]">
+                    <span className="material-symbols-outlined notranslate text-lg text-[var(--app-text-faint)]">
                       {step.icon}
                     </span>
                   )}
@@ -116,14 +116,14 @@ export function ReviewPortalShell({
         </div>
 
         <div className="px-2">
-          <div className="relative overflow-hidden rounded-2xl bg-white p-5 shadow-sm">
-            <p className="text-sm font-bold uppercase tracking-tight text-[#94a3b8]">
+          <div className="relative overflow-hidden rounded-2xl bg-[var(--app-surface)] p-5 shadow-sm">
+            <p className="text-sm font-bold uppercase tracking-tight text-[var(--app-text-faint)]">
               Onboarding Score
             </p>
-            <p className="mt-1 font-[family-name:var(--font-manrope)] text-2xl font-bold text-[#006a65]">
+            <p className="mt-1 font-[family-name:var(--font-manrope)] text-2xl font-bold text-[var(--app-brand)]">
               100%
             </p>
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#f1f5f9]">
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--app-surface-subtle)]">
               <div
                 className="h-full w-full rounded-full"
                 style={{
@@ -132,7 +132,7 @@ export function ReviewPortalShell({
                 }}
               />
             </div>
-            <p className="mt-3 text-[11px] leading-relaxed text-[#64748b]">
+            <p className="mt-3 text-[11px] leading-relaxed text-[var(--app-text-muted)]">
               Ready for deployment into the AuraPharma network.
             </p>
           </div>
@@ -140,13 +140,13 @@ export function ReviewPortalShell({
       </aside>
 
       {/* Header (main area only) */}
-      <header className="fixed left-0 right-0 top-0 z-30 flex h-16 items-center justify-between border-b border-[#f1f5f9] bg-white/80 px-4 backdrop-blur-md sm:px-8 lg:left-64">
+      <header className="fixed left-0 right-0 top-0 z-30 flex h-16 items-center justify-between border-b border-[var(--app-surface-subtle)] bg-[var(--app-surface)]/80 px-4 backdrop-blur-md sm:px-8 lg:left-64">
         <div className="flex items-center gap-6">
-          <span className="font-[family-name:var(--font-manrope)] text-sm font-medium text-[#94a3b8]">
+          <span className="font-[family-name:var(--font-manrope)] text-sm font-medium text-[var(--app-text-faint)]">
             Step {activeIdx + 1} of {stepCount}
           </span>
-          <span className="h-4 w-px bg-[#e2e8f0]" aria-hidden />
-          <span className="font-[family-name:var(--font-manrope)] text-sm font-bold text-[#1e293b]">
+          <span className="h-4 w-px bg-[var(--app-border-ui)]" aria-hidden />
+          <span className="font-[family-name:var(--font-manrope)] text-sm font-bold text-[var(--app-header-title)]">
             {REVIEW_PORTAL_HEADER_TITLE[activeStep] ??
               activeMeta?.label ??
               "Onboarding"}
@@ -156,21 +156,21 @@ export function ReviewPortalShell({
           <div className="hidden items-center gap-4 sm:flex">
             <Link
               href="#"
-              className="font-[family-name:var(--font-manrope)] text-sm font-medium text-[#475569] hover:text-[#0f172a]"
+              className="font-[family-name:var(--font-manrope)] text-sm font-medium text-[var(--app-text-muted)] hover:text-[var(--app-header-title)]"
             >
               Support
             </Link>
             <Link
               href="#"
-              className="font-[family-name:var(--font-manrope)] text-sm font-medium text-[#475569] hover:text-[#0f172a]"
+              className="font-[family-name:var(--font-manrope)] text-sm font-medium text-[var(--app-text-muted)] hover:text-[var(--app-header-title)]"
             >
               Guidelines
             </Link>
           </div>
-          <div className="flex items-center gap-3 border-l border-transparent pl-2 sm:border-[#e2e8f0] sm:pl-6">
+          <div className="flex items-center gap-3 border-l border-transparent pl-2 sm:border-[var(--app-border-ui)] sm:pl-6">
             <button
               type="button"
-              className="rounded-lg p-1 text-[#475569] hover:bg-slate-100"
+              className="rounded-lg p-1 text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]"
               aria-label="Notifications"
             >
               <span className="material-symbols-outlined notranslate text-xl">
@@ -179,7 +179,7 @@ export function ReviewPortalShell({
             </button>
             <button
               type="button"
-              className="rounded-lg p-1 text-[#475569] hover:bg-slate-100"
+              className="rounded-lg p-1 text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]"
               aria-label="Help"
             >
               <span className="material-symbols-outlined notranslate text-xl">help</span>

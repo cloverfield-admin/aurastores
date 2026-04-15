@@ -53,10 +53,10 @@ export function NetworkOverviewContent() {
       <div className="px-4 pb-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[1280px] space-y-8">
           <div className="space-y-2">
-            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[#191c1e] sm:text-4xl sm:tracking-[-0.025em]">
+            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[var(--app-text)] sm:text-4xl sm:tracking-[-0.025em]">
               Network Overview
             </h1>
-            <p className="max-w-xl text-base leading-relaxed text-[#3c4948]">
+            <p className="max-w-xl text-base leading-relaxed text-[var(--app-text-secondary)]">
               Real-time clinical and operational pulse across all active branches.
             </p>
           </div>
@@ -72,10 +72,10 @@ export function NetworkOverviewContent() {
         {/* Page header */}
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-2">
-            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[#191c1e] sm:text-4xl sm:tracking-[-0.025em]">
+            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[var(--app-text)] sm:text-4xl sm:tracking-[-0.025em]">
               Network Overview
             </h1>
-            <p className="max-w-xl text-base leading-relaxed text-[#3c4948]">
+            <p className="max-w-xl text-base leading-relaxed text-[var(--app-text-secondary)]">
               Real-time clinical and operational pulse across all active branches.
             </p>
           </div>
@@ -98,7 +98,7 @@ export function NetworkOverviewContent() {
 
         {/* KPI row */}
         <div className="grid gap-6 md:grid-cols-4">
-          <article className="relative rounded-xl border border-[rgba(187,201,199,0.15)] bg-white p-6 shadow-sm">
+          <article className="relative rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-sm">
             <div className="flex items-start justify-between">
               <div className="flex size-[42px] items-center justify-center rounded-xl bg-[rgba(96,99,238,0.08)]">
                 <span className="material-symbols-outlined notranslate text-2xl text-[#6063ee]">
@@ -122,10 +122,10 @@ export function NetworkOverviewContent() {
                 </span>
               )}
             </div>
-            <p className="mt-4 text-base font-normal uppercase tracking-[0.1em] text-[#3c4948]">
+            <p className="mt-4 text-base font-normal uppercase tracking-[0.1em] text-[var(--app-text-secondary)]">
               Network Revenue
             </p>
-            <p className="mt-1 font-[family-name:var(--font-manrope)] text-3xl font-bold text-[#191c1e]">
+            <p className="mt-1 font-[family-name:var(--font-manrope)] text-3xl font-bold text-[var(--app-text)]">
               {networkQuery.isPending || !totals ? "—" : money.format(totals.totalRevenueCents30d / 100)}
             </p>
             <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#e6e8ea]">
@@ -140,29 +140,29 @@ export function NetworkOverviewContent() {
             </div>
           </article>
 
-          <article className="relative rounded-xl border border-[rgba(187,201,199,0.15)] bg-white p-6 shadow-sm">
+          <article className="relative rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-sm">
             <div className="flex items-start justify-between">
               <div className="flex size-[42px] items-center justify-center rounded-xl bg-[rgba(13,148,136,0.08)]">
-                <span className="material-symbols-outlined notranslate text-2xl text-[#0d9488]">
+                <span className="material-symbols-outlined notranslate text-2xl text-[var(--app-link-teal)]">
                   trending_up
                 </span>
               </div>
-              <span className="rounded-full bg-[rgba(15,185,177,0.12)] px-2 py-1 text-xs text-[#0d9488]">
+              <span className="rounded-full bg-[rgba(15,185,177,0.12)] px-2 py-1 text-xs text-[var(--app-link-teal)]">
                 30d
               </span>
             </div>
-            <p className="mt-4 text-base font-normal uppercase tracking-[0.1em] text-[#3c4948]">
+            <p className="mt-4 text-base font-normal uppercase tracking-[0.1em] text-[var(--app-text-secondary)]">
               Network Gross Profit
             </p>
-            <p className="mt-1 font-[family-name:var(--font-manrope)] text-3xl font-bold text-[#191c1e]">
+            <p className="mt-1 font-[family-name:var(--font-manrope)] text-3xl font-bold text-[var(--app-text)]">
               {networkQuery.isPending || !totals ? "—" : money.format(totals.totalGrossProfitCents30d / 100)}
             </p>
-            <p className="mt-2 text-xs text-[#64748b]">
+            <p className="mt-2 text-xs text-[var(--app-text-muted)]">
               COGS {networkQuery.isPending || !totals ? "—" : money.format(totals.totalCogsCents30d / 100)}
             </p>
           </article>
 
-          <article className="relative rounded-xl border border-[rgba(187,201,199,0.15)] bg-white p-6 shadow-sm">
+          <article className="relative rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-sm">
             <div className="flex items-start justify-between">
               <div className="flex size-[42px] items-center justify-center rounded-xl bg-[rgba(186,26,26,0.06)]">
                 <span className="material-symbols-outlined notranslate text-2xl text-[#ba1a1a]">
@@ -173,10 +173,10 @@ export function NetworkOverviewContent() {
                 {networkQuery.isPending || !totals ? "—" : `${totals.totalLowStockSkuCount} low-stock SKUs`}
               </span>
             </div>
-            <p className="mt-4 text-base font-normal uppercase tracking-[0.1em] text-[#3c4948]">
+            <p className="mt-4 text-base font-normal uppercase tracking-[0.1em] text-[var(--app-text-secondary)]">
               Stock integrity (avg)
             </p>
-            <p className="mt-1 font-[family-name:var(--font-manrope)] text-3xl font-bold text-[#191c1e]">
+            <p className="mt-1 font-[family-name:var(--font-manrope)] text-3xl font-bold text-[var(--app-text)]">
               {networkQuery.isPending || !totals ? "—" : `${totals.healthyBatchRatioAvg}%`}
             </p>
             <div className="mt-4 flex gap-1">
@@ -193,21 +193,21 @@ export function NetworkOverviewContent() {
             </div>
           </article>
 
-          <article className="relative rounded-xl border border-[rgba(187,201,199,0.15)] bg-white p-6 shadow-sm">
+          <article className="relative rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-sm">
             <div className="flex items-start justify-between">
               <div className="flex h-9 w-12 items-center justify-center rounded-xl bg-[rgba(0,106,101,0.08)]">
-                <span className="material-symbols-outlined notranslate text-2xl text-[#006a65]">
+                <span className="material-symbols-outlined notranslate text-2xl text-[var(--app-brand)]">
                   groups
                 </span>
               </div>
-              <span className="rounded-full bg-[rgba(0,106,101,0.1)] px-2 py-1 text-xs text-[#006a65]">
+              <span className="rounded-full bg-[rgba(0,106,101,0.1)] px-2 py-1 text-xs text-[var(--app-brand)]">
                 {networkQuery.isPending || !totals ? "—" : `${totals.activeStaffCount} active`}
               </span>
             </div>
-            <p className="mt-4 text-base font-normal uppercase tracking-[0.1em] text-[#3c4948]">
+            <p className="mt-4 text-base font-normal uppercase tracking-[0.1em] text-[var(--app-text-secondary)]">
               Staff deployment
             </p>
-            <p className="mt-1 font-[family-name:var(--font-manrope)] text-3xl font-bold text-[#191c1e]">
+            <p className="mt-1 font-[family-name:var(--font-manrope)] text-3xl font-bold text-[var(--app-text)]">
               {networkQuery.isPending || !totals
                 ? "—"
                 : `${totals.activeStaffCount} / ${totals.totalStaffCount}`}
@@ -222,7 +222,7 @@ export function NetworkOverviewContent() {
                 />
               ))}
               {staffExtra > 0 ? (
-                <div className="relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-white bg-[#e6e8ea] text-[10px] font-semibold text-[#191c1e]">
+                <div className="relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-white bg-[#e6e8ea] text-[10px] font-semibold text-[var(--app-text)]">
                   +{staffExtra}
                 </div>
               ) : null}
@@ -233,15 +233,15 @@ export function NetworkOverviewContent() {
         {/* Branch cards */}
         <div className="grid gap-8 lg:grid-cols-3">
           {networkQuery.isPending ? (
-            <p className="text-sm text-[#64748b] lg:col-span-3">Loading branches…</p>
+            <p className="text-sm text-[var(--app-text-muted)] lg:col-span-3">Loading branches…</p>
           ) : networkQuery.isError ? (
-            <p className="text-sm text-[#64748b] lg:col-span-3">
+            <p className="text-sm text-[var(--app-text-muted)] lg:col-span-3">
               Branch cards could not be loaded. Check the message above and try again.
             </p>
           ) : !data || data.branches.length === 0 ? (
-            <p className="text-sm text-[#64748b] lg:col-span-3">
+            <p className="text-sm text-[var(--app-text-muted)] lg:col-span-3">
               No branches yet. Use{" "}
-              <Link href={ROUTES.dashboard.onboarding.pharmacyDetails} className="font-semibold text-[#0d9488] underline">
+              <Link href={ROUTES.dashboard.onboarding.pharmacyDetails} className="font-semibold text-[var(--app-link-teal)] underline">
                 branch setup
               </Link>{" "}
               to add your first location.
@@ -277,14 +277,14 @@ export function NetworkOverviewContent() {
         </div>
 
         {/* Activity stream */}
-        <section className="rounded-2xl border border-[rgba(187,201,199,0.15)] bg-[#f2f4f6] p-6 sm:p-8">
+        <section className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-input-bg)] p-6 sm:p-8">
           <div className="mb-8 flex items-center justify-between">
-            <h2 className="font-[family-name:var(--font-manrope)] text-2xl font-bold text-[#191c1e]">
+            <h2 className="font-[family-name:var(--font-manrope)] text-2xl font-bold text-[var(--app-text)]">
               Network Activity Stream
             </h2>
             <button
               type="button"
-              className="rounded-lg border border-[rgba(187,201,199,0.2)] bg-white p-2 text-[#64748b] hover:bg-slate-50"
+              className="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface)] p-2 text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]"
               aria-label="Filter activity"
             >
               <span className="material-symbols-outlined notranslate text-lg">filter_list</span>
@@ -296,7 +296,7 @@ export function NetworkOverviewContent() {
               className="absolute bottom-2 left-[15px] top-2 w-0.5 rounded-full bg-gradient-to-b from-[#0fb9b1] via-[#6366f1] to-[#cbd5e1] opacity-30"
               aria-hidden
             />
-            <p className="py-4 text-sm leading-relaxed text-[#64748b]">
+            <p className="py-4 text-sm leading-relaxed text-[var(--app-text-muted)]">
               No recent network events yet. Inventory and sales activity will appear here when an
               activity feed is connected.
             </p>
@@ -304,14 +304,14 @@ export function NetworkOverviewContent() {
         </section>
 
         {/* Footer strip */}
-        <footer className="flex flex-col gap-4 border-t border-[#f1f5f9] pt-6 text-[11px] uppercase tracking-[0.1em] text-[#94a3b8] sm:flex-row sm:items-center sm:justify-between">
+        <footer className="flex flex-col gap-4 border-t border-[var(--app-surface-subtle)] pt-6 text-[11px] uppercase tracking-[0.1em] text-[var(--app-text-faint)] sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <span className="font-semibold text-[#cbd5e1]">AuraPharma v1.0.0</span>
             <div className="flex flex-wrap gap-4">
-              <Link href="#" className="underline decoration-[rgba(20,184,166,0.3)] hover:text-[#64748b]">
+              <Link href="#" className="underline decoration-[rgba(20,184,166,0.3)] hover:text-[var(--app-text-muted)]">
                 Privacy Policy
               </Link>
-              <Link href="#" className="underline decoration-[rgba(20,184,166,0.3)] hover:text-[#64748b]">
+              <Link href="#" className="underline decoration-[rgba(20,184,166,0.3)] hover:text-[var(--app-text-muted)]">
                 System Status
               </Link>
             </div>
@@ -357,8 +357,8 @@ function BranchLocationCard({
 }) {
   const online = status === "online";
   return (
-    <article className="flex flex-col overflow-hidden rounded-xl border border-[rgba(187,201,199,0.15)] bg-white shadow-sm">
-      <div className="relative h-32 overflow-hidden bg-[#f1f5f9]">
+    <article className="flex flex-col overflow-hidden rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-sm">
+      <div className="relative h-32 overflow-hidden bg-[var(--app-surface-subtle)]">
         <Image
           src={mapSrc}
           alt=""
@@ -376,11 +376,11 @@ function BranchLocationCard({
           }}
         />
         <div className="absolute right-4 top-4">
-          <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold shadow-sm backdrop-blur-sm">
+          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--app-surface)]/90 px-2 py-1 text-[10px] font-semibold shadow-sm backdrop-blur-sm">
             <span
-              className={`size-1.5 rounded-full ${online ? "bg-[#006a65]" : "bg-[#94a3b8]"}`}
+              className={`size-1.5 rounded-full ${online ? "bg-[var(--app-brand)]" : "bg-[#94a3b8]"}`}
             />
-            <span className={online ? "text-[#006a65]" : "text-[#3c4948]"}>
+            <span className={online ? "text-[var(--app-brand)]" : "text-[var(--app-text-secondary)]"}>
               {online ? "ONLINE" : "OFFLINE (Syncing)"}
             </span>
           </span>
@@ -388,10 +388,10 @@ function BranchLocationCard({
       </div>
       <div className="flex flex-1 flex-col gap-4 p-6">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]">
+          <h3 className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[var(--app-text)]">
             {name}
           </h3>
-          <span className="material-symbols-outlined notranslate text-lg text-[#64748b]">
+          <span className="material-symbols-outlined notranslate text-lg text-[var(--app-text-muted)]">
             open_in_new
           </span>
         </div>
@@ -412,10 +412,10 @@ function BranchLocationCard({
               );
             const ddClass =
               row.valueTone === "teal"
-                ? "text-[#006a65]"
+                ? "text-[var(--app-brand)]"
                 : row.valueTone === "indigo"
                   ? "text-[#4648d4]"
-                  : "text-[#191c1e]";
+                  : "text-[var(--app-text)]";
             const dd =
               row.valueLines?.length ? (
                 <>
@@ -430,7 +430,7 @@ function BranchLocationCard({
               );
             return (
               <div key={key} className="flex items-start justify-between gap-4">
-                <dt className="text-[#3c4948]">{dt}</dt>
+                <dt className="text-[var(--app-text-secondary)]">{dt}</dt>
                 <dd className={`text-right font-semibold ${ddClass}`}>{dd}</dd>
               </div>
             );
@@ -453,7 +453,7 @@ function BranchLocationCard({
               },
             );
           }}
-          className="mt-auto w-full rounded-lg bg-[#f2f4f6] py-2 text-center text-base font-semibold text-[#006a65] transition hover:bg-[#e8eaed]"
+          className="mt-auto w-full rounded-lg bg-[var(--app-input-bg)] py-2 text-center text-base font-semibold text-[var(--app-brand)] transition hover:bg-[var(--app-input-focus-bg)]"
         >
           Manage Logistics
         </button>

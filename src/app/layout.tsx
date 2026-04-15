@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Inter, Manrope } from "next/font/google";
 import { AuraFeedbackProvider } from "@/components/providers/aura-feedback-provider";
 import { AppQueryProvider } from "@/components/providers/query-provider";
+import { ThemeColorMeta } from "@/components/providers/theme-color-meta";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 import { getMetadataBase } from "@/lib/site-url";
 import "./globals.css";
 
@@ -33,7 +35,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#0fb9b1",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#0fb9b1" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f766e" },
+  ],
 };
 
 export const metadata: Metadata = {
@@ -74,12 +79,16 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-zinc-50 text-zinc-900">
-        <AppQueryProvider>
-          <AuraFeedbackProvider>{children}</AuraFeedbackProvider>
-        </AppQueryProvider>
+      <body className="min-h-full bg-background text-foreground">
+        <ThemeProvider>
+          <ThemeColorMeta />
+          <AppQueryProvider>
+            <AuraFeedbackProvider>{children}</AuraFeedbackProvider>
+          </AppQueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

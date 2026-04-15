@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { DashboardThemeSync } from "@/components/dashboard/dashboard-theme-sync";
 import type { DashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 import { DashboardWorkspaceProvider } from "@/components/dashboard/dashboard-workspace";
 import { ROUTES } from "@/lib/routes";
@@ -20,11 +21,17 @@ export function DashboardLayoutShell({
     || pathname.startsWith(`${ROUTES.dashboard.onboarding.root}/`);
 
   if (isOnboarding) {
-    return <>{children}</>;
+    return (
+      <>
+        <DashboardThemeSync initialTheme={workspaceAccess.initialTheme} />
+        {children}
+      </>
+    );
   }
 
   return (
     <DashboardWorkspaceProvider value={workspaceAccess}>
+      <DashboardThemeSync initialTheme={workspaceAccess.initialTheme} />
       <DashboardShell workspaceAccess={workspaceAccess}>{children}</DashboardShell>
     </DashboardWorkspaceProvider>
   );
