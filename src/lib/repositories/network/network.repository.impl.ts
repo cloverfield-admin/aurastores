@@ -9,6 +9,7 @@ import {
   products,
   saleItems,
   sales,
+  organizations,
   users,
 } from "@/lib/db/schema";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
@@ -17,6 +18,7 @@ import type {
   NetworkBranchSummary,
   NetworkDashboardData,
   NetworkRepository,
+  OrganizationBranchesData,
 } from "@/lib/repositories/network/network.repository";
 
 function startOfTodayUtc() {
@@ -325,6 +327,29 @@ export class NetworkRepositoryImpl implements NetworkRepository {
       },
       branches: branchSummaries,
       staffPreviewNames,
+    };
+  }
+
+  async getOrganizationBranches(context: AuthContext): Promise<OrganizationBranchesData> {
+    const orgId = context.organization.id;
+    const allBranchRows = await listOrganizationBranches(orgId);
+    const branchRows = filterBranchesForContext(context, allBranchRows);
+    const orgRow =
+      (await db.query.organizations.findFirst({
+        where: eq(organizations.id, orgId),
+      })) ?? context.organization;
+    return {
+      branches: branchRows.map((b) => ({
+        id: b.id,
+        name: b.name,
+        isPrimary: b.isPrimary,
+        status: b.status,
+        leadPharmacistName: b.leadPharmacistName ?? null,
+      })),
+      salesTax: {
+        enabled: Boolean(orgRow.salesTaxEnabled),
+        rateBps: Number.isFinite(orgRow.salesTaxRateBps as number) ? (orgRow.salesTaxRateBps as number) : 0,
+      },
     };
   }
 }

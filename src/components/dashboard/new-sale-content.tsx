@@ -8,9 +8,8 @@ import { OutboxFeatureStatus } from "@/components/outbox/outbox-detail-dialog";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { isOfflineQueuedError } from "@/lib/offline/offline-queued-error";
 import { useCreateSaleMutation, useSalesCatalogQuery } from "@/lib/queries/sales";
+import { useOrganizationOverviewQuery } from "@/lib/queries/organization";
 import { ROUTES } from "@/lib/routes";
-
-const TAX_RATE = 0;
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -23,7 +22,6 @@ type LineItem = {
   productId?: string;
   batchId?: string;
   name: string;
-  nameLines: string[];
   batch: string;
   expiry: string;
   qty: number;
@@ -214,6 +212,8 @@ function MedicationCombobox({
     }
   };
 
+  const showFullValueHint = !open && selectedName.length > 26;
+
   return (
     <div ref={rootRef} className={`relative min-w-0 ${open ? "z-50" : ""} ${className ?? ""}`}>
       <div className="relative">
@@ -222,6 +222,7 @@ function MedicationCombobox({
           ref={inputRef}
           type="search"
           value={open ? query : selectedName}
+          title={open ? query : selectedName}
           disabled={disabled}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -261,6 +262,12 @@ function MedicationCombobox({
         </span>
       </div>
 
+      {showFullValueHint ? (
+        <p className="mt-1 text-[11px] leading-snug text-[var(--app-text-muted)] break-words whitespace-normal">
+          {selectedName}
+        </p>
+      ) : null}
+
       {open && panelStyle ? (
         <div
           id={listboxId}
@@ -295,7 +302,7 @@ function MedicationCombobox({
                   }}
                   onClick={() => selectProduct(product.id)}
                 >
-                  <span className="min-w-0 flex-1 truncate font-medium text-[var(--app-header-title)]">
+                  <span className="min-w-0 flex-1 font-medium text-[var(--app-header-title)] break-words whitespace-normal">
                     {product.name}
                     {product.categoryName ? (
                       <span className="ml-2 align-middle text-xs font-medium text-[var(--app-text-muted)]">
@@ -318,6 +325,71 @@ function MedicationCombobox({
   );
 }
 
+type QtyStepperProps = {
+  id: string;
+  value: number;
+  disabled?: boolean;
+  onChange: (nextQty: number) => void;
+};
+
+function QtyStepper({ id, value, disabled, onChange }: QtyStepperProps) {
+  const [draft, setDraft] = useState<string>(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commitDraft = useCallback(() => {
+    const trimmed = draft.trim();
+    const parsed = Number.parseInt(trimmed, 10);
+    const next = Number.isFinite(parsed) && parsed >= 1 ? parsed : 1;
+    setDraft(String(next));
+    onChange(next);
+  }, [draft, onChange]);
+
+  return (
+    <div className="inline-flex items-stretch overflow-hidden rounded-2xl bg-[var(--app-input-bg)] ring-1 ring-transparent focus-within:ring-2 focus-within:ring-[var(--app-brand)]/20">
+      <button
+        type="button"
+        disabled={disabled || value <= 1}
+        onClick={() => onChange(Math.max(1, value - 1))}
+        className="inline-flex w-10 items-center justify-center text-[var(--app-text)] transition disabled:cursor-not-allowed disabled:opacity-40 active:bg-[var(--app-surface-muted)]"
+        aria-label="Decrease quantity"
+      >
+        <span className="material-symbols-outlined notranslate text-xl">remove</span>
+      </button>
+      <input
+        id={id}
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        disabled={disabled}
+        value={draft}
+        onChange={(e) => {
+          const next = e.target.value.replace(/[^\d]/g, "");
+          setDraft(next);
+        }}
+        onFocus={(e) => {
+          // Mobile-friendly: tapping selects all so users can overwrite "1" quickly.
+          e.target.select();
+        }}
+        onBlur={commitDraft}
+        className="w-16 bg-transparent px-2 text-center text-sm font-medium text-[var(--app-text)] outline-none disabled:cursor-not-allowed disabled:opacity-60"
+        aria-label="Quantity"
+      />
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => onChange(value + 1)}
+        className="inline-flex w-10 items-center justify-center text-[var(--app-text)] transition disabled:cursor-not-allowed disabled:opacity-40 active:bg-[var(--app-surface-muted)]"
+        aria-label="Increase quantity"
+      >
+        <span className="material-symbols-outlined notranslate text-xl">add</span>
+      </button>
+    </div>
+  );
+}
+
 export function NewSaleContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -325,16 +397,22 @@ export function NewSaleContent() {
   const branch = searchParams.get("branch") ?? undefined;
   const salesHref = branch ? `${ROUTES.dashboard.sales}?branch=${branch}` : ROUTES.dashboard.sales;
   const salesCatalogQuery = useSalesCatalogQuery(branch, true);
+  const orgQuery = useOrganizationOverviewQuery();
   const createSaleMutation = useCreateSaleMutation();
   const [customerSearch, setCustomerSearch] = useState("");
   const [patientId, setPatientId] = useState("");
   const [mobile, setMobile] = useState("");
+  const [customerInfoExpanded, setCustomerInfoExpanded] = useState(false);
   const [items, setItems] = useState<LineItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [reference, setReference] = useState("");
+  const [paymentDetailsExpanded, setPaymentDetailsExpanded] = useState(true);
   const [discountCode, setDiscountCode] = useState("");
   const [notes] = useState("");
   const [scannerLineId, setScannerLineId] = useState<string | "add" | null>(null);
+
+  const showCustomerInfo = customerInfoExpanded || Boolean(customerSearch || patientId || mobile);
+  const showPaymentDetails = paymentDetailsExpanded || Boolean(reference || paymentMethod !== "cash");
 
   /* eslint-disable react-hooks/set-state-in-effect -- hydrate placeholder line items when catalog loads */
   useEffect(() => {
@@ -363,7 +441,6 @@ export function NewSaleContent() {
           productId: matched.id,
           batchId: batch?.id,
           name: matched.name,
-          nameLines: matched.name.split(" ").slice(0, 2),
           batch: batch?.batchNumber ?? "N/A",
           expiry: batch ? new Date(batch.expiresAt).toLocaleDateString("en-US") : "N/A",
           unitPrice: Math.max(item.unitPrice, matched.defaultSellingPriceCents / 100),
@@ -373,9 +450,13 @@ export function NewSaleContent() {
   }, [salesCatalogQuery.data?.products]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  const taxRateBps = orgQuery.data?.salesTax.enabled ? orgQuery.data.salesTax.rateBps : 0;
+  const taxRate = taxRateBps / 10_000;
+  const taxRatePctLabel = Math.round(taxRate * 100);
+
   const { subtotal, tax, discount, grandTotal, auraPoints } = useMemo(() => {
     const sub = items.reduce((acc, row) => acc + row.qty * row.unitPrice, 0);
-    const taxAmt = sub * TAX_RATE;
+    const taxAmt = sub * taxRate;
     const disc = 0; // placeholder — wire to discount logic later
     const total = sub + taxAmt - disc;
     const points = Math.max(1, Math.round(total * 0.35));
@@ -386,7 +467,7 @@ export function NewSaleContent() {
       grandTotal: total,
       auraPoints: points,
     };
-  }, [items]);
+  }, [items, taxRate]);
 
   const productById = useMemo(() => {
     const entries = (salesCatalogQuery.data?.products ?? []).map((product) => [product.id, product] as const);
@@ -458,7 +539,6 @@ export function NewSaleContent() {
         productId: product.id,
         batchId: defaultBatch?.id,
         name: product.name,
-        nameLines: product.name.split(" ").slice(0, 2),
         batch: defaultBatch?.batchNumber ?? "N/A",
         expiry: defaultBatch ? new Date(defaultBatch.expiresAt).toLocaleDateString("en-US") : "N/A",
         qty: 1,
@@ -516,7 +596,6 @@ export function NewSaleContent() {
         productId: defaultProduct?.id,
         batchId: defaultBatch?.id,
         name: defaultProduct?.name ?? "Select medication",
-        nameLines: defaultProduct?.name.split(" ").slice(0, 2) ?? ["Select", "medication"],
         batch: defaultBatch?.batchNumber ?? "N/A",
         expiry: defaultBatch ? new Date(defaultBatch.expiresAt).toLocaleDateString("en-US") : "N/A",
         qty: 1,
@@ -541,7 +620,6 @@ export function NewSaleContent() {
               productId: product.id,
               batchId: batch?.id,
               name: product.name,
-              nameLines: product.name.split(" ").slice(0, 2),
               batch: batch?.batchNumber ?? "N/A",
               expiry: batch ? new Date(batch.expiresAt).toLocaleDateString("en-US") : "N/A",
               unitPrice: product.defaultSellingPriceCents / 100,
@@ -622,7 +700,7 @@ export function NewSaleContent() {
 
   function lineSubtotal(row: LineItem) {
     const line = row.qty * row.unitPrice;
-    return line * (1 + TAX_RATE);
+    return line * (1 + taxRate);
   }
 
   async function submitSale(status: "draft" | "completed") {
@@ -822,7 +900,7 @@ export function NewSaleContent() {
 
           <div class="totals">
             <div class="totals-row"><span>Subtotal</span><span>${currencyFormatter.format(subtotal)}</span></div>
-            <div class="totals-row"><span>Tax (${Math.round(TAX_RATE * 100)}%)</span><span>${currencyFormatter.format(tax)}</span></div>
+            <div class="totals-row"><span>Tax (${taxRatePctLabel}%)</span><span>${currencyFormatter.format(tax)}</span></div>
             <div class="totals-row"><span>Discount</span><span>-${currencyFormatter.format(discount)}</span></div>
             <div class="totals-row grand"><span>Grand Total</span><span>${currencyFormatter.format(grandTotal)}</span></div>
           </div>
@@ -967,76 +1045,96 @@ export function NewSaleContent() {
           <div className="flex min-w-0 flex-col gap-6 sm:gap-8 lg:col-span-8">
             {/* Customer Information */}
             <section className={sectionShell}>
-              <div className="mb-6 flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-full bg-[rgba(0,106,101,0.1)]">
-                  <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">
-                    person
-                  </span>
+              <div className="mb-6 flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex size-10 items-center justify-center rounded-full bg-[rgba(0,106,101,0.1)]">
+                    <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">
+                      person
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="min-w-0 font-[family-name:var(--font-manrope)] text-base font-bold text-[var(--app-text)] sm:text-lg">
+                      Customer Information
+                    </h2>
+                    <p className="mt-0.5 text-[11px] font-medium text-[var(--app-text-faint)]">Optional</p>
+                  </div>
                 </div>
-                <h2 className="min-w-0 font-[family-name:var(--font-manrope)] text-base font-bold text-[var(--app-text)] sm:text-lg">
-                  Customer Information
-                </h2>
+
+                <button
+                  type="button"
+                  onClick={() => setCustomerInfoExpanded((v) => !v)}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] px-3 py-2 text-xs font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-surface-muted)]"
+                  aria-expanded={showCustomerInfo}
+                  aria-controls="customer-info-panel"
+                >
+                  <span className="material-symbols-outlined notranslate text-base">
+                    {showCustomerInfo ? "expand_less" : "expand_more"}
+                  </span>
+                  {showCustomerInfo ? "Hide" : "Add details"}
+                </button>
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <label className={fieldLabel} htmlFor="customerSearch">
-                    Customer Name
-                  </label>
-                  <div className="relative">
+              {showCustomerInfo ? (
+                <div id="customer-info-panel" className="grid gap-6 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <label className={fieldLabel} htmlFor="customerSearch">
+                      Customer Name
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="customerSearch"
+                        type="search"
+                        value={customerSearch}
+                        onChange={(e) => setCustomerSearch(e.target.value)}
+                        placeholder="Search by name or ID..."
+                        className={`${inputClass} pr-12`}
+                      />
+                      <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--app-text-muted)]">
+                        search
+                      </span>
+                    </div>
+                    <p className="mt-2 text-[11px] text-[var(--app-text-faint)]">
+                      Search existing records to auto-fill details.
+                    </p>
+                  </div>
+                  <div>
+                    <label className={fieldLabel} htmlFor="patientId">
+                      Patient ID
+                    </label>
                     <input
-                      id="customerSearch"
-                      type="search"
-                      value={customerSearch}
-                      onChange={(e) => setCustomerSearch(e.target.value)}
-                      placeholder="Search by name or ID..."
-                      className={`${inputClass} pr-12`}
+                      id="patientId"
+                      type="text"
+                      value={patientId}
+                      onChange={(e) => setPatientId(e.target.value)}
+                      placeholder="e.g. AUR-8892"
+                      className={inputClass}
                     />
-                    <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--app-text-muted)]">
-                      search
-                    </span>
                   </div>
-                  <p className="mt-2 text-[11px] text-[var(--app-text-faint)]">
-                    Search existing records to auto-fill details.
-                  </p>
-                </div>
-                <div>
-                  <label className={fieldLabel} htmlFor="patientId">
-                    Patient ID
-                  </label>
-                  <input
-                    id="patientId"
-                    type="text"
-                    value={patientId}
-                    onChange={(e) => setPatientId(e.target.value)}
-                    placeholder="e.g. AUR-8892"
-                    className={inputClass}
-                  />
-                </div>
-                <div>
-                  <label className={fieldLabel} htmlFor="mobile">
-                    Mobile Number
-                  </label>
-                  <input
-                    id="mobile"
-                    type="tel"
-                    value={mobile}
-                    onChange={(e) => setMobile(e.target.value)}
-                    placeholder="+1 (555) 000-0000"
-                    className={inputClass}
-                  />
-                </div>
-                <div className="flex items-end sm:col-span-2 sm:justify-end">
-                  <div className="flex w-full max-w-md items-center gap-2 rounded-2xl bg-[rgba(96,99,238,0.1)] px-3 py-3 sm:w-auto sm:py-2.5">
-                    <span className="material-symbols-outlined notranslate shrink-0 text-[#4648d4]">
-                      verified
-                    </span>
-                    <span className="text-xs font-medium text-[#4648d4]">
-                      Aura Rewards Member Active
-                    </span>
+                  <div>
+                    <label className={fieldLabel} htmlFor="mobile">
+                      Mobile Number
+                    </label>
+                    <input
+                      id="mobile"
+                      type="tel"
+                      value={mobile}
+                      onChange={(e) => setMobile(e.target.value)}
+                      placeholder="+1 (555) 000-0000"
+                      className={inputClass}
+                    />
+                  </div>
+                  <div className="flex items-end sm:col-span-2 sm:justify-end">
+                    <div className="flex w-full max-w-md items-center gap-2 rounded-2xl bg-[rgba(96,99,238,0.1)] px-3 py-3 sm:w-auto sm:py-2.5">
+                      <span className="material-symbols-outlined notranslate shrink-0 text-[#4648d4]">
+                        verified
+                      </span>
+                      <span className="text-xs font-medium text-[#4648d4]">
+                        Aura Rewards Member Active
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : null}
             </section>
 
             {/* Items & Prescription */}
@@ -1096,7 +1194,7 @@ export function NewSaleContent() {
                         <label className={fieldLabel} htmlFor={`med-select-${row.id}`}>
                           Medication
                         </label>
-                        <div className="flex gap-2">
+                        <div className="grid grid-cols-[1fr,44px] gap-2">
                           <MedicationCombobox
                             id={`med-select-${row.id}`}
                             value={row.productId ?? ""}
@@ -1118,14 +1216,9 @@ export function NewSaleContent() {
                             </span>
                           </button>
                         </div>
-                        {row.nameLines.filter(Boolean).map((line, i) => (
-                          <p
-                            key={`${row.id}-m-line-${i}`}
-                            className="text-sm font-medium leading-tight text-[var(--app-text)]"
-                          >
-                            {line}
-                          </p>
-                        ))}
+                        <p className="text-sm font-medium leading-snug text-[var(--app-text)] break-words whitespace-normal">
+                          {row.name}
+                        </p>
                         <p className="text-[11px] text-[var(--app-text-faint)]">
                           Ref: {row.batch} | Exp: {row.expiry}
                         </p>
@@ -1136,14 +1229,10 @@ export function NewSaleContent() {
                           <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
                             Qty
                           </span>
-                          <input
-                            type="number"
-                            min={1}
+                          <QtyStepper
+                            id={`qty-${row.id}`}
                             value={row.qty}
-                            onChange={(e) =>
-                              updateQty(row.id, Number.parseInt(e.target.value, 10) || 1)
-                            }
-                            className="w-full max-w-[5.5rem] rounded-2xl border-0 bg-[var(--app-input-bg)] px-2 py-1.5 text-center text-sm text-[var(--app-text)] outline-none focus:ring-2 focus:ring-[var(--app-brand)]/20"
+                            onChange={(next) => updateQty(row.id, next)}
                           />
                         </div>
                         <div className="text-right">
@@ -1158,7 +1247,7 @@ export function NewSaleContent() {
                           <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
                             Tax
                           </span>
-                          <p className="text-xs text-[var(--app-text-muted)]">{Math.round(TAX_RATE * 100)}%</p>
+                          <p className="text-xs text-[var(--app-text-muted)]">{taxRatePctLabel}%</p>
                         </div>
                         <div className="text-right">
                           <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
@@ -1186,13 +1275,13 @@ export function NewSaleContent() {
               </div>
 
               <div className="hidden overflow-x-auto overflow-y-visible overscroll-x-contain rounded-xl border border-[var(--app-surface-subtle)] md:block">
-                <table className="w-full min-w-[640px] border-collapse text-left">
+                <table className="w-full min-w-[900px] border-collapse text-left">
                   <thead>
                     <tr className="border-b border-[var(--app-surface-subtle)]">
-                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
+                      <th className="w-[55%] px-4 py-3 text-xs font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
                         Medication Name
                       </th>
-                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
+                      <th className="w-[160px] px-4 py-3 text-xs font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
                         Qty
                       </th>
                       <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
@@ -1238,14 +1327,9 @@ export function NewSaleContent() {
                               </span>
                             </button>
                             </div>
-                            {row.nameLines.filter(Boolean).map((line, i) => (
-                              <p
-                                key={`${row.id}-line-${i}`}
-                                className="text-sm font-medium leading-tight text-[var(--app-text)]"
-                              >
-                                {line}
-                              </p>
-                            ))}
+                            <p className="text-sm font-medium leading-snug text-[var(--app-text)] break-words whitespace-normal">
+                              {row.name}
+                            </p>
                             <p className="text-[11px] text-[var(--app-text-faint)]">
                               Ref: {row.batch} | Exp: {row.expiry}
                             </p>
@@ -1253,21 +1337,17 @@ export function NewSaleContent() {
                           </div>
                         </td>
                         <td className="px-4 py-5 align-middle">
-                          <input
-                            type="number"
-                            min={1}
+                          <QtyStepper
+                            id={`qty-table-${row.id}`}
                             value={row.qty}
-                            onChange={(e) =>
-                              updateQty(row.id, Number.parseInt(e.target.value, 10) || 1)
-                            }
-                            className="w-16 rounded-2xl border-0 bg-[var(--app-input-bg)] px-2 py-1.5 text-center text-sm text-[var(--app-text)] outline-none focus:ring-2 focus:ring-[var(--app-brand)]/20"
+                            onChange={(next) => updateQty(row.id, next)}
                           />
                         </td>
                         <td className="px-4 py-5 align-middle text-right text-sm font-medium text-[var(--app-text)]">
                           {currencyFormatter.format(row.unitPrice)}
                         </td>
                         <td className="px-4 py-5 align-middle text-right text-xs text-[var(--app-text-muted)]">
-                          {Math.round(TAX_RATE * 100)}%
+                          {taxRatePctLabel}%
                         </td>
                         <td className="px-4 py-5 align-middle text-right text-sm font-semibold text-[var(--app-brand)]">
                           {currencyFormatter.format(lineSubtotal(row))}
@@ -1294,53 +1374,80 @@ export function NewSaleContent() {
 
             {/* Payment Details */}
             <section className={sectionShell}>
-              <div className="mb-6 flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-full bg-[rgba(0,106,101,0.1)]">
-                  <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">
-                    credit_card
-                  </span>
-                </div>
-                <h2 className="min-w-0 font-[family-name:var(--font-manrope)] text-base font-bold text-[var(--app-text)] sm:text-lg">
-                  Payment Details
-                </h2>
-              </div>
-
-              <div className="grid gap-6 sm:grid-cols-2">
-                <div>
-                  <label className={fieldLabel} htmlFor="paymentMethod">
-                    Payment Method
-                  </label>
-                  <div className="relative">
-                    <select
-                      id="paymentMethod"
-                      value={paymentMethod}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className={`${inputClass} appearance-none pr-10`}
-                    >
-                      <option value="aura-pay">Aura Pay Wallet</option>
-                      <option value="card">Card</option>
-                      <option value="cash">Cash</option>
-                      <option value="insurance">Insurance</option>
-                    </select>
-                    <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--app-text-muted)]">
-                      expand_more
+              <div className="mb-6 flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex size-10 items-center justify-center rounded-full bg-[rgba(0,106,101,0.1)]">
+                    <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">
+                      credit_card
                     </span>
                   </div>
+                  <div className="min-w-0">
+                    <h2 className="min-w-0 font-[family-name:var(--font-manrope)] text-base font-bold text-[var(--app-text)] sm:text-lg">
+                      Payment Details
+                    </h2>
+                    {!showPaymentDetails ? (
+                      <p className="mt-0.5 text-[11px] font-medium text-[var(--app-text-faint)]">
+                        {formatPaymentMethodLabel(paymentMethod)}
+                        {reference ? ` • Ref: ${reference}` : ""}
+                      </p>
+                    ) : (
+                      <p className="mt-0.5 text-[11px] font-medium text-[var(--app-text-faint)]">Optional</p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <label className={fieldLabel} htmlFor="reference">
-                    Reference Number
-                  </label>
-                  <input
-                    id="reference"
-                    type="text"
-                    value={reference}
-                    onChange={(e) => setReference(e.target.value)}
-                    placeholder="Optional"
-                    className={inputClass}
-                  />
-                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentDetailsExpanded((v) => !v)}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] px-3 py-2 text-xs font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-surface-muted)]"
+                  aria-expanded={showPaymentDetails}
+                  aria-controls="payment-details-panel"
+                >
+                  <span className="material-symbols-outlined notranslate text-base">
+                    {showPaymentDetails ? "expand_less" : "expand_more"}
+                  </span>
+                  {showPaymentDetails ? "Hide" : "Show"}
+                </button>
               </div>
+
+              {showPaymentDetails ? (
+                <div id="payment-details-panel" className="grid gap-6 sm:grid-cols-2">
+                  <div>
+                    <label className={fieldLabel} htmlFor="paymentMethod">
+                      Payment Method
+                    </label>
+                    <div className="relative">
+                      <select
+                        id="paymentMethod"
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        className={`${inputClass} appearance-none pr-10`}
+                      >
+                        <option value="aura-pay">Aura Pay Wallet</option>
+                        <option value="card">Card</option>
+                        <option value="cash">Cash</option>
+                        <option value="insurance">Insurance</option>
+                      </select>
+                      <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--app-text-muted)]">
+                        expand_more
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className={fieldLabel} htmlFor="reference">
+                      Reference Number
+                    </label>
+                    <input
+                      id="reference"
+                      type="text"
+                      value={reference}
+                      onChange={(e) => setReference(e.target.value)}
+                      placeholder="Optional"
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+              ) : null}
             </section>
           </div>
 
@@ -1403,7 +1510,7 @@ export function NewSaleContent() {
                     <span className="font-medium text-[var(--app-text)]">{currencyFormatter.format(subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-[var(--app-text-muted)]">Tax ({Math.round(TAX_RATE * 100)}%)</span>
+                    <span className="text-[var(--app-text-muted)]">Tax ({taxRatePctLabel}%)</span>
                     <span className="font-medium text-[var(--app-text)]">{currencyFormatter.format(tax)}</span>
                   </div>
                   <div className="flex justify-between text-sm">

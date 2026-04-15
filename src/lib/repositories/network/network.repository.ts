@@ -29,6 +29,21 @@ export type NetworkDashboardData = {
   staffPreviewNames: string[];
 };
 
+/** Lightweight branch row for organization overview (no metrics; RBAC-scoped). */
+export type OrganizationBranchOverview = {
+  id: string;
+  name: string;
+  isPrimary: boolean;
+  status: string;
+  leadPharmacistName: string | null;
+};
+
+export type OrganizationBranchesData = {
+  branches: OrganizationBranchOverview[];
+  salesTax: { enabled: boolean; rateBps: number };
+};
+
 export interface NetworkRepository {
   getDashboard(context: AuthContext): Promise<NetworkDashboardData>;
+  getOrganizationBranches(context: AuthContext): Promise<OrganizationBranchesData>;
 }

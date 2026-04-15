@@ -134,6 +134,20 @@
       "when": 1778600000001,
       "tag": "0018_user_avatars_bucket",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1778700000000,
+      "tag": "0019_organization_tax_and_billing",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1778800000000,
+      "tag": "0020_remove_stripe_customer_id",
+      "breakpoints": true
     }
   ]
 }
