@@ -20,6 +20,7 @@ import {
   type UpdateStaffMemberInput,
 } from "@/lib/repositories/staff/staff.repository";
 import { mergeCapabilitiesFromInput, normalizeStoredCapabilities } from "@/lib/rbac/capabilities";
+import { getUserAvatarPublicUrl } from "@/lib/supabase/user-avatar-public-url";
 
 /** DB or transaction client (drizzle transaction type is narrower than root `db`). */
 type DbExecutor = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -104,6 +105,7 @@ export class StaffRepositoryImpl implements StaffRepository {
         userId: users.id,
         fullName: users.fullName,
         email: users.email,
+        avatarStorageKey: users.avatarStorageKey,
         role: organizationMemberships.role,
         membershipStatus: organizationMemberships.status,
         jobTitle: organizationMemberships.jobTitle,
@@ -133,6 +135,7 @@ export class StaffRepositoryImpl implements StaffRepository {
         userId: row.userId,
         fullName: row.fullName,
         email: row.email,
+        avatarUrl: row.avatarStorageKey ? getUserAvatarPublicUrl(row.avatarStorageKey) : null,
         role: row.role,
         membershipStatus: row.membershipStatus,
         jobTitle: row.jobTitle,
@@ -170,6 +173,7 @@ export class StaffRepositoryImpl implements StaffRepository {
         userId: users.id,
         fullName: users.fullName,
         email: users.email,
+        avatarStorageKey: users.avatarStorageKey,
         role: organizationMemberships.role,
         membershipStatus: organizationMemberships.status,
         jobTitle: organizationMemberships.jobTitle,
@@ -200,6 +204,7 @@ export class StaffRepositoryImpl implements StaffRepository {
       userId: row.userId,
       fullName: row.fullName,
       email: row.email,
+      avatarUrl: row.avatarStorageKey ? getUserAvatarPublicUrl(row.avatarStorageKey) : null,
       role: row.role,
       membershipStatus: row.membershipStatus,
       jobTitle: row.jobTitle,

@@ -20,12 +20,15 @@ export type StaffInviteMailParams = {
 
 export async function sendStaffInviteCredentialsEmail(params: StaffInviteMailParams): Promise<void> {
   const origin = getSiteUrl();
-  const signInUrl = `${origin}${ROUTES.auth.signIn}`;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin;
+  if (!siteUrl) {
+    throw new Error("NEXT_PUBLIC_SITE_URL is not set");
+  }
+  const signInUrl = `${siteUrl}${ROUTES.auth.signIn}`;
   const org = escapeHtml(params.organizationName);
   const name = escapeHtml(params.inviteeFullName);
   const email = escapeHtml(params.to);
   const password = escapeHtml(params.temporaryPassword);
-  const siteUrlEsc = escapeHtml(origin);
   const signInHref = escapeHtml(signInUrl);
   const preheader = escapeHtml(
     `${params.organizationName} invited you to AuraPharma — open this email for your sign-in details.`,
@@ -108,7 +111,7 @@ export async function sendStaffInviteCredentialsEmail(params: StaffInviteMailPar
                       Hi ${name},
                     </p>
                     <p style="margin:0 0 20px 0;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#4b5563;text-align:center;">
-                      <strong style="color:#111827;">${org}</strong> has invited you to join their team on AuraPharma at <strong style="color:#111827;">${siteUrlEsc}</strong>. Sign in with the button below using your temporary password, then choose a new password before using the dashboard.
+                      <strong style="color:#111827;">${org}</strong> has invited you to join their team on AuraPharma. Sign in with the button below using your temporary password, then choose a new password before using the dashboard.
                     </p>
 
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:8px auto 24px auto;">

@@ -12,6 +12,12 @@ import type { CreateSaleInput } from "@/lib/validation/sales";
 
 export const salesDashboardQueryKey = ["sales", "dashboard"] as const;
 export const salesCatalogQueryKey = ["sales", "catalog"] as const;
+export const salesRecentQueryKey = ["sales", "recent"] as const;
+
+export type SalesDateRangeInput = {
+  start: string; // YYYY-MM-DD
+  end: string; // YYYY-MM-DD
+};
 
 type SalesBranch = {
   id: string;
@@ -35,19 +41,13 @@ export type SalesDashboardResponse = {
     totalSalesCount: number;
     averageOrderValueCents: number;
     unitsSoldLast30Days: number;
+    previousUnitsSoldLast30Days: number;
   };
   topProducts: Array<{
     productId: string;
     name: string;
     amountCents: number;
     pct: number;
-  }>;
-  recentSales: Array<{
-    id: string;
-    saleNumber: string;
-    patientName: string | null;
-    createdAt: string;
-    totalCents: number;
   }>;
   branchDistribution: Array<{
     branchId: string;
@@ -59,6 +59,16 @@ export type SalesDashboardResponse = {
     label: string;
     revenueCents: number;
     unitsSold: number;
+  }>;
+};
+
+export type SalesRecentSalesResponse = {
+  recentSales: Array<{
+    id: string;
+    saleNumber: string;
+    patientName: string | null;
+    createdAt: string;
+    totalCents: number;
   }>;
 };
 
@@ -105,11 +115,29 @@ export type CreateSalePayload = {
 
 export type CreateSaleMutationInput = CreateSalePayload & { idempotencyKey?: string };
 
-export function useSalesDashboardQuery(branchId?: string, enabled = true) {
+export function useSalesDashboardQuery(branchId?: string, enabled = true, range?: SalesDateRangeInput) {
   return useQuery({
-    queryKey: [...salesDashboardQueryKey, { branchId }],
+    queryKey: [...salesDashboardQueryKey, { branchId, start: range?.start, end: range?.end }],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      params.set("branch", branchId ?? "");
+      if (range?.start && range?.end) {
+        params.set("start", range.start);
+        params.set("end", range.end);
+      }
+      return fetchJson<SalesDashboardResponse>(`${apiUrl("/sales")}?${params.toString()}`, {
+        method: "GET",
+      });
+    },
+    enabled,
+  });
+}
+
+export function useSalesRecentSalesQuery(branchId?: string, enabled = true) {
+  return useQuery({
+    queryKey: [...salesRecentQueryKey, { branchId }],
     queryFn: () =>
-      fetchJson<SalesDashboardResponse>(`${apiUrl("/sales")}?branch=${encodeURIComponent(branchId ?? "")}`, {
+      fetchJson<SalesRecentSalesResponse>(`${apiUrl("/sales/recent")}?branch=${encodeURIComponent(branchId ?? "")}`, {
         method: "GET",
       }),
     enabled,

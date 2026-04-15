@@ -14,7 +14,13 @@ import {
 import type { CreateSaleInput } from "@/lib/validation/sales";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 import { filterBranchesForContext } from "@/lib/rbac/branch-access";
-import type { SalesCatalogData, SalesDashboardData, SalesRepository } from "@/lib/repositories/sales/sales.repository";
+import type {
+  SalesCatalogData,
+  SalesDashboardData,
+  SalesDateRange,
+  SalesRecentSalesData,
+  SalesRepository,
+} from "@/lib/repositories/sales/sales.repository";
 
 type ResolvedBranch = typeof branches.$inferSelect;
 
@@ -38,6 +44,10 @@ function normalizeDate(value: string | Date) {
 function startOfTodayUtc() {
   const now = new Date();
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+}
+
+function addDaysUtc(date: Date, days: number) {
+  return new Date(date.getTime() + days * 86_400_000);
 }
 
 function differenceInDays(target: Date, base: Date) {
@@ -137,41 +147,41 @@ function deriveBatchStatus(
 }
 
 export class SalesRepositoryImpl implements SalesRepository {
-  async getDashboard(context: AuthContext, branchId?: string): Promise<SalesDashboardData> {
+  async getDashboard(context: AuthContext, branchId?: string, range?: SalesDateRange): Promise<SalesDashboardData> {
     const { branch, branchOptions } = await resolveBranchContext(context, branchId);
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 86_400_000);
-    const sixtyDaysAgo = new Date(now.getTime() - 60 * 86_400_000);
-    const trendWindowStart = new Date(now.getTime() - 35 * 86_400_000);
-    const nowIso = now.toISOString();
-    const thirtyDaysAgoIso = thirtyDaysAgo.toISOString();
-    const sixtyDaysAgoIso = sixtyDaysAgo.toISOString();
-    const trendWindowStartIso = trendWindowStart.toISOString();
-    const trendWindowStartLiteral = sql.raw(`'${trendWindowStartIso}'::timestamptz`);
-    const trendBucketExpr =
-      sql<number>`floor(extract(epoch from (${sales.createdAt} - ${trendWindowStartLiteral})) / 604800)::int`;
+
+    const endInclusive = normalizeDate(range?.end ?? startOfTodayUtc());
+    const startInclusive = normalizeDate(range?.start ?? addDaysUtc(endInclusive, -29));
+    const endExclusive = addDaysUtc(endInclusive, 1);
+
+    const windowMs = endExclusive.getTime() - startInclusive.getTime();
+    const previousEndExclusive = startInclusive;
+    const previousStartInclusive = new Date(previousEndExclusive.getTime() - windowMs);
+
+    const startIso = startInclusive.toISOString();
+    const endExclusiveIso = endExclusive.toISOString();
+    const prevStartIso = previousStartInclusive.toISOString();
+    const prevEndExclusiveIso = previousEndExclusive.toISOString();
 
     const [
       metricsRows,
       cogsRows,
       topProductsRows,
-      recentRows,
       branchRevenueRows,
-      soldUnitsRows,
-      trendRevenueRows,
-      trendUnitsRows,
+      unitsRows,
+      trendRows,
     ] =
       await Promise.all([
         db
           .select({
             totalRevenueCents:
-              sql<number>`coalesce(sum(${sales.totalCents}) filter (where ${sales.createdAt} >= ${thirtyDaysAgoIso}::timestamptz), 0)::int`,
+              sql<number>`coalesce(sum(${sales.totalCents}) filter (where ${sales.createdAt} >= ${startIso}::timestamptz and ${sales.createdAt} < ${endExclusiveIso}::timestamptz), 0)::int`,
             previousRevenueCents:
-              sql<number>`coalesce(sum(${sales.totalCents}) filter (where ${sales.createdAt} >= ${sixtyDaysAgoIso}::timestamptz and ${sales.createdAt} < ${thirtyDaysAgoIso}::timestamptz), 0)::int`,
+              sql<number>`coalesce(sum(${sales.totalCents}) filter (where ${sales.createdAt} >= ${prevStartIso}::timestamptz and ${sales.createdAt} < ${prevEndExclusiveIso}::timestamptz), 0)::int`,
             totalSalesCount:
-              sql<number>`coalesce(count(*) filter (where ${sales.createdAt} >= ${thirtyDaysAgoIso}::timestamptz), 0)::int`,
+              sql<number>`coalesce(count(*) filter (where ${sales.createdAt} >= ${startIso}::timestamptz and ${sales.createdAt} < ${endExclusiveIso}::timestamptz), 0)::int`,
             averageOrderValueCents:
-              sql<number>`coalesce(round(avg(${sales.totalCents}) filter (where ${sales.createdAt} >= ${thirtyDaysAgoIso}::timestamptz)), 0)::int`,
+              sql<number>`coalesce(round(avg(${sales.totalCents}) filter (where ${sales.createdAt} >= ${startIso}::timestamptz and ${sales.createdAt} < ${endExclusiveIso}::timestamptz)), 0)::int`,
           })
           .from(sales)
           .where(
@@ -179,15 +189,15 @@ export class SalesRepositoryImpl implements SalesRepository {
               eq(sales.organizationId, context.organization.id),
               eq(sales.branchId, branch.id),
               eq(sales.status, "completed"),
-              sql`${sales.createdAt} >= ${sixtyDaysAgoIso}::timestamptz`,
+              sql`${sales.createdAt} >= ${prevStartIso}::timestamptz`,
             ),
           ),
         db
           .select({
             totalCogsCents:
-              sql<number>`coalesce(sum(${saleItems.quantity} * ${inventoryBatches.unitOrderPriceCents}) filter (where ${sales.createdAt} >= ${thirtyDaysAgoIso}::timestamptz), 0)::int`,
+              sql<number>`coalesce(sum(${saleItems.quantity} * ${inventoryBatches.unitOrderPriceCents}) filter (where ${sales.createdAt} >= ${startIso}::timestamptz and ${sales.createdAt} < ${endExclusiveIso}::timestamptz), 0)::int`,
             previousCogsCents:
-              sql<number>`coalesce(sum(${saleItems.quantity} * ${inventoryBatches.unitOrderPriceCents}) filter (where ${sales.createdAt} >= ${sixtyDaysAgoIso}::timestamptz and ${sales.createdAt} < ${thirtyDaysAgoIso}::timestamptz), 0)::int`,
+              sql<number>`coalesce(sum(${saleItems.quantity} * ${inventoryBatches.unitOrderPriceCents}) filter (where ${sales.createdAt} >= ${prevStartIso}::timestamptz and ${sales.createdAt} < ${prevEndExclusiveIso}::timestamptz), 0)::int`,
           })
           .from(saleItems)
           .innerJoin(sales, eq(saleItems.saleId, sales.id))
@@ -197,7 +207,7 @@ export class SalesRepositoryImpl implements SalesRepository {
               eq(sales.organizationId, context.organization.id),
               eq(sales.branchId, branch.id),
               eq(sales.status, "completed"),
-              sql`${sales.createdAt} >= ${sixtyDaysAgoIso}::timestamptz`,
+              sql`${sales.createdAt} >= ${prevStartIso}::timestamptz`,
             ),
           ),
         db
@@ -214,30 +224,13 @@ export class SalesRepositoryImpl implements SalesRepository {
               eq(sales.organizationId, context.organization.id),
               eq(sales.branchId, branch.id),
               eq(sales.status, "completed"),
+              sql`${sales.createdAt} >= ${startIso}::timestamptz`,
+              sql`${sales.createdAt} < ${endExclusiveIso}::timestamptz`,
             ),
           )
           .groupBy(products.id, products.name)
           .orderBy(desc(sql`coalesce(sum(${saleItems.lineTotalCents}), 0)`))
           .limit(4),
-        db
-          .select({
-            id: sales.id,
-            saleNumber: sales.saleNumber,
-            totalCents: sales.totalCents,
-            createdAt: sales.createdAt,
-            patientName: patients.fullName,
-          })
-          .from(sales)
-          .leftJoin(patients, eq(sales.patientId, patients.id))
-          .where(
-            and(
-              eq(sales.organizationId, context.organization.id),
-              eq(sales.branchId, branch.id),
-              eq(sales.status, "completed"),
-            ),
-          )
-          .orderBy(desc(sales.createdAt))
-          .limit(5),
         db
           .select({
             branchId: sales.branchId,
@@ -247,43 +240,20 @@ export class SalesRepositoryImpl implements SalesRepository {
           .from(sales)
           .innerJoin(branches, eq(sales.branchId, branches.id))
           .where(
-            and(eq(sales.organizationId, context.organization.id), eq(sales.status, "completed")),
+            and(
+              eq(sales.organizationId, context.organization.id),
+              eq(sales.status, "completed"),
+              sql`${sales.createdAt} >= ${startIso}::timestamptz`,
+              sql`${sales.createdAt} < ${endExclusiveIso}::timestamptz`,
+            ),
           )
           .groupBy(sales.branchId, branches.name),
         db
           .select({
-            unitsSold: sql<number>`coalesce(sum(abs(${inventoryTransactions.quantityDelta})), 0)::int`,
-          })
-          .from(inventoryTransactions)
-          .where(
-            and(
-              eq(inventoryTransactions.organizationId, context.organization.id),
-              eq(inventoryTransactions.branchId, branch.id),
-              eq(inventoryTransactions.transactionType, "sale"),
-              sql`${inventoryTransactions.occurredAt} >= ${thirtyDaysAgoIso}::timestamptz`,
-            ),
-          ),
-        db
-          .select({
-            bucketIndex: trendBucketExpr,
-            revenueCents: sql<number>`coalesce(sum(${sales.totalCents}), 0)::int`,
-          })
-          .from(sales)
-          .where(
-            and(
-              eq(sales.organizationId, context.organization.id),
-              eq(sales.branchId, branch.id),
-              eq(sales.status, "completed"),
-              sql`${sales.createdAt} >= ${trendWindowStartIso}::timestamptz`,
-              sql`${sales.createdAt} < ${nowIso}::timestamptz`,
-            ),
-          )
-          .groupBy(trendBucketExpr)
-          .orderBy(asc(trendBucketExpr)),
-        db
-          .select({
-            bucketIndex: trendBucketExpr,
-            quantity: sql<number>`coalesce(sum(${saleItems.quantity}), 0)::int`,
+            unitsSoldLast30Days:
+              sql<number>`coalesce(sum(${saleItems.quantity}) filter (where ${sales.createdAt} >= ${startIso}::timestamptz and ${sales.createdAt} < ${endExclusiveIso}::timestamptz), 0)::int`,
+            previousUnitsSoldLast30Days:
+              sql<number>`coalesce(sum(${saleItems.quantity}) filter (where ${sales.createdAt} >= ${prevStartIso}::timestamptz and ${sales.createdAt} < ${prevEndExclusiveIso}::timestamptz), 0)::int`,
           })
           .from(saleItems)
           .innerJoin(sales, eq(saleItems.saleId, sales.id))
@@ -292,12 +262,48 @@ export class SalesRepositoryImpl implements SalesRepository {
               eq(sales.organizationId, context.organization.id),
               eq(sales.branchId, branch.id),
               eq(sales.status, "completed"),
-              sql`${sales.createdAt} >= ${trendWindowStartIso}::timestamptz`,
-              sql`${sales.createdAt} < ${nowIso}::timestamptz`,
+              sql`${sales.createdAt} >= ${prevStartIso}::timestamptz`,
             ),
+          ),
+        db.execute(sql`
+          with days as (
+            select generate_series(
+              date_trunc('day', ${startIso}::timestamptz),
+              date_trunc('day', ${endExclusiveIso}::timestamptz) - interval '1 day',
+              interval '1 day'
+            ) as day
+          ),
+          revenue as (
+            select date_trunc('day', ${sales.createdAt}) as day,
+                   coalesce(sum(${sales.totalCents}), 0)::int as revenue_cents
+            from ${sales}
+            where ${sales.organizationId} = ${context.organization.id}
+              and ${sales.branchId} = ${branch.id}
+              and ${sales.status} = 'completed'
+              and ${sales.createdAt} >= ${startIso}::timestamptz
+              and ${sales.createdAt} < ${endExclusiveIso}::timestamptz
+            group by 1
+          ),
+          units as (
+            select date_trunc('day', ${sales.createdAt}) as day,
+                   coalesce(sum(${saleItems.quantity}), 0)::int as units_sold
+            from ${saleItems}
+            inner join ${sales} on ${saleItems.saleId} = ${sales.id}
+            where ${sales.organizationId} = ${context.organization.id}
+              and ${sales.branchId} = ${branch.id}
+              and ${sales.status} = 'completed'
+              and ${sales.createdAt} >= ${startIso}::timestamptz
+              and ${sales.createdAt} < ${endExclusiveIso}::timestamptz
+            group by 1
           )
-          .groupBy(trendBucketExpr)
-          .orderBy(asc(trendBucketExpr)),
+          select d.day as day,
+                 coalesce(r.revenue_cents, 0)::int as "revenueCents",
+                 coalesce(u.units_sold, 0)::int as "unitsSold"
+          from days d
+          left join revenue r on r.day = d.day
+          left join units u on u.day = d.day
+          order by d.day asc
+        `),
       ]);
 
     const metrics = metricsRows[0] ?? {
@@ -313,17 +319,33 @@ export class SalesRepositoryImpl implements SalesRepository {
     const topTotal = topProductsRows.reduce((sum, row) => sum + row.amountCents, 0);
     const branchTotalRevenue = branchRevenueRows.reduce((sum, row) => sum + row.amountCents, 0);
     const dateLabelFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit" });
-    const trendRevenueMap = new Map(trendRevenueRows.map((row) => [row.bucketIndex, row.revenueCents]));
-    const trendUnitsMap = new Map(trendUnitsRows.map((row) => [row.bucketIndex, row.quantity]));
-    const trend = Array.from({ length: 5 }, (_, index) => {
-      const bucketStart = new Date(trendWindowStart.getTime() + index * 7 * 86_400_000);
+    const trendRawUnknown: unknown = trendRows;
+    const trendRaw: Array<{ day: unknown; revenueCents: unknown; unitsSold: unknown }> = Array.isArray(trendRawUnknown)
+      ? (trendRawUnknown as Array<{ day: unknown; revenueCents: unknown; unitsSold: unknown }>)
+      : typeof trendRawUnknown === "object" && trendRawUnknown && "rows" in trendRawUnknown
+        ? (((trendRawUnknown as { rows?: unknown }).rows ?? []) as Array<{
+            day: unknown;
+            revenueCents: unknown;
+            unitsSold: unknown;
+          }>)
+        : [];
 
+    const trend = trendRaw.map((row) => ({
+      label: dateLabelFormatter.format(row.day instanceof Date ? row.day : new Date(String(row.day))),
+      revenueCents: Number(row.revenueCents ?? 0),
+      unitsSold: Number(row.unitsSold ?? 0),
+    }));
+    const units = unitsRows[0] ?? { unitsSoldLast30Days: 0, previousUnitsSoldLast30Days: 0 };
+    const branchRevenueById = new Map(branchRevenueRows.map((row) => [row.branchId, row]));
+    const branchDistributionExpanded = branchOptions.map((branchOption) => {
+      const row = branchRevenueById.get(branchOption.id);
       return {
-        label: dateLabelFormatter.format(bucketStart),
-        revenueCents: trendRevenueMap.get(index) ?? 0,
-        unitsSold: trendUnitsMap.get(index) ?? 0,
+        branchId: branchOption.id,
+        name: branchOption.name,
+        amountCents: row?.amountCents ?? 0,
       };
     });
+    const branchTotalRevenueExpanded = branchDistributionExpanded.reduce((sum, row) => sum + row.amountCents, 0);
 
     return {
       branch: {
@@ -344,7 +366,8 @@ export class SalesRepositoryImpl implements SalesRepository {
         previousGrossProfitCents: metrics.previousRevenueCents - cogsMetrics.previousCogsCents,
         totalSalesCount: metrics.totalSalesCount,
         averageOrderValueCents: metrics.averageOrderValueCents,
-        unitsSoldLast30Days: soldUnitsRows[0]?.unitsSold ?? 0,
+        unitsSoldLast30Days: units.unitsSoldLast30Days,
+        previousUnitsSoldLast30Days: units.previousUnitsSoldLast30Days,
       },
       topProducts: topProductsRows.map((row) => ({
         productId: row.productId,
@@ -352,22 +375,49 @@ export class SalesRepositoryImpl implements SalesRepository {
         amountCents: row.amountCents,
         pct: topTotal > 0 ? Math.max(1, Math.round((row.amountCents / topTotal) * 100)) : 0,
       })),
-      recentSales: recentRows.map((row) => ({
-        id: row.id,
-        saleNumber: row.saleNumber,
-        patientName: row.patientName,
-        createdAt: row.createdAt.toISOString(),
-        totalCents: row.totalCents,
-      })),
-      branchDistribution: branchRevenueRows.map((row) => ({
+      branchDistribution: branchDistributionExpanded.map((row) => ({
         branchId: row.branchId,
-        name: row.branchName,
+        name: row.name,
         amountCents: row.amountCents,
         pct:
-          branchTotalRevenue > 0 ? Math.max(1, Math.round((row.amountCents / branchTotalRevenue) * 100)) : 0,
+          branchTotalRevenueExpanded > 0
+            ? Math.round((row.amountCents / branchTotalRevenueExpanded) * 100)
+            : 0,
       })),
       trend,
     };
+  }
+
+  async getRecentSales(context: AuthContext, branchId?: string): Promise<SalesRecentSalesData> {
+    const branch = await resolveBranch(context, branchId);
+
+    const rows = await db
+      .select({
+        id: sales.id,
+        saleNumber: sales.saleNumber,
+        totalCents: sales.totalCents,
+        createdAt: sales.createdAt,
+        patientName: patients.fullName,
+      })
+      .from(sales)
+      .leftJoin(patients, eq(sales.patientId, patients.id))
+      .where(
+        and(
+          eq(sales.organizationId, context.organization.id),
+          eq(sales.branchId, branch.id),
+          eq(sales.status, "completed"),
+        ),
+      )
+      .orderBy(desc(sales.createdAt))
+      .limit(5);
+
+    return rows.map((row) => ({
+      id: row.id,
+      saleNumber: row.saleNumber,
+      patientName: row.patientName,
+      createdAt: row.createdAt.toISOString(),
+      totalCents: row.totalCents,
+    }));
   }
 
   async getCatalog(context: AuthContext, branchId?: string): Promise<SalesCatalogData> {
