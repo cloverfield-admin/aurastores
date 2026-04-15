@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   index,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -71,6 +72,9 @@ export const organizations = pgTable(
     hqState: varchar("hq_state", { length: 128 }),
     hqPostalCode: varchar("hq_postal_code", { length: 32 }),
     hqCountry: varchar("hq_country", { length: 2 }).notNull().default("US"),
+    salesTaxEnabled: boolean("sales_tax_enabled").notNull().default(false),
+    /** e.g. 1600 = 16.00% */
+    salesTaxRateBps: integer("sales_tax_rate_bps").notNull().default(0),
     status: organizationStatusEnum("status").notNull().default("trial"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

@@ -40,6 +40,8 @@ export const organizations = pgTable("organizations", {
 	hqState: varchar("hq_state", { length: 128 }),
 	hqPostalCode: varchar("hq_postal_code", { length: 32 }),
 	hqCountry: varchar("hq_country", { length: 2 }).default('US').notNull(),
+	salesTaxEnabled: boolean("sales_tax_enabled").default(false).notNull(),
+	salesTaxRateBps: integer("sales_tax_rate_bps").default(0).notNull(),
 	status: organizationStatus().default('trial').notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
