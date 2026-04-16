@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { lipilaTransactions, subscriptionInvoices } from "@/lib/db/schema";
+import { subscriptionInvoices } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { services } from "@/lib/di";
 import { lipilaCallbackSchema } from "@/lib/validation/billing";
-
-function isUuidLike(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value,
-  );
-}
 
 function hasValidCallbackToken(request: Request): boolean {
   const expected = process.env.LIPILA_CALLBACK_TOKEN;
@@ -39,25 +33,15 @@ export async function POST(request: Request) {
   }
 
   const identifier = parsed.data.identifier?.trim() || null;
-  const externalId = parsed.data.externalId?.trim() || null;
-  const referenceId = parsed.data.referenceId?.trim() || null;
 
-  const invoice =
-    (identifier ? await services.billing.findInvoiceByIdentifier(identifier) : null) ||
-    (externalId
-      ? // prefer UUID invoice id; fallback to treating externalId as identifier
-        (isUuidLike(externalId)
-          ? await db.query.subscriptionInvoices.findFirst({
-              where: eq(subscriptionInvoices.id, externalId),
-            })
-          : null) ||
-        (await services.billing.findInvoiceByIdentifier(externalId))
-      : null) ||
-    (referenceId
-      ? await db.query.lipilaTransactions
-          .findFirst({ where: eq(lipilaTransactions.referenceIdText, referenceId) })
-          .then(async (tx) => (tx ? db.query.subscriptionInvoices.findFirst({ where: eq(subscriptionInvoices.id, tx.invoiceId) }) : null))
-      : null);
+  if (!identifier) {
+    return NextResponse.json(
+      { error: "Invoice identifier is required." },
+      { status: 400 },
+    );
+  }
+
+  const invoice = await services.billing.findInvoiceByIdentifier(identifier);
 
   if (!invoice) {
     return NextResponse.json({ error: "Invoice not found." }, { status: 404 });
