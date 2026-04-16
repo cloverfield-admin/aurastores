@@ -17,6 +17,7 @@ export type AuthContext = {
   entitlements: SubscriptionPlanFeatures;
   subscription: {
     planCode: "free" | "basic" | "pro" | "enterprise";
+    planName: string;
     interval: "monthly" | "quarterly" | "yearly";
     status: "active" | "past_due" | "canceled" | "pending_payment";
     currentPeriodStart: Date;
