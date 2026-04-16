@@ -64,6 +64,7 @@ function extractInvoiceIdentifierFromLipilaReferenceId(referenceId: string): str
   const fullExtract = match?.[1] ?? null;
   if (fullExtract) return fullExtract;
 
+  
   // Fallback: extract the embedded invoice identifier substring.
   // For our generated invoices: inv_<now36>_<rand8>
   const embeddedMatch = referenceId.match(/(inv_[0-9a-z]+_[0-9a-z]+)/i);
