@@ -5,6 +5,7 @@ async function handleProxy(request: NextRequest) {
   return updateSupabaseSession(request);
 }
 
+
 export { handleProxy as proxy };
 export default handleProxy;
 
