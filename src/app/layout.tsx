@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { Geist, Geist_Mono, Inter, Manrope } from "next/font/google";
 import { AuraFeedbackProvider } from "@/components/providers/aura-feedback-provider";
 import { AppQueryProvider } from "@/components/providers/query-provider";
@@ -89,6 +90,7 @@ export default function RootLayout({
             <AuraFeedbackProvider>{children}</AuraFeedbackProvider>
           </AppQueryProvider>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
