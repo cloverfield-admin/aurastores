@@ -9,6 +9,7 @@ import {
 } from "@/lib/db/schema";
 import type { AuthRepository } from "@/lib/repositories/auth/auth.repository";
 import { authRepository } from "@/lib/repositories/auth/auth.repository.impl";
+import { billingRepository } from "@/lib/repositories/billing/billing.repository.impl";
 import { assertWithinLimit } from "@/lib/billing/entitlements";
 import type {
   OnboardingComplianceDocumentPayload,
@@ -355,6 +356,8 @@ export class OnboardingRepositoryImpl implements OnboardingRepository {
         })
         .where(eq(organizationOnboarding.organizationId, context.organization.id));
     });
+
+    await billingRepository.grantIntroTrialAfterOnboardingIfEligible(context.organization.id);
 
     const snapshot = await this.getCurrent(authUserId);
     if (!snapshot) {

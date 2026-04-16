@@ -433,6 +433,9 @@ export default async function HomePage() {
               <p className="mx-auto max-w-xl text-[#3c4948]">
                 Transparent pricing designed for every stage of your pharmacy&apos;s growth.
               </p>
+              <p className="mx-auto max-w-2xl text-sm font-medium text-[#006a65]">
+                Basic and Pro: 7-day free trial on your first paid plan, then regular billing.
+              </p>
             </div>
 
             <div className="grid grid-cols-1 items-stretch gap-8 lg:grid-cols-4">
@@ -494,6 +497,27 @@ export default async function HomePage() {
                             "Custom"
                           )}
                         </p>
+                        {/* {plan.code === "basic" || plan.code === "pro" ? (
+                          <p
+                            className={
+                              highlight
+                                ? "pt-2 text-sm font-semibold leading-snug text-white"
+                                : "pt-2 text-sm font-semibold leading-snug text-[#006a65]"
+                            }
+                          >
+                            7-day free trial
+                            <span
+                              className={
+                                highlight ? "font-normal text-white/85" : "font-normal text-[#3c4948]"
+                              }
+                            >
+                              {" "}
+                              · then billed monthly after trial
+                            </span>
+                          </p>
+                        ) : plan.code === "free" ? (
+                          <p className="pt-2 text-sm text-[#3c4948]">Always free — no trial needed.</p>
+                        ) : null} */}
                       </div>
                       <ul className="flex flex-1 flex-col gap-4 py-8">
                         {bullets.map((t) => (
@@ -505,7 +529,14 @@ export default async function HomePage() {
                           </li>
                         ))}
                       </ul>
-                      <Link href={ROUTES.auth.register} className={cta}>
+                      <Link
+                        href={
+                          plan.code === "basic" || plan.code === "pro"
+                            ? `${ROUTES.auth.register}?plan=${plan.code}`
+                            : ROUTES.auth.register
+                        }
+                        className={cta}
+                      >
                         {plan.code === "free"
                           ? "Get Started"
                           : plan.code === "enterprise"
@@ -523,6 +554,10 @@ export default async function HomePage() {
                 lock
               </span>
               All plans include 256-bit HIPAA compliant data encryption
+            </p>
+            <p className="mx-auto max-w-2xl text-center text-sm leading-relaxed text-[#3c4948]">
+              Basic and Pro include a <span className="font-semibold text-[#006a65]">7-day free trial</span> on your
+              first paid subscription, then standard billing applies. The Free plan is always free—no trial needed.
             </p>
           </div>
         </section>

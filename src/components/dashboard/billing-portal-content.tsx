@@ -12,6 +12,7 @@ import {
   useBillingMeQuery,
   useCreateInvoiceMutation,
   usePublicPlansQuery,
+  useStartIntroPaidTrialMutation,
   useStartLipilaCardCollectionMutation,
   useStartLipilaMomoCollectionMutation,
   useStartLipilaPaymentMutation,
@@ -88,6 +89,7 @@ export function BillingPortalContent() {
   const invoices = useBillingInvoicesQuery(invoiceListLimit);
   const queryClient = useQueryClient();
   const createInvoice = useCreateInvoiceMutation();
+  const startIntroTrial = useStartIntroPaidTrialMutation();
   const startUssd = useStartLipilaPaymentMutation();
   const startMomo = useStartLipilaMomoCollectionMutation();
   const startCard = useStartLipilaCardCollectionMutation();
@@ -101,9 +103,17 @@ export function BillingPortalContent() {
 
   const currentPlanCode = me.data?.subscription?.planCode ?? "free";
   const defaultInterval = me.data?.subscription?.interval ?? "monthly";
+  const subscriptionStatus = me.data?.subscription?.status ?? "active";
+  const introTrialEligible = Boolean(me.data?.subscription?.introPaidTrialEligible);
+  const trialEndsAt = me.data?.subscription?.currentPeriodEnd;
+  const trialDaysRemaining =
+    subscriptionStatus === "trialing" && trialEndsAt
+      ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86400000))
+      : null;
 
   const [planCode, setPlanCode] = useState<SubscriptionPlanCode>(currentPlanCode);
   const [interval, setInterval] = useState<SubscriptionInterval>(defaultInterval);
+  const showIntroTrialCta = introTrialEligible && planCode !== "free";
   const [activeInvoiceId, setActiveInvoiceId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"ussd" | "momo" | "card">("ussd");
   const [momoMsisdn, setMomoMsisdn] = useState("");
@@ -297,6 +307,22 @@ export function BillingPortalContent() {
     }
   }
 
+  async function handleStartIntroTrial() {
+    setUiError(null);
+    setPaymentInfo(null);
+    setCollectionInfo(null);
+    stopCallbackWait();
+    setCopied(false);
+    if (planCode === "free") {
+      return;
+    }
+    try {
+      await startIntroTrial.mutateAsync({ planCode });
+    } catch (e) {
+      setUiError(e instanceof Error ? e.message : "Could not start intro trial.");
+    }
+  }
+
   async function handleStartUssd(invoiceId: string) {
     setUiError(null);
     setCopied(false);
@@ -440,10 +466,17 @@ export function BillingPortalContent() {
                       </p>
                     </div>
                     <span className="inline-flex items-center rounded-full bg-[rgba(20,184,166,0.12)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--app-brand)]">
-                      {me.data?.subscription?.status ?? "active"}
+                      {subscriptionStatus === "trialing" ? "Trial" : subscriptionStatus}
                     </span>
                   </div>
                   <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-[var(--app-text-secondary)]">
+                    {subscriptionStatus === "trialing" && trialDaysRemaining !== null ? (
+                      <p className="font-semibold text-[var(--app-text)]">
+                        {trialDaysRemaining === 0
+                          ? "Your trial ends today."
+                          : `${trialDaysRemaining} day${trialDaysRemaining === 1 ? "" : "s"} left in your trial.`}
+                      </p>
+                    ) : null}
                     <p>
                       <span className="font-semibold text-[var(--app-text)]">Period start:</span>{" "}
                       {formatWhen(me.data?.subscription?.currentPeriodStart)}
@@ -569,15 +602,36 @@ export function BillingPortalContent() {
                       );
                     })}
                   </div>
+                  {showIntroTrialCta ? (
+                    <button
+                      type="button"
+                      onClick={() => void handleStartIntroTrial()}
+                      disabled={startIntroTrial.isPending}
+                      className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-4 py-3 text-sm font-extrabold text-white shadow-sm transition hover:opacity-95 disabled:opacity-60"
+                    >
+                      <span className="material-symbols-outlined notranslate text-base">timer</span>
+                      {startIntroTrial.isPending ? "Starting trial…" : "Start 7-day free trial"}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => void handleCreateInvoice()}
                     disabled={createInvoice.isPending}
-                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-4 py-3 text-sm font-extrabold text-white shadow-sm transition hover:opacity-95 disabled:opacity-60"
+                    className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-extrabold shadow-sm transition disabled:opacity-60 ${
+                      showIntroTrialCta
+                        ? "border-2 border-[var(--app-border-ui)] bg-[var(--app-surface)] text-[var(--app-text)] hover:bg-[var(--app-input-bg)]"
+                        : "bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] text-white hover:opacity-95"
+                    }`}
                   >
                     <span className="material-symbols-outlined notranslate text-base">receipt_long</span>
                     {createInvoice.isPending ? "Generating invoice…" : "Generate invoice"}
                   </button>
+                  {showIntroTrialCta ? (
+                    <p className="mt-2 text-[10px] leading-snug text-[var(--app-text-secondary)]">
+                      Your first paid plan includes a 7-day trial. Use Pay now to skip the trial and invoice
+                      immediately.
+                    </p>
+                  ) : null}
                 </div>
               </div>
             )}

@@ -1,7 +1,9 @@
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { introPaidTrialEligibleForSnapshot, introTrialPeriodEnd, normalizeSignupSelectedPlanCode } from "@/lib/billing/intro-trial";
 import { db } from "@/lib/db";
 import {
   lipilaTransactions,
+  organizations,
   organizationSubscriptions,
   subscriptionInvoices,
   subscriptionPlanFeatures,
@@ -12,6 +14,7 @@ import type {
   BillingRepository,
   CreateInvoiceParams,
   LipilaCallbackPayload,
+  OrganizationSubscriptionStatus,
   OrgSubscriptionSnapshot,
   PublicPlan,
   RecordLipilaInitiationParams,
@@ -37,6 +40,19 @@ function normalizeInterval(interval: string): SubscriptionInterval {
     return interval;
   }
   return "monthly";
+}
+
+function normalizeSubscriptionStatus(status: string): OrganizationSubscriptionStatus {
+  if (
+    status === "active" ||
+    status === "past_due" ||
+    status === "canceled" ||
+    status === "pending_payment" ||
+    status === "trialing"
+  ) {
+    return status;
+  }
+  return "active";
 }
 
 function addMonthsClamped(date: Date, months: number): Date {
@@ -144,7 +160,49 @@ export class BillingRepositoryImpl implements BillingRepository {
     }));
   }
 
+  async ensureIntroTrialReconciled(organizationId: string): Promise<void> {
+    const sub = await db.query.organizationSubscriptions.findFirst({
+      where: eq(organizationSubscriptions.organizationId, organizationId),
+    });
+    if (!sub || sub.status !== "trialing") {
+      return;
+    }
+    const end = sub.currentPeriodEnd;
+    if (!end || end.getTime() > Date.now()) {
+      return;
+    }
+
+    const freePlan = await db.query.subscriptionPlans.findFirst({
+      where: eq(subscriptionPlans.code, "free"),
+    });
+    if (!freePlan) {
+      return;
+    }
+
+    const now = new Date();
+    await db
+      .update(organizationSubscriptions)
+      .set({
+        planId: freePlan.id,
+        status: "active",
+        interval: "monthly",
+        currentPeriodStart: now,
+        currentPeriodEnd: null,
+        scheduledPlanId: null,
+        cancelAtPeriodEnd: false,
+        updatedAt: now,
+      })
+      .where(eq(organizationSubscriptions.organizationId, organizationId));
+  }
+
   async getOrgSubscription(organizationId: string): Promise<OrgSubscriptionSnapshot | null> {
+    await this.ensureIntroTrialReconciled(organizationId);
+
+    const orgRow = await db.query.organizations.findFirst({
+      where: eq(organizations.id, organizationId),
+      columns: { paidIntroTrialStartedAt: true },
+    });
+
     const row = await db
       .select({
         planCode: subscriptionPlans.code,
@@ -172,16 +230,149 @@ export class BillingRepositoryImpl implements BillingRepository {
       ? await db.query.subscriptionPlans.findFirst({ where: eq(subscriptionPlans.id, scheduledPlanId) })
       : null;
 
+    const planCode = normalizePlanCode(row.planCode);
+    const status = normalizeSubscriptionStatus(row.status);
+
     return {
-      planCode: normalizePlanCode(row.planCode),
+      planCode,
       planName: row.planName,
       interval: normalizeInterval(row.interval),
-      status: row.status,
+      status,
       currentPeriodStart: row.currentPeriodStart,
       currentPeriodEnd: row.currentPeriodEnd ?? null,
       cancelAtPeriodEnd: row.cancelAtPeriodEnd,
       scheduledPlanCode: scheduled?.code ? normalizePlanCode(scheduled.code) : null,
+      introPaidTrialEligible: introPaidTrialEligibleForSnapshot({
+        paidIntroTrialStartedAt: orgRow?.paidIntroTrialStartedAt ?? null,
+        planCode,
+        status,
+      }),
     };
+  }
+
+  async grantIntroTrialAfterOnboardingIfEligible(organizationId: string): Promise<boolean> {
+    await this.ensureIntroTrialReconciled(organizationId);
+
+    return db.transaction(async (tx) => {
+      const org = await tx.query.organizations.findFirst({
+        where: eq(organizations.id, organizationId),
+      });
+      if (!org || org.paidIntroTrialStartedAt) {
+        return false;
+      }
+
+      const stored = normalizeSignupSelectedPlanCode(org.signupSelectedPlanCode ?? undefined);
+      if (!stored) {
+        return false;
+      }
+
+      const paidPlan = await tx.query.subscriptionPlans.findFirst({
+        where: eq(subscriptionPlans.code, stored),
+      });
+      if (!paidPlan) {
+        return false;
+      }
+
+      const now = new Date();
+      const trialEnd = introTrialPeriodEnd(now);
+
+      await tx
+        .update(organizations)
+        .set({
+          paidIntroTrialStartedAt: now,
+          signupSelectedPlanCode: null,
+          updatedAt: now,
+        })
+        .where(eq(organizations.id, organizationId));
+
+      await tx
+        .update(organizationSubscriptions)
+        .set({
+          planId: paidPlan.id,
+          status: "trialing",
+          interval: "monthly",
+          currentPeriodStart: now,
+          currentPeriodEnd: trialEnd,
+          scheduledPlanId: null,
+          cancelAtPeriodEnd: false,
+          updatedAt: now,
+        })
+        .where(eq(organizationSubscriptions.organizationId, organizationId));
+
+      return true;
+    });
+  }
+
+  async startIntroPaidTrial(params: { organizationId: string; planCode: SubscriptionPlanCode }): Promise<void> {
+    await this.ensureIntroTrialReconciled(params.organizationId);
+
+    const { organizationId, planCode } = params;
+    if (planCode === "free") {
+      throw new Error("Intro trial is only for paid plans.");
+    }
+
+    await db.transaction(async (tx) => {
+      const org = await tx.query.organizations.findFirst({
+        where: eq(organizations.id, organizationId),
+      });
+      if (!org) {
+        throw new Error("Organization not found.");
+      }
+      if (org.paidIntroTrialStartedAt) {
+        throw new Error("Intro trial has already been used for this organization.");
+      }
+
+      const subRow = await tx
+        .select({
+          planCode: subscriptionPlans.code,
+          status: organizationSubscriptions.status,
+        })
+        .from(organizationSubscriptions)
+        .innerJoin(subscriptionPlans, eq(subscriptionPlans.id, organizationSubscriptions.planId))
+        .where(eq(organizationSubscriptions.organizationId, organizationId))
+        .limit(1)
+        .then((rows) => rows[0] ?? null);
+
+      if (!subRow) {
+        throw new Error("Subscription not found.");
+      }
+      if (normalizePlanCode(subRow.planCode) !== "free" || subRow.status !== "active") {
+        throw new Error("Intro trial is only available on an active Free plan.");
+      }
+
+      const paidPlan = await tx.query.subscriptionPlans.findFirst({
+        where: eq(subscriptionPlans.code, planCode),
+      });
+      if (!paidPlan) {
+        throw new Error("Plan not found.");
+      }
+
+      const now = new Date();
+      const trialEnd = introTrialPeriodEnd(now);
+
+      await tx
+        .update(organizations)
+        .set({
+          paidIntroTrialStartedAt: now,
+          signupSelectedPlanCode: null,
+          updatedAt: now,
+        })
+        .where(eq(organizations.id, organizationId));
+
+      await tx
+        .update(organizationSubscriptions)
+        .set({
+          planId: paidPlan.id,
+          status: "trialing",
+          interval: "monthly",
+          currentPeriodStart: now,
+          currentPeriodEnd: trialEnd,
+          scheduledPlanId: null,
+          cancelAtPeriodEnd: false,
+          updatedAt: now,
+        })
+        .where(eq(organizationSubscriptions.organizationId, organizationId));
+    });
   }
 
   async createInvoice(params: CreateInvoiceParams) {

@@ -12,6 +12,12 @@ export const createInvoiceSchema = z.object({
 
 export type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;
 
+export const startIntroPaidTrialSchema = z.object({
+  planCode: z.enum(["basic", "pro", "enterprise"]),
+});
+
+export type StartIntroPaidTrialInput = z.infer<typeof startIntroPaidTrialSchema>;
+
 export const startLipilaPaymentSchema = z.object({
   invoiceId: z.string().uuid(),
 });

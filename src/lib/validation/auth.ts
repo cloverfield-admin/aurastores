@@ -13,6 +13,7 @@ export const signUpSchema = z.object({
   pharmacyName: z.string().trim().min(2).max(160),
   email: normalizedEmail,
   password: z.string().min(8).max(128),
+  selectedPlanCode: z.enum(["basic", "pro", "enterprise"]).optional(),
 });
 
 export const forgotPasswordSchema = z.object({

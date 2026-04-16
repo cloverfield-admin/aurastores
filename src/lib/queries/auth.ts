@@ -23,6 +23,7 @@ type SignUpPayload = {
   pharmacyName: string;
   email: string;
   password: string;
+  selectedPlanCode?: "basic" | "pro" | "enterprise";
 };
 
 type SignUpResponse = {

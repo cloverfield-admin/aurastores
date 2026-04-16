@@ -16,6 +16,7 @@ export const organizationSubscriptionStatusEnum = pgEnum("organization_subscript
   "past_due",
   "canceled",
   "pending_payment",
+  "trialing",
 ]);
 
 export const subscriptionInvoiceStatusEnum = pgEnum("subscription_invoice_status", [

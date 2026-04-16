@@ -15,6 +15,10 @@ export class BillingService {
     return this.repos.billing.getOrgSubscription(organizationId);
   }
 
+  startIntroPaidTrial(params: Parameters<BillingRepository["startIntroPaidTrial"]>[0]) {
+    return this.repos.billing.startIntroPaidTrial(params);
+  }
+
   createInvoice(params: Parameters<BillingRepository["createInvoice"]>[0]) {
     return this.repos.billing.createInvoice(params);
   }
