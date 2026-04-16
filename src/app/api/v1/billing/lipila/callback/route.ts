@@ -5,6 +5,12 @@ import { eq } from "drizzle-orm";
 import { services } from "@/lib/di";
 import { lipilaCallbackSchema } from "@/lib/validation/billing";
 
+function isUuidLike(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
+}
+
 function hasValidCallbackToken(request: Request): boolean {
   const expected = process.env.LIPILA_CALLBACK_TOKEN;
   if (!expected) {
@@ -40,7 +46,11 @@ export async function POST(request: Request) {
     (identifier ? await services.billing.findInvoiceByIdentifier(identifier) : null) ||
     (externalId
       ? // prefer UUID invoice id; fallback to treating externalId as identifier
-        (await db.query.subscriptionInvoices.findFirst({ where: eq(subscriptionInvoices.id, externalId) })) ||
+        (isUuidLike(externalId)
+          ? await db.query.subscriptionInvoices.findFirst({
+              where: eq(subscriptionInvoices.id, externalId),
+            })
+          : null) ||
         (await services.billing.findInvoiceByIdentifier(externalId))
       : null) ||
     (referenceId
