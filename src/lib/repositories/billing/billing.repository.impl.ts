@@ -153,6 +153,17 @@ export class BillingRepositoryImpl implements BillingRepository {
   }
 
   async createInvoice(params: CreateInvoiceParams) {
+    const existingPending = await db.query.subscriptionInvoices.findFirst({
+      where: and(
+        eq(subscriptionInvoices.organizationId, params.organizationId),
+        eq(subscriptionInvoices.status, "pending"),
+      ),
+      orderBy: [desc(subscriptionInvoices.createdAt)],
+    });
+    if (existingPending) {
+      throw new Error(`Organization already has an unpaid invoice (${existingPending.identifier}).`);
+    }
+
     const plan = await db.query.subscriptionPlans.findFirst({
       where: eq(subscriptionPlans.code, params.planCode),
     });
@@ -175,23 +186,40 @@ export class BillingRepositoryImpl implements BillingRepository {
     }
 
     const identifier = buildIdentifier("inv");
-    const [invoice] = await db
-      .insert(subscriptionInvoices)
-      .values({
-        organizationId: params.organizationId,
-        planId: plan.id,
-        interval: params.interval,
-        currency: price.currency,
-        amountCents: price.amountCents,
-        identifier,
-        status: "pending",
-        dueAt: new Date(Date.now() + 1000 * 60 * 60), // 1 hour default
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning();
+    try {
+      const [invoice] = await db
+        .insert(subscriptionInvoices)
+        .values({
+          organizationId: params.organizationId,
+          planId: plan.id,
+          interval: params.interval,
+          currency: price.currency,
+          amountCents: price.amountCents,
+          identifier,
+          status: "pending",
+          dueAt: new Date(Date.now() + 1000 * 60 * 60), // 1 hour default
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
 
-    return invoice!;
+      return invoice!;
+    } catch (e) {
+      // Race safety: DB partial unique index enforces a single pending invoice per org.
+      if (isPostgresUniqueViolation(e)) {
+        const pending = await db.query.subscriptionInvoices.findFirst({
+          where: and(
+            eq(subscriptionInvoices.organizationId, params.organizationId),
+            eq(subscriptionInvoices.status, "pending"),
+          ),
+          orderBy: [desc(subscriptionInvoices.createdAt)],
+        });
+        if (pending) {
+          throw new Error(`Organization already has an unpaid invoice (${pending.identifier}).`);
+        }
+      }
+      throw e;
+    }
   }
 
   async findInvoiceByIdentifier(identifier: string) {
@@ -203,9 +231,17 @@ export class BillingRepositoryImpl implements BillingRepository {
   }
 
   async recordLipilaInitiation(invoiceId: string, params: RecordLipilaInitiationParams) {
+    const invoice = await db.query.subscriptionInvoices.findFirst({
+      where: eq(subscriptionInvoices.id, invoiceId),
+    });
+    if (!invoice) {
+      throw new Error("Invoice not found.");
+    }
+
     const uuidRef = params.referenceId && isUuidLike(params.referenceId) ? params.referenceId : null;
     const refText = params.referenceId ?? null;
     const values = {
+      organizationId: invoice.organizationId,
       invoiceId,
       identifier: params.identifier,
       referenceId: uuidRef,
@@ -224,6 +260,7 @@ export class BillingRepositoryImpl implements BillingRepository {
         const [row] = await db
           .update(lipilaTransactions)
           .set({
+            organizationId: invoice.organizationId,
             invoiceId,
             identifier: params.identifier,
             externalId: params.externalId ?? null,
@@ -242,11 +279,19 @@ export class BillingRepositoryImpl implements BillingRepository {
   }
 
   async recordLipilaCallback(invoiceId: string, payload: LipilaCallbackPayload) {
+    const invoice = await db.query.subscriptionInvoices.findFirst({
+      where: eq(subscriptionInvoices.id, invoiceId),
+    });
+    if (!invoice) {
+      throw new Error("Invoice not found.");
+    }
+
     const status: "successful" | "failed" =
       payload.status?.toLowerCase() === "successful" ? "successful" : "failed";
     const uuidRef = payload.referenceId && isUuidLike(payload.referenceId) ? payload.referenceId : null;
     const refText = payload.referenceId ?? null;
     const values = {
+      organizationId: invoice.organizationId,
       invoiceId,
       identifier: payload.identifier ?? "unknown",
       referenceId: uuidRef,
@@ -265,6 +310,7 @@ export class BillingRepositoryImpl implements BillingRepository {
         const [row] = await db
           .update(lipilaTransactions)
           .set({
+            organizationId: invoice.organizationId,
             invoiceId,
             identifier: payload.identifier ?? "unknown",
             externalId: payload.externalId ?? null,

@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { boolean, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 import { organizations } from "./account.schema";
 
@@ -160,6 +161,9 @@ export const subscriptionInvoices = pgTable(
       table.status,
       table.createdAt,
     ),
+    orgPendingUnique: uniqueIndex("subscription_invoices_org_pending_unique")
+      .on(table.organizationId)
+      .where(sql`${table.status} = 'pending'`),
     identifierUnique: uniqueIndex("subscription_invoices_identifier_unique").on(table.identifier),
   }),
 );
@@ -168,6 +172,9 @@ export const lipilaTransactions = pgTable(
   "lipila_transactions",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
     invoiceId: uuid("invoice_id")
       .notNull()
       .references(() => subscriptionInvoices.id, { onDelete: "cascade" }),
@@ -183,6 +190,7 @@ export const lipilaTransactions = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({
+    orgCreatedIdx: index("lipila_transactions_org_created_idx").on(table.organizationId, table.createdAt),
     identifierIdx: index("lipila_transactions_identifier_idx").on(table.identifier),
     referenceUnique: uniqueIndex("lipila_transactions_reference_unique").on(table.referenceId),
     referenceTextUnique: uniqueIndex("lipila_transactions_reference_text_unique").on(table.referenceIdText),
