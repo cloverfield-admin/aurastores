@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ROUTES } from "@/lib/routes";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useCheckLipilaCollectionStatusMutation,
   useBillingInvoicesQuery,
@@ -12,10 +13,13 @@ import {
   useStartLipilaCardCollectionMutation,
   useStartLipilaMomoCollectionMutation,
   useStartLipilaPaymentMutation,
+  billingInvoicesQueryKey,
+  billingMeQueryKey,
   type InvoiceRow,
   type SubscriptionInterval,
   type SubscriptionPlanCode,
 } from "@/lib/queries/billing";
+import { subscribeToSubscriptionInvoiceStatus, type SubscriptionInvoiceTerminalStatus } from "@/lib/supabase/subscription-invoices-realtime";
 
 function formatMoney(currency: string, amountCents: number) {
   const value = (amountCents / 100).toFixed(2).replace(/\.00$/, "");
@@ -68,6 +72,7 @@ export function BillingPortalContent() {
   const me = useBillingMeQuery();
   const plans = usePublicPlansQuery(currency);
   const invoices = useBillingInvoicesQuery(25);
+  const queryClient = useQueryClient();
   const createInvoice = useCreateInvoiceMutation();
   const startUssd = useStartLipilaPaymentMutation();
   const startMomo = useStartLipilaMomoCollectionMutation();
@@ -110,6 +115,18 @@ export function BillingPortalContent() {
   const [uiError, setUiError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const [callbackWait, setCallbackWait] = useState<
+    | { state: "waiting"; invoiceId: string; startedAt: number }
+    | { state: "success"; invoiceId: string; completedAt: number }
+    | { state: "failed"; invoiceId: string; completedAt: number }
+    | { state: "timeout"; invoiceId: string; completedAt: number }
+    | null
+  >(null);
+
+  const callbackUnsubscribeRef = useRef<null | (() => void)>(null);
+  const callbackTimeoutRef = useRef<null | ReturnType<typeof setTimeout>>(null);
+  const callbackCompletedRef = useRef(false);
+
   useEffect(() => {
     setPlanCode(currentPlanCode);
   }, [currentPlanCode]);
@@ -118,15 +135,121 @@ export function BillingPortalContent() {
     setInterval(defaultInterval);
   }, [defaultInterval]);
 
+  useEffect(() => {
+    return () => {
+      callbackCompletedRef.current = true;
+      if (callbackTimeoutRef.current) clearTimeout(callbackTimeoutRef.current);
+      callbackTimeoutRef.current = null;
+      callbackUnsubscribeRef.current?.();
+      callbackUnsubscribeRef.current = null;
+    };
+  }, []);
+
   const limits = me.data?.entitlements?.limits ?? null;
   const usage = me.data?.usage ?? null;
 
   const pendingInvoices = (invoices.data?.invoices ?? []).filter((i) => i.status === "pending");
 
+  function stopCallbackWait() {
+    callbackCompletedRef.current = true;
+    if (callbackTimeoutRef.current) clearTimeout(callbackTimeoutRef.current);
+    callbackTimeoutRef.current = null;
+    callbackUnsubscribeRef.current?.();
+    callbackUnsubscribeRef.current = null;
+    setCallbackWait(null);
+  }
+
+  function beginCallbackWait(invoiceId: string) {
+    stopCallbackWait();
+
+    callbackCompletedRef.current = false;
+    const startedAt = Date.now();
+
+    setCallbackWait({ state: "waiting", invoiceId, startedAt });
+
+    const unsubscribe = subscribeToSubscriptionInvoiceStatus(invoiceId, (status: SubscriptionInvoiceTerminalStatus) => {
+      if (callbackCompletedRef.current) return;
+      callbackCompletedRef.current = true;
+
+      if (callbackTimeoutRef.current) clearTimeout(callbackTimeoutRef.current);
+      callbackTimeoutRef.current = null;
+
+      callbackUnsubscribeRef.current = null;
+      unsubscribe();
+
+      setCallbackWait({
+        state: status === "paid" ? "success" : "failed",
+        invoiceId,
+        completedAt: Date.now(),
+      });
+
+      void (async () => {
+        await queryClient.invalidateQueries({ queryKey: billingMeQueryKey });
+        await queryClient.invalidateQueries({ queryKey: billingInvoicesQueryKey });
+      })();
+    });
+
+    callbackUnsubscribeRef.current = unsubscribe;
+
+    callbackTimeoutRef.current = setTimeout(() => {
+      if (callbackCompletedRef.current) return;
+      callbackCompletedRef.current = true;
+
+      callbackUnsubscribeRef.current?.();
+      callbackUnsubscribeRef.current = null;
+
+      setCallbackWait({
+        state: "timeout",
+        invoiceId,
+        completedAt: Date.now(),
+      });
+    }, 60_000);
+  }
+
+  function callbackWaitMessage(invoiceId: string) {
+    if (!callbackWait || callbackWait.invoiceId !== invoiceId) {
+      return (
+        <p className="text-xs text-[var(--app-text-secondary)]">
+          After paying, the invoice will be marked paid when Lipila sends the callback.
+        </p>
+      );
+    }
+
+    switch (callbackWait.state) {
+      case "waiting":
+        return (
+          <p className="text-xs text-[var(--app-text-secondary)]">
+            Waiting for Lipila callback (up to 1 minute)…
+          </p>
+        );
+      case "success":
+        return (
+          <p className="text-xs text-[#065f46]">
+            Subscription successful. Activating your plan now…
+          </p>
+        );
+      case "failed":
+        return (
+          <p className="text-xs text-[#7f1d1d]">
+            Payment failed. Please try again or use a different method.
+          </p>
+        );
+      case "timeout":
+        return (
+          <p className="text-xs text-[var(--app-text-secondary)]">
+            Provider is taking longer to respond. You can refresh status.
+          </p>
+        );
+      default:
+        return null;
+    }
+  }
+
   async function handleCreateInvoice() {
     setUiError(null);
     setPaymentInfo(null);
     setCollectionInfo(null);
+    stopCallbackWait();
     setCopied(false);
     try {
       const result = await createInvoice.mutateAsync({ planCode, interval });
@@ -144,6 +267,7 @@ export function BillingPortalContent() {
       setPaymentInfo(result);
       setCollectionInfo(null);
       setActiveInvoiceId(result.invoiceId);
+      beginCallbackWait(result.invoiceId);
     } catch (e) {
       setUiError(e instanceof Error ? e.message : "Could not start payment.");
     }
@@ -168,6 +292,7 @@ export function BillingPortalContent() {
         latestStatus: result.status ?? null,
       });
       setActiveInvoiceId(result.invoiceId);
+      beginCallbackWait(result.invoiceId);
     } catch (e) {
       setUiError(e instanceof Error ? e.message : "Could not start mobile money collection.");
     }
@@ -193,6 +318,7 @@ export function BillingPortalContent() {
         latestStatus: null,
       });
       setActiveInvoiceId(result.invoiceId);
+      beginCallbackWait(result.invoiceId);
     } catch (e) {
       setUiError(e instanceof Error ? e.message : "Could not start card collection.");
     }
@@ -551,9 +677,7 @@ export function BillingPortalContent() {
                           </p>
                         </div>
                       </div>
-                      <p className="text-xs text-[var(--app-text-secondary)]">
-                        After paying, the invoice will be marked paid when Lipila sends the callback.
-                      </p>
+                      {callbackWaitMessage(paymentInfo.invoiceId)}
                     </div>
                   ) : null}
 
@@ -564,6 +688,9 @@ export function BillingPortalContent() {
                           {collectionInfo.method === "momo" ? "Mobile Money" : "Card"} collection
                         </p>
                         <p className="mt-1 text-xs text-[var(--app-text-secondary)]">{collectionInfo.message}</p>
+                        {callbackWait && callbackWait.invoiceId === collectionInfo.invoiceId ? (
+                          <div className="mt-2">{callbackWaitMessage(collectionInfo.invoiceId)}</div>
+                        ) : null}
 
                         {collectionInfo.checkoutUrl ? (
                           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -598,7 +725,7 @@ export function BillingPortalContent() {
                             <button
                               type="button"
                               onClick={() => void handleRefreshCollectionStatus(collectionInfo.referenceId!)}
-                              disabled={checkStatus.isPending}
+                              disabled={checkStatus.isPending || callbackWait?.state === "waiting"}
                               className="inline-flex items-center gap-2 rounded-xl bg-[var(--app-input-bg)] px-3 py-2 text-xs font-extrabold text-[var(--app-text)] transition hover:bg-[var(--app-input-focus-bg)] disabled:opacity-60"
                             >
                               <span className="material-symbols-outlined notranslate text-base">refresh</span>
