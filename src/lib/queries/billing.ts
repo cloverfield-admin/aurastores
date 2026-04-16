@@ -43,11 +43,12 @@ export type OrgSubscriptionSnapshot = {
   planCode: SubscriptionPlanCode;
   planName: string;
   interval: SubscriptionInterval;
-  status: "active" | "past_due" | "canceled" | "pending_payment";
+  status: "active" | "past_due" | "canceled" | "pending_payment" | "trialing";
   currentPeriodStart: string;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
   scheduledPlanCode: SubscriptionPlanCode | null;
+  introPaidTrialEligible: boolean;
 };
 
 export type MeBillingResponse = {
@@ -182,6 +183,21 @@ export function useCreateInvoiceMutation() {
       }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: billingInvoicesQueryKey });
+      await qc.invalidateQueries({ queryKey: billingMeQueryKey });
+    },
+  });
+}
+
+export function useStartIntroPaidTrialMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { planCode: "basic" | "pro" | "enterprise" }) =>
+      fetchJson<{ ok: true }>(apiUrl("/billing/subscription/start-intro-trial"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+    onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: billingMeQueryKey });
     },
   });

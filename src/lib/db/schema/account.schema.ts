@@ -77,6 +77,10 @@ export const organizations = pgTable(
     /** e.g. 1600 = 16.00% */
     salesTaxRateBps: integer("sales_tax_rate_bps").notNull().default(0),
     status: organizationStatusEnum("status").notNull().default("trial"),
+    /** Paid plan chosen at marketing signup (`?plan=`); cleared after intro trial is granted. */
+    signupSelectedPlanCode: varchar("signup_selected_plan_code", { length: 32 }),
+    /** Set once when the org receives its one-time paid-plan intro trial (landing or billing). */
+    paidIntroTrialStartedAt: timestamp("paid_intro_trial_started_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },

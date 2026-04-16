@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createInvoiceSchema,
   lipilaCallbackSchema,
+  startIntroPaidTrialSchema,
   startLipilaCardCollectionSchema,
   startLipilaMomoCollectionSchema,
   updatePlanPriceSchema,
@@ -13,6 +14,16 @@ describe("createInvoiceSchema", () => {
       planCode: "basic",
       interval: "monthly",
     });
+  });
+});
+
+describe("startIntroPaidTrialSchema", () => {
+  it("accepts basic, pro, and enterprise", () => {
+    expect(startIntroPaidTrialSchema.parse({ planCode: "enterprise" })).toEqual({ planCode: "enterprise" });
+  });
+
+  it("rejects free", () => {
+    expect(startIntroPaidTrialSchema.safeParse({ planCode: "free" }).success).toBe(false);
   });
 });
 

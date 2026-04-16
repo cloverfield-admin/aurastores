@@ -99,11 +99,12 @@ export type AppMeResponse = {
   subscription?: {
     planCode: "free" | "basic" | "pro" | "enterprise";
     interval: "monthly" | "quarterly" | "yearly";
-    status: "active" | "past_due" | "canceled" | "pending_payment";
+    status: "active" | "past_due" | "canceled" | "pending_payment" | "trialing";
     currentPeriodStart: string | Date;
     currentPeriodEnd: string | Date | null;
     cancelAtPeriodEnd: boolean;
     scheduledPlanCode: "free" | "basic" | "pro" | "enterprise" | null;
+    introPaidTrialEligible?: boolean;
   } | null;
 };
 

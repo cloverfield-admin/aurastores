@@ -12,11 +12,13 @@ import {
   subscriptionPlans,
   users,
 } from "@/lib/db/schema";
+import { introPaidTrialEligibleForSnapshot } from "@/lib/billing/intro-trial";
 import { ROUTES } from "@/lib/routes";
 import { uniqueSlug } from "@/lib/utils/slug";
 import { DEFAULT_USER_PREFERENCES } from "@/lib/validation/me";
 import type { UserPreferences } from "@/lib/db/schema";
 import type { AuthContext, AuthRepository, RegisteredUserParams } from "@/lib/repositories/auth/auth.repository";
+import { billingRepository } from "@/lib/repositories/billing/billing.repository.impl";
 import { capabilitiesFromPlan, intersectCapabilities } from "@/lib/billing/entitlements";
 import { resolveAllowedBranchIdsFromAssignments } from "@/lib/rbac/branch-access";
 import {
@@ -57,9 +59,27 @@ function buildAuthContextSlice(
   };
 }
 
+function normalizeAuthSubscriptionStatus(
+  status: string,
+): NonNullable<AuthContext["subscription"]>["status"] {
+  if (
+    status === "active" ||
+    status === "past_due" ||
+    status === "canceled" ||
+    status === "pending_payment" ||
+    status === "trialing"
+  ) {
+    return status;
+  }
+  return "active";
+}
+
 async function loadSubscriptionSlice(
   organizationId: string,
+  paidIntroTrialStartedAt: Date | null | undefined,
 ): Promise<Pick<AuthContext, "entitlements" | "subscription">> {
+  await billingRepository.ensureIntroTrialReconciled(organizationId);
+
   const base = await db
     .select({
       planId: subscriptionPlans.id,
@@ -118,6 +138,9 @@ async function loadSubscriptionSlice(
     };
   }
 
+  const planCode = base.planCode;
+  const subStatus = normalizeAuthSubscriptionStatus(base.status);
+
   const scheduledPlanId =
     typeof base.scheduledPlanId === "string" && base.scheduledPlanId.trim().length > 0
       ? base.scheduledPlanId
@@ -129,14 +152,19 @@ async function loadSubscriptionSlice(
   return {
     entitlements: base.entitlements,
     subscription: {
-      planCode: base.planCode,
+      planCode,
       planName: base.planName,
       interval: base.interval,
-      status: base.status,
+      status: subStatus,
       currentPeriodStart: base.currentPeriodStart,
       currentPeriodEnd: base.currentPeriodEnd ?? null,
       cancelAtPeriodEnd: base.cancelAtPeriodEnd,
       scheduledPlanCode: scheduledPlan?.code ?? null,
+      introPaidTrialEligible: introPaidTrialEligibleForSnapshot({
+        paidIntroTrialStartedAt,
+        planCode,
+        status: subStatus,
+      }),
     },
   };
 }
@@ -216,7 +244,7 @@ export class AuthRepositoryImpl implements AuthRepository {
       allowedBranchIds = orgBranchRows.length === 1 ? [orgBranchRows[0]!.id] : [];
     }
 
-    const subscriptionSlice = await loadSubscriptionSlice(organization.id);
+    const subscriptionSlice = await loadSubscriptionSlice(organization.id, organization.paidIntroTrialStartedAt);
     const planCapabilities = capabilitiesFromPlan(subscriptionSlice.entitlements);
     const baseContext = {
       user,
@@ -262,6 +290,7 @@ export class AuthRepositoryImpl implements AuthRepository {
           displayName: params.pharmacyName,
           legalName: params.pharmacyName,
           primaryEmail: params.email,
+          signupSelectedPlanCode: params.selectedPlanCode ?? null,
         })
         .returning();
 

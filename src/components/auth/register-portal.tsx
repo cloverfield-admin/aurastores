@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { PasswordRevealButton } from "@/components/auth/password-reveal-button";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
@@ -28,6 +28,7 @@ const inputClass =
 
 export function RegisterPortal() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { notify, withLoading, isLoading } = useAuraFeedback();
   const signUpMutation = useSignUpMutation();
   const [showPassword, setShowPassword] = useState(false);
@@ -44,6 +45,10 @@ export function RegisterPortal() {
     setError(null);
     setInfo(null);
 
+    const planParam = searchParams.get("plan")?.trim().toLowerCase();
+    const selectedPlanCode =
+      planParam === "basic" || planParam === "pro" || planParam === "enterprise" ? planParam : undefined;
+
     try {
       const payload = await withLoading("auth-sign-up", "Creating your Aura workspace...", () =>
         signUpMutation.mutateAsync({
@@ -51,6 +56,7 @@ export function RegisterPortal() {
           pharmacyName,
           email,
           password,
+          ...(selectedPlanCode ? { selectedPlanCode } : {}),
         }),
       );
 

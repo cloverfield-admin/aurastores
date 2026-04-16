@@ -19,11 +19,12 @@ export type AuthContext = {
     planCode: "free" | "basic" | "pro" | "enterprise";
     planName: string;
     interval: "monthly" | "quarterly" | "yearly";
-    status: "active" | "past_due" | "canceled" | "pending_payment";
+    status: "active" | "past_due" | "canceled" | "pending_payment" | "trialing";
     currentPeriodStart: Date;
     currentPeriodEnd: Date | null;
     cancelAtPeriodEnd: boolean;
     scheduledPlanCode: "free" | "basic" | "pro" | "enterprise" | null;
+    introPaidTrialEligible: boolean;
   } | null;
   /**
    * Active `branch_staff_assignments` for this org (`[]` = no branches).
@@ -39,6 +40,8 @@ export type RegisteredUserParams = {
   fullName: string;
   pharmacyName: string;
   isEmailVerified: boolean;
+  /** Paid plan pre-selected from marketing (`?plan=`); stored on the organization until intro trial is granted. */
+  selectedPlanCode?: "basic" | "pro" | "enterprise";
 };
 
 export interface AuthRepository {

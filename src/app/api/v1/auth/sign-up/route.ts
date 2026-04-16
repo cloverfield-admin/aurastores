@@ -58,6 +58,7 @@ export async function POST(request: Request) {
     fullName: parsed.data.fullName,
     pharmacyName: parsed.data.pharmacyName,
     isEmailVerified: Boolean(data.user.email_confirmed_at),
+    selectedPlanCode: parsed.data.selectedPlanCode,
   });
 
   const emailVerified = Boolean(data.user.email_confirmed_at);

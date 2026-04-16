@@ -120,6 +120,35 @@ function createContext(): AuthContext {
     organization: { id: "org-1" } as AuthContext["organization"],
     onboarding: null,
     capabilities: fullCapabilities(),
+    entitlements: {
+      capabilities: {
+        stock: true,
+        sales: true,
+        catalog: true,
+        insights: true,
+        pay: true,
+        staff: true,
+        organization: true,
+      },
+      limits: {
+        products: null,
+        salesTransactions: null,
+        categories: null,
+        staffUsers: null,
+        branches: null,
+      },
+    },
+    subscription: {
+      planCode: "free",
+      planName: "Free",
+      interval: "monthly",
+      status: "active",
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+      scheduledPlanCode: null,
+      introPaidTrialEligible: true,
+    },
     allowedBranchIds: null,
   };
 }
