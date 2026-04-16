@@ -19,7 +19,7 @@ const withSerwist = withSerwistInit({
 });
 
 const supabaseImageHost = (() => {
-  const raw = process.env.SUPABASE_URL;
+  const raw = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!raw) {
     return null;
   }
