@@ -86,6 +86,16 @@ function hasValidCallbackToken(request: Request): boolean {
   return false;
 }
 
+function unwrapCallbackPayload(raw: unknown): unknown {
+  // When testing locally we sometimes wrap the Lipila payload like:
+  //   { logId, headers, body: { ...actualLipilaPayload } }
+  // Accept either shape.
+  if (!raw || typeof raw !== "object") return raw;
+  const maybe = raw as Record<string, unknown>;
+  if (maybe.body && typeof maybe.body === "object") return maybe.body;
+  return raw;
+}
+
 export async function POST(request: Request) {
   const logId = `lipila-callback-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 
@@ -119,7 +129,7 @@ export async function POST(request: Request) {
     body: maskSensitiveKeys(body),
   });
 
-  const parsed = lipilaCallbackSchema.safeParse(body);
+  const parsed = lipilaCallbackSchema.safeParse(unwrapCallbackPayload(body));
   if (!parsed.success) {
     console.warn("[billing][lipila] callback payload invalid", {
       logId,

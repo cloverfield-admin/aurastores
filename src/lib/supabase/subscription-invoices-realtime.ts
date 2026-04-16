@@ -6,14 +6,16 @@ export type SubscriptionInvoiceTerminalStatus = "paid" | "failed";
 
 let singleton: ReturnType<typeof createBrowserClient> | null = null;
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY for Supabase realtime.");
-}
-
 function getSupabaseBrowserClient() {
   if (singleton) return singleton;
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    // Don't throw at module-eval time (it can prevent the UI from rendering).
+    // The caller will handle the missing client case.
+    return null;
+  }
 
   // We rely on the existing Supabase auth session cookies managed by `@supabase/ssr`.
   // (server sets cookies; browser reads them). This client is only used for Realtime.
@@ -33,8 +35,12 @@ export function subscribeToSubscriptionInvoiceStatus(
   onTerminalStatus: (status: SubscriptionInvoiceTerminalStatus) => void,
 ) {
   const supabase = getSupabaseBrowserClient();
+  if (!supabase) {
+    return () => {};
+  }
 
   const channelName = `subscription-invoice:${invoiceId}`;
+
   const channel = supabase
     .channel(channelName)
     .on(
@@ -51,7 +57,10 @@ export function subscribeToSubscriptionInvoiceStatus(
         if (status === "paid" || status === "failed") onTerminalStatus(status);
       },
     )
-    .subscribe();
+    .subscribe((status: string, err?: unknown) => {
+      void status;
+      void err;
+    });
 
   return () => {
     void supabase.removeChannel(channel);
