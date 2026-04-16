@@ -8,6 +8,58 @@ import { startLipilaMomoCollectionSchema } from "@/lib/validation/billing";
 import { services } from "@/lib/di";
 import { getSiteUrl } from "@/lib/site-url";
 
+function maskValue(value: string, head = 6, tail = 4): string {
+  if (!value) return "";
+  if (value.length <= head + tail) return value;
+  return `${value.slice(0, head)}…${value.slice(-tail)}`;
+}
+
+function maskSensitiveKeys(input: unknown): unknown {
+  const SENSITIVE_KEYS = new Set([
+    "authorization",
+    "x-lipila-callback-token",
+    "lipilaCallbackToken",
+    "token",
+    "msisdn",
+    "accountNumber",
+    "email",
+    "phone",
+    "ipAddress",
+  ]);
+
+  const maskAnyString = (v: unknown) => {
+    if (typeof v !== "string") return v;
+    return maskValue(v, 4, 2);
+  };
+
+  const walk = (value: unknown, depth: number): unknown => {
+    if (depth > 6) return value;
+    if (value === null || value === undefined) return value;
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
+
+    if (Array.isArray(value)) {
+      return value.map((v) => walk(v, depth + 1));
+    }
+
+    if (typeof value === "object") {
+      const obj = value as Record<string, unknown>;
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(obj)) {
+        if (SENSITIVE_KEYS.has(k)) {
+          out[k] = maskAnyString(v);
+        } else {
+          out[k] = walk(v, depth + 1);
+        }
+      }
+      return out;
+    }
+
+    return value;
+  };
+
+  return walk(input, 0);
+}
+
 export async function POST(request: Request) {
   const gate = await requireAppApiContext();
   if (!gate.ok) {
@@ -57,6 +109,15 @@ export async function POST(request: Request) {
     const result = await lipila.startMobileMoneyCollection(payload, { callbackUrl });
     const returnedReferenceId = (result?.referenceId ?? payload.referenceId ?? null) as string | null;
 
+    console.info("[billing] lipila momo start lipila response", {
+      callbackUrl,
+      referenceIdSent: payload.referenceId,
+      referenceIdReturned: returnedReferenceId,
+      lipilaStatus: result?.status,
+      lipilaMessage: result?.message,
+      raw: maskSensitiveKeys(result),
+    });
+
     if (returnedReferenceId) {
       await services.billing.recordLipilaInitiation(invoice.id, {
         identifier: invoice.identifier,
@@ -67,14 +128,23 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.json({
+    const response = {
       invoiceId: invoice.id,
       identifier: invoice.identifier,
       referenceId: returnedReferenceId,
       status: result?.status ?? "Pending",
       message: result?.message ?? "Approve the payment prompt on the customer’s phone.",
       raw: result,
+    };
+
+    console.info("[billing] lipila momo start response to client", {
+      referenceId: returnedReferenceId,
+      status: response.status,
+      message: response.message,
+      raw: maskSensitiveKeys(response.raw),
     });
+
+    return NextResponse.json(response);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Could not start mobile money collection.";
     console.error("[billing] lipila momo start failed", {
