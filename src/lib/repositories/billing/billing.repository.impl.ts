@@ -39,6 +39,38 @@ function normalizeInterval(interval: string): SubscriptionInterval {
   return "monthly";
 }
 
+function addMonthsClamped(date: Date, months: number): Date {
+  // Keep "end of month" behavior predictable:
+  // If the target month has fewer days, clamp to the last day of that month.
+  const d = new Date(date);
+  const year = d.getUTCFullYear();
+  const month = d.getUTCMonth();
+  const day = d.getUTCDate();
+
+  const targetMonthIndex = month + months;
+  const firstOfTarget = new Date(Date.UTC(year, targetMonthIndex, 1, d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds(), d.getUTCMilliseconds()));
+  const lastDayOfTargetMonth = new Date(Date.UTC(firstOfTarget.getUTCFullYear(), firstOfTarget.getUTCMonth() + 1, 0)).getUTCDate();
+  const clampedDay = Math.min(day, lastDayOfTargetMonth);
+
+  return new Date(
+    Date.UTC(
+      firstOfTarget.getUTCFullYear(),
+      firstOfTarget.getUTCMonth(),
+      clampedDay,
+      d.getUTCHours(),
+      d.getUTCMinutes(),
+      d.getUTCSeconds(),
+      d.getUTCMilliseconds(),
+    ),
+  );
+}
+
+function computePeriodEnd(start: Date, interval: SubscriptionInterval): Date {
+  if (interval === "monthly") return addMonthsClamped(start, 1);
+  if (interval === "quarterly") return addMonthsClamped(start, 3);
+  return addMonthsClamped(start, 12);
+}
+
 function isUuidLike(value: string): boolean {
   // Accept canonical UUID forms; Lipila collections referenceId may be non-UUID.
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -346,6 +378,10 @@ export class BillingRepositoryImpl implements BillingRepository {
       throw new Error("Invoice is not paid.");
     }
 
+    const currentPeriodStart = invoice.paidAt ?? new Date();
+    const currentPeriodEnd = computePeriodEnd(currentPeriodStart, invoice.interval);
+    const now = new Date();
+
     await db
       .insert(organizationSubscriptions)
       .values({
@@ -353,12 +389,12 @@ export class BillingRepositoryImpl implements BillingRepository {
         planId: invoice.planId,
         interval: invoice.interval,
         status: "active",
-        currentPeriodStart: new Date(),
-        currentPeriodEnd: null,
+        currentPeriodStart,
+        currentPeriodEnd,
         cancelAtPeriodEnd: false,
         scheduledPlanId: null,
-        updatedAt: new Date(),
-        createdAt: new Date(),
+        updatedAt: now,
+        createdAt: now,
       })
       .onConflictDoUpdate({
         target: organizationSubscriptions.organizationId,
@@ -366,8 +402,10 @@ export class BillingRepositoryImpl implements BillingRepository {
           planId: invoice.planId,
           interval: invoice.interval,
           status: "active",
+          currentPeriodStart,
+          currentPeriodEnd,
           scheduledPlanId: null,
-          updatedAt: new Date(),
+          updatedAt: now,
         },
       });
   }

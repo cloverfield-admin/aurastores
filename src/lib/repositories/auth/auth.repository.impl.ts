@@ -64,6 +64,7 @@ async function loadSubscriptionSlice(
     .select({
       planId: subscriptionPlans.id,
       planCode: subscriptionPlans.code,
+      planName: subscriptionPlans.name,
       interval: organizationSubscriptions.interval,
       status: organizationSubscriptions.status,
       currentPeriodStart: organizationSubscriptions.currentPeriodStart,
@@ -129,6 +130,7 @@ async function loadSubscriptionSlice(
     entitlements: base.entitlements,
     subscription: {
       planCode: base.planCode,
+      planName: base.planName,
       interval: base.interval,
       status: base.status,
       currentPeriodStart: base.currentPeriodStart,

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ROUTES } from "@/lib/routes";
 import { useQueryClient } from "@tanstack/react-query";
+import { fetchJson } from "@/lib/api/client";
+import { apiUrl } from "@/lib/api/version";
 import {
   useCheckLipilaCollectionStatusMutation,
   useBillingInvoicesQuery,
@@ -19,7 +21,6 @@ import {
   type SubscriptionInterval,
   type SubscriptionPlanCode,
 } from "@/lib/queries/billing";
-import { subscribeToSubscriptionInvoiceStatus, type SubscriptionInvoiceTerminalStatus } from "@/lib/supabase/subscription-invoices-realtime";
 
 function formatMoney(currency: string, amountCents: number) {
   const value = (amountCents / 100).toFixed(2).replace(/\.00$/, "");
@@ -56,6 +57,18 @@ function statusBadge(status: InvoiceRow["status"]) {
   }
 }
 
+function InlineSpinner({ className }: { className?: string }) {
+  return (
+    <span
+      className={[
+        "inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--app-border-ui)] border-t-[var(--app-brand)]",
+        className ?? "",
+      ].join(" ")}
+      aria-hidden="true"
+    />
+  );
+}
+
 function limitLabel(value: number | null | undefined) {
   if (value === null || value === undefined) return "Unlimited";
   return String(value);
@@ -69,9 +82,10 @@ function percentUsed(current: number, limit: number | null | undefined) {
 
 export function BillingPortalContent() {
   const currency = "ZMW";
+  const invoiceListLimit = 25;
   const me = useBillingMeQuery();
   const plans = usePublicPlansQuery(currency);
-  const invoices = useBillingInvoicesQuery(25);
+  const invoices = useBillingInvoicesQuery(invoiceListLimit);
   const queryClient = useQueryClient();
   const createInvoice = useCreateInvoiceMutation();
   const startUssd = useStartLipilaPaymentMutation();
@@ -125,6 +139,7 @@ export function BillingPortalContent() {
 
   const callbackUnsubscribeRef = useRef<null | (() => void)>(null);
   const callbackTimeoutRef = useRef<null | ReturnType<typeof setTimeout>>(null);
+  const callbackPollRef = useRef<null | number>(null);
   const callbackCompletedRef = useRef(false);
 
   useEffect(() => {
@@ -140,6 +155,8 @@ export function BillingPortalContent() {
       callbackCompletedRef.current = true;
       if (callbackTimeoutRef.current) clearTimeout(callbackTimeoutRef.current);
       callbackTimeoutRef.current = null;
+      if (callbackPollRef.current) window.clearInterval(callbackPollRef.current);
+      callbackPollRef.current = null;
       callbackUnsubscribeRef.current?.();
       callbackUnsubscribeRef.current = null;
     };
@@ -154,6 +171,8 @@ export function BillingPortalContent() {
     callbackCompletedRef.current = true;
     if (callbackTimeoutRef.current) clearTimeout(callbackTimeoutRef.current);
     callbackTimeoutRef.current = null;
+    if (callbackPollRef.current) window.clearInterval(callbackPollRef.current);
+    callbackPollRef.current = null;
     callbackUnsubscribeRef.current?.();
     callbackUnsubscribeRef.current = null;
     setCallbackWait(null);
@@ -167,34 +186,52 @@ export function BillingPortalContent() {
 
     setCallbackWait({ state: "waiting", invoiceId, startedAt });
 
-    const unsubscribe = subscribeToSubscriptionInvoiceStatus(invoiceId, (status: SubscriptionInvoiceTerminalStatus) => {
+    // Poll invoices endpoint until invoice reaches a terminal status.
+    callbackPollRef.current = window.setInterval(() => {
       if (callbackCompletedRef.current) return;
-      callbackCompletedRef.current = true;
-
-      if (callbackTimeoutRef.current) clearTimeout(callbackTimeoutRef.current);
-      callbackTimeoutRef.current = null;
-
-      callbackUnsubscribeRef.current = null;
-      unsubscribe();
-
-      setCallbackWait({
-        state: status === "paid" ? "success" : "failed",
-        invoiceId,
-        completedAt: Date.now(),
-      });
 
       void (async () => {
-        await queryClient.invalidateQueries({ queryKey: billingMeQueryKey });
-        await queryClient.invalidateQueries({ queryKey: billingInvoicesQueryKey });
-      })();
-    });
+        try {
+          const res = await fetchJson<{ invoice: InvoiceRow }>(apiUrl(`/billing/invoices/${invoiceId}`), {
+            method: "GET",
+          });
+          const status = res.invoice?.status ?? null;
 
-    callbackUnsubscribeRef.current = unsubscribe;
+          if (status === "paid" || status === "failed") {
+            callbackCompletedRef.current = true;
+
+            if (callbackTimeoutRef.current) clearTimeout(callbackTimeoutRef.current);
+            callbackTimeoutRef.current = null;
+
+            if (callbackPollRef.current) window.clearInterval(callbackPollRef.current);
+            callbackPollRef.current = null;
+
+            setCallbackWait({
+              state: status === "paid" ? "success" : "failed",
+              invoiceId,
+              completedAt: Date.now(),
+            });
+
+            await queryClient.invalidateQueries({ queryKey: billingMeQueryKey });
+            await queryClient.invalidateQueries({ queryKey: billingInvoicesQueryKey });
+
+            if (status === "paid") {
+              // Force a hard refresh so all server-rendered data reflects the new subscription immediately.
+              window.setTimeout(() => window.location.reload(), 600);
+            }
+          }
+        } catch (e) {
+          // Ignore transient polling errors.
+        }
+      })();
+    }, 3000);
 
     callbackTimeoutRef.current = setTimeout(() => {
       if (callbackCompletedRef.current) return;
       callbackCompletedRef.current = true;
 
+      if (callbackPollRef.current) window.clearInterval(callbackPollRef.current);
+      callbackPollRef.current = null;
       callbackUnsubscribeRef.current?.();
       callbackUnsubscribeRef.current = null;
 
@@ -218,9 +255,10 @@ export function BillingPortalContent() {
     switch (callbackWait.state) {
       case "waiting":
         return (
-          <p className="text-xs text-[var(--app-text-secondary)]">
-            Waiting for Lipila callback (up to 1 minute)…
-          </p>
+          <div className="flex items-center gap-2 text-xs text-[var(--app-text-secondary)]">
+            <InlineSpinner />
+            <p>Waiting for Lipila callback (up to 1 minute)…</p>
+          </div>
         );
       case "success":
         return (
