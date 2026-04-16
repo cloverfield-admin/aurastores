@@ -5,6 +5,57 @@ import { eq } from "drizzle-orm";
 import { services } from "@/lib/di";
 import { lipilaCallbackSchema } from "@/lib/validation/billing";
 
+function maskValue(value: string, head = 6, tail = 4): string {
+  if (!value) return "";
+  if (value.length <= head + tail) return value;
+  return `${value.slice(0, head)}…${value.slice(-tail)}`;
+}
+
+function maskSensitiveKeys(input: unknown): unknown {
+  const SENSITIVE_KEYS = new Set([
+    "authorization",
+    "x-lipila-callback-token",
+    "lipilaCallbackToken",
+    "token",
+    "msisdn",
+    "accountNumber",
+    "email",
+    "phone",
+  ]);
+
+  const maskAnyString = (v: unknown) => {
+    if (typeof v !== "string") return v;
+    return maskValue(v, 4, 2);
+  };
+
+  const walk = (value: unknown, depth: number): unknown => {
+    if (depth > 6) return value;
+    if (value === null || value === undefined) return value;
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
+
+    if (Array.isArray(value)) {
+      return value.map((v) => walk(v, depth + 1));
+    }
+
+    if (typeof value === "object") {
+      const obj = value as Record<string, unknown>;
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(obj)) {
+        if (SENSITIVE_KEYS.has(k)) {
+          out[k] = maskAnyString(v);
+        } else {
+          out[k] = walk(v, depth + 1);
+        }
+      }
+      return out;
+    }
+
+    return value;
+  };
+
+  return walk(input, 0);
+}
+
 function hasValidCallbackToken(request: Request): boolean {
   const expected = process.env.LIPILA_CALLBACK_TOKEN;
   if (!expected) {
@@ -22,32 +73,91 @@ function hasValidCallbackToken(request: Request): boolean {
 }
 
 export async function POST(request: Request) {
+  const logId = `lipila-callback-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+
   if (!hasValidCallbackToken(request)) {
+    console.warn("[billing][lipila] callback unauthorized", {
+      logId,
+      hasHeaderToken: Boolean(request.headers.get("x-lipila-callback-token")),
+      hasAuthHeader: Boolean(request.headers.get("authorization")),
+    });
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const body = await request.json().catch(() => null);
+  let body: unknown = null;
+  try {
+    body = await request.json();
+  } catch (e) {
+    console.warn("[billing][lipila] callback JSON parse failed", {
+      logId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+
+  console.info("[billing][lipila] callback incoming request", {
+    logId,
+    headers: {
+      "content-type": request.headers.get("content-type"),
+      "x-lipila-callback-token": request.headers.get("x-lipila-callback-token") ? "present" : "missing",
+      authorization: request.headers.get("authorization") ? "present" : "missing",
+      "user-agent": request.headers.get("user-agent"),
+    },
+    body: maskSensitiveKeys(body),
+  });
+
   const parsed = lipilaCallbackSchema.safeParse(body);
   if (!parsed.success) {
+    console.warn("[billing][lipila] callback payload invalid", {
+      logId,
+      // Avoid logging full payload; schema errors usually include only relevant fields.
+      issues: parsed.error.flatten(),
+    });
     return NextResponse.json({ error: "Invalid callback payload." }, { status: 400 });
   }
 
   const identifier = parsed.data.identifier?.trim() || null;
 
   if (!identifier) {
+    console.warn("[billing][lipila] callback missing identifier", {
+      logId,
+      received: {
+        identifier: parsed.data.identifier,
+        // helpful, but still safe: don't rely on these for invoice lookup
+        externalId: parsed.data.externalId,
+        referenceId: parsed.data.referenceId,
+      },
+    });
     return NextResponse.json(
       { error: "Invoice identifier is required." },
       { status: 400 },
     );
   }
 
+  console.info("[billing][lipila] callback received", {
+    logId,
+    identifier: maskValue(identifier),
+    status: parsed.data.status,
+    hasExternalId: Boolean(parsed.data.externalId?.trim()),
+    hasReferenceId: Boolean(parsed.data.referenceId?.trim()),
+  });
+
   const invoice = await services.billing.findInvoiceByIdentifier(identifier);
 
   if (!invoice) {
+    console.warn("[billing][lipila] invoice not found", {
+      logId,
+      identifier: maskValue(identifier),
+    });
     return NextResponse.json({ error: "Invoice not found." }, { status: 404 });
   }
 
   // Idempotency: if already paid, accept and store the callback anyway.
+  console.info("[billing][lipila] callback recorded (pre-status update)", {
+    logId,
+    invoiceId: maskValue(invoice.id),
+    invoiceIdentifier: maskValue(invoice.identifier),
+    callbackStatus: parsed.data.status,
+  });
   await services.billing.recordLipilaCallback(invoice.id, parsed.data);
 
   const status = parsed.data.status?.toLowerCase();
@@ -59,12 +169,32 @@ export async function POST(request: Request) {
       const paidAt = new Date();
       await services.billing.markInvoicePaid(invoice.id, paidAt);
       await services.billing.activateOrgPlanFromInvoice(invoice.id);
+      console.info("[billing][lipila] invoice marked paid + plan activated", {
+        logId,
+        invoiceId: maskValue(invoice.id),
+      });
+    } else {
+      console.info("[billing][lipila] successful callback ignored (already paid or invoice missing)", {
+        logId,
+        invoiceId: maskValue(invoice.id),
+        currentStatus: fresh?.status ?? null,
+      });
     }
   } else if (status === "failed") {
     await db
       .update(subscriptionInvoices)
       .set({ status: "failed", updatedAt: new Date() })
       .where(eq(subscriptionInvoices.id, invoice.id));
+    console.info("[billing][lipila] invoice marked failed", {
+      logId,
+      invoiceId: maskValue(invoice.id),
+    });
+  } else {
+    console.info("[billing][lipila] callback status not recognized; no status update", {
+      logId,
+      invoiceId: maskValue(invoice.id),
+      status: parsed.data.status,
+    });
   }
 
   return NextResponse.json({ ok: true });
