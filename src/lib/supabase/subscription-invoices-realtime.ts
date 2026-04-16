@@ -15,7 +15,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 function getSupabaseBrowserClient() {
   if (singleton) return singleton;
 
-  // We rely on the existing Supabase auth session cookies managed by `@supabase/ssr`
+  // We rely on the existing Supabase auth session cookies managed by `@supabase/ssr`.
   // (server sets cookies; browser reads them). This client is only used for Realtime.
   singleton = createBrowserClient(supabaseUrl!, supabaseAnonKey!, {
     auth: {
