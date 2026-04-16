@@ -56,6 +56,20 @@ function maskSensitiveKeys(input: unknown): unknown {
   return walk(input, 0);
 }
 
+function extractInvoiceIdentifierFromLipilaReferenceId(referenceId: string): string | null {
+  // Momo collections referenceId we generate:
+  //   ap_${invoice.identifier}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}
+  // We want the middle `${invoice.identifier}` part even though it contains underscores.
+  const match = referenceId.match(/^ap_(.+)_([0-9a-z]+)_([0-9a-z]{6})$/i);
+  const fullExtract = match?.[1] ?? null;
+  if (fullExtract) return fullExtract;
+
+  // Fallback: extract the embedded invoice identifier substring.
+  // For our generated invoices: inv_<now36>_<rand8>
+  const embeddedMatch = referenceId.match(/(inv_[0-9a-z]+_[0-9a-z]+)/i);
+  return embeddedMatch?.[1] ?? null;
+}
+
 function hasValidCallbackToken(request: Request): boolean {
   const expected = process.env.LIPILA_CALLBACK_TOKEN;
   if (!expected) {
@@ -115,16 +129,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid callback payload." }, { status: 400 });
   }
 
-  const identifier = parsed.data.identifier?.trim() || null;
+  const callbackIdentifier = parsed.data.identifier?.trim() || null;
+  const callbackReferenceId = parsed.data.referenceId?.trim() || null;
 
-  if (!identifier) {
+  const extractedInvoiceIdentifier = callbackReferenceId
+    ? extractInvoiceIdentifierFromLipilaReferenceId(callbackReferenceId)
+    : null;
+
+  const invoiceIdentifier =
+    extractedInvoiceIdentifier ??
+    // For card flow we *may* receive our invoice identifier directly as `identifier`.
+    // Only accept it if it looks like our invoice identifier shape.
+    (callbackIdentifier && /^inv_[0-9a-z]+_[0-9a-z]+$/i.test(callbackIdentifier) ? callbackIdentifier : null);
+
+  if (!invoiceIdentifier) {
     console.warn("[billing][lipila] callback missing identifier", {
       logId,
       received: {
-        identifier: parsed.data.identifier,
-        // helpful, but still safe: don't rely on these for invoice lookup
-        externalId: parsed.data.externalId,
-        referenceId: parsed.data.referenceId,
+        identifier: callbackIdentifier,
+        referenceId: callbackReferenceId,
+      },
+      extraction: {
+        extractedInvoiceIdentifier,
+        acceptedCallbackIdentifier: Boolean(callbackIdentifier && /^inv_[0-9a-z]+_[0-9a-z]+$/i.test(callbackIdentifier)),
       },
     });
     return NextResponse.json(
@@ -135,18 +162,18 @@ export async function POST(request: Request) {
 
   console.info("[billing][lipila] callback received", {
     logId,
-    identifier: maskValue(identifier),
+    identifier: maskValue(invoiceIdentifier),
     status: parsed.data.status,
     hasExternalId: Boolean(parsed.data.externalId?.trim()),
     hasReferenceId: Boolean(parsed.data.referenceId?.trim()),
   });
 
-  const invoice = await services.billing.findInvoiceByIdentifier(identifier);
+  const invoice = await services.billing.findInvoiceByIdentifier(invoiceIdentifier);
 
   if (!invoice) {
     console.warn("[billing][lipila] invoice not found", {
       logId,
-      identifier: maskValue(identifier),
+      identifier: maskValue(invoiceIdentifier),
     });
     return NextResponse.json({ error: "Invoice not found." }, { status: 404 });
   }
