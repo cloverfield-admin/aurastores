@@ -1,9 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 import type { MembershipCapability } from "@/lib/rbac/capabilities";
 import { membershipCapabilityLabel } from "@/lib/rbac/capabilities";
-import { isOrganizationOwnerOrAdmin } from "@/lib/membership-display";
 import { ROUTES } from "@/lib/routes";
 
 export function LockedCapabilityTease({
@@ -17,7 +17,7 @@ export function LockedCapabilityTease({
 }) {
   const workspace = useDashboardWorkspaceAccess();
   const label = membershipCapabilityLabel(capability);
-  const showOwnerAdminPlans = isOrganizationOwnerOrAdmin(workspace.membershipRole);
+  const isOwner = workspace.membershipRole === "owner";
 
   return (
     <div className={`relative ${className}`}>
@@ -37,8 +37,19 @@ export function LockedCapabilityTease({
                 This feature is visible so you can explore what you’re missing. To use it, upgrade your plan (or ask an
                 organization admin to enable access).
               </p>
-              <div className="mt-4 flex flex-wrap gap-3">
-                {showOwnerAdminPlans ? (
+              <div className="mt-4 flex items-end justify-between gap-3">
+                <div className="flex">
+                  {isOwner ? (
+                    <Link
+                      href={ROUTES.billingPortal}
+                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95"
+                    >
+                      <span className="material-symbols-outlined notranslate text-base">payments</span>
+                      Billing
+                    </Link>
+                  ) : null}
+                </div>
+                {!isOwner ? (
                   <a
                     href={ROUTES.marketing.pricing}
                     target="_blank"
@@ -49,10 +60,6 @@ export function LockedCapabilityTease({
                     View plans
                   </a>
                 ) : null}
-                <span className="inline-flex items-center gap-2 rounded-xl bg-[var(--app-input-bg)] px-4 py-2.5 text-xs font-semibold text-[var(--app-text-muted)]">
-                  <span className="material-symbols-outlined notranslate text-base">visibility</span>
-                  Preview mode (disabled)
-                </span>
               </div>
             </div>
           </div>

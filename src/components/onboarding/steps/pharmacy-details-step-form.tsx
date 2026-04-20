@@ -49,6 +49,26 @@ type WeeklyRowState = {
   closesAt: string;
 };
 
+type FieldErrors = Record<string, string[]>;
+
+function fieldError(fieldErrors: FieldErrors | null, key: string): string | null {
+  const values = fieldErrors?.[key];
+  return values && values.length ? values[0]! : null;
+}
+
+function RequiredMark() {
+  return (
+    <span className="ml-1 text-[#ba1a1a]" aria-hidden="true">
+      *
+    </span>
+  );
+}
+
+function FieldErrorText({ message }: { message: string | null }) {
+  if (!message) return null;
+  return <p className="mt-2 text-xs font-semibold text-[#ba1a1a]">{message}</p>;
+}
+
 function coordFromDraft(value: number | null | undefined): number | null {
   if (value == null || typeof value !== "number" || !Number.isFinite(value)) {
     return null;
@@ -233,6 +253,7 @@ function PharmacyDetailsStepFormFields({
     weeklyRowsFromOperatingHours(draft.mainBranch?.operatingHours),
   );
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors | null>(null);
   const [mapExpanded, setMapExpanded] = useState(false);
   const isBusy = isLoading("onboarding-pharmacy-details");
 
@@ -261,6 +282,7 @@ function PharmacyDetailsStepFormFields({
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setFieldErrors(null);
 
     try {
       await withLoading("onboarding-pharmacy-details", "Saving your main branch details...", () =>
@@ -290,8 +312,17 @@ function PharmacyDetailsStepFormFields({
       });
       router.push(ROUTES.dashboard.onboarding.license);
     } catch (submitError) {
-      const message =
-        submitError instanceof Error ? submitError.message : "Could not save branch details.";
+      const message = submitError instanceof Error ? submitError.message : "Could not save branch details.";
+
+      const payload = (submitError as any)?.payload as
+        | { issues?: { fieldErrors?: Record<string, string[]> } }
+        | null
+        | undefined;
+      const nextFieldErrors = payload?.issues?.fieldErrors ?? null;
+      if (nextFieldErrors && typeof nextFieldErrors === "object") {
+        setFieldErrors(nextFieldErrors);
+      }
+
       setError(message);
       notify({
         variant: "error",
@@ -357,6 +388,7 @@ function PharmacyDetailsStepFormFields({
                   store
                 </span>
                 Branch name
+                <RequiredMark />
               </div>
               <input
                 name="branchName"
@@ -367,6 +399,7 @@ function PharmacyDetailsStepFormFields({
                 onChange={(event) => setBranchName(event.target.value)}
                 required
               />
+              <FieldErrorText message={fieldError(fieldErrors, "branchName")} />
             </div>
             <div className="flex flex-col gap-4 rounded-[20px] bg-[#f2f4f6] p-6">
               <div className={labelRow}>
@@ -374,6 +407,7 @@ function PharmacyDetailsStepFormFields({
                   groups
                 </span>
                 Number of pharmacists
+                <RequiredMark />
               </div>
               <div className="flex flex-wrap items-center gap-4">
                 <input
@@ -387,6 +421,7 @@ function PharmacyDetailsStepFormFields({
                 />
                 <span className="text-sm text-[#3c4948]">Licensed personnel on site</span>
               </div>
+              <FieldErrorText message={fieldError(fieldErrors, "pharmacistCount")} />
             </div>
           </div>
 
@@ -436,6 +471,9 @@ function PharmacyDetailsStepFormFields({
                 </button>
               </div>
             ) : null}
+            <FieldErrorText
+              message={fieldError(fieldErrors, "latitude") ?? fieldError(fieldErrors, "longitude")}
+            />
             <div
               className={`relative mt-3 flex-1 overflow-visible rounded-2xl bg-[#e2e8f0] transition-[min-height] duration-300 ease-out ${
                 mapExpanded
@@ -458,12 +496,13 @@ function PharmacyDetailsStepFormFields({
                 onResolvedAddress={(formatted) => setBranchLocation(formatted)}
               />
             </div>
-            {/* <div className="mt-4 flex flex-col gap-2">
+            <div className="mt-4 flex flex-col gap-2">
               <label className={labelRow} htmlFor="branchLocation">
                 <span className="material-symbols-outlined notranslate text-base text-[var(--app-text-muted)]">
                   signpost
                 </span>
                 Physical address
+                <RequiredMark />
               </label>
               <input
                 id="branchLocation"
@@ -475,7 +514,8 @@ function PharmacyDetailsStepFormFields({
                 onChange={(event) => setBranchLocation(event.target.value)}
                 required
               />
-            </div> */}
+              <FieldErrorText message={fieldError(fieldErrors, "branchLocation")} />
+            </div>
           </div>
         </div>
 
@@ -491,6 +531,7 @@ function PharmacyDetailsStepFormFields({
               <p className="text-sm text-[#3c4948]">
                 When will this branch be active for Aura Sync?
               </p>
+              <FieldErrorText message={fieldError(fieldErrors, "weeklyHours")} />
             </div>
             <div className="flex shrink-0 gap-3">
               <button

@@ -584,16 +584,10 @@ export default async function HomePage() {
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
               <Link
-                href={ROUTES.demoSuccess}
+                href={ROUTES.auth.signIn}
                 className={`${gradientBtn} px-12 py-5 text-lg shadow-[0_25px_50px_-12px_rgba(0,106,101,0.3)]`}
               >
-                Book a Demo
-              </Link>
-              <Link
-                href={ROUTES.auth.register}
-                className="rounded-xl bg-[#e0e3e5] px-12 py-5 text-lg font-bold text-[#191c1e] transition hover:bg-[#d5d8db]"
-              >
-                Contact Sales
+                Log in
               </Link>
             </div>
           </div>
