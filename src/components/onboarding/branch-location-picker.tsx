@@ -12,7 +12,8 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getGoogleMapsApiKey, getGoogleMapsMapId } from "@/lib/google-maps-env";
 
-const US_CENTER = { lat: 39.8283, lng: -98.5795 };
+const LUSAKA_CENTER = { lat: -15.3875, lng: 28.3228 };
+const GEOLOCATION_TIMEOUT_MS = 8_000;
 
 export type BranchLocationPickerProps = {
   className?: string;
@@ -135,8 +136,58 @@ function LocationMap({
 
   const defaultCenter = hasInitial
     ? { lat: initialLatitude as number, lng: initialLongitude as number }
-    : US_CENTER;
+    : LUSAKA_CENTER;
   const defaultZoom = hasInitial ? 15 : 4;
+
+  const map = useMap();
+
+  useEffect(() => {
+    if (!hasInitial) {
+      return;
+    }
+    if (!map) {
+      return;
+    }
+    map.panTo({ lat: initialLatitude as number, lng: initialLongitude as number });
+    map.setZoom(15);
+  }, [hasInitial, initialLatitude, initialLongitude, map]);
+
+  useEffect(() => {
+    if (hasInitial) {
+      return;
+    }
+    if (!map) {
+      return;
+    }
+    if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
+      return;
+    }
+
+    let cancelled = false;
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (cancelled) return;
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        map.panTo({ lat, lng });
+        map.setZoom(15);
+      },
+      () => {
+        // Ignore errors (permission denied/unavailable/timeout); keep Lusaka fallback.
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: GEOLOCATION_TIMEOUT_MS,
+        maximumAge: 5 * 60_000,
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasInitial, map]);
 
   const handleSearchPick = useCallback(
     (lat: number, lng: number, formattedAddress?: string) => {

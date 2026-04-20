@@ -43,6 +43,7 @@ export type StockDashboardData = {
   };
   inventory: Array<{
     id: string;
+    productId: string;
     productName: string;
     sku: string;
     categoryName: string;
@@ -106,6 +107,7 @@ export type StockGetCatalogOptions = {
 
 export type StockBatchDetail = {
   id: string;
+  productId: string;
   batchNumber: string;
   purchaseOrderNumber: string | null;
   productName: string;

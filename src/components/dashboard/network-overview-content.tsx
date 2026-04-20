@@ -64,7 +64,7 @@ export function NetworkOverviewContent() {
             </p>
           </div>
           <Link
-            href={ROUTES.dashboard.onboarding.pharmacyDetails}
+            href={ROUTES.dashboard.organizationBranches.new}
             className="relative inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-6 py-3 text-base font-semibold text-white shadow-[0_10px_15px_-3px_rgba(99,102,241,0.2),0_4px_6px_-4px_rgba(99,102,241,0.2)] transition hover:opacity-95"
           >
             <span className="material-symbols-outlined notranslate text-[22px]">add</span>
@@ -225,7 +225,7 @@ export function NetworkOverviewContent() {
           ) : !data || data.branches.length === 0 ? (
             <p className="text-sm text-[var(--app-text-muted)] lg:col-span-3">
               No branches yet. Use{" "}
-              <Link href={ROUTES.dashboard.onboarding.pharmacyDetails} className="font-semibold text-[var(--app-link-teal)] underline">
+              <Link href={ROUTES.dashboard.organizationBranches.new} className="font-semibold text-[var(--app-link-teal)] underline">
                 branch setup
               </Link>{" "}
               to add your first location.
@@ -234,6 +234,7 @@ export function NetworkOverviewContent() {
             data.branches.map((b, index) => (
               <BranchLocationCard
                 key={b.id}
+                href={ROUTES.dashboard.organizationBranches.detail(b.id)}
                 name={b.name}
                 mapPriority={index === 0}
                 mapSrc={MAP_CYCLE[index % MAP_CYCLE.length]!}
@@ -331,6 +332,7 @@ type BranchRow = {
 };
 
 function BranchLocationCard({
+  href,
   name,
   mapPriority,
   mapSrc,
@@ -339,6 +341,7 @@ function BranchLocationCard({
   notify,
   rows,
 }: {
+  href: string;
   name: string;
   /** First visible map is typically LCP; load eagerly. */
   mapPriority?: boolean;
@@ -354,7 +357,11 @@ function BranchLocationCard({
 }) {
   const online = status === "online";
   return (
-    <article className="flex flex-col overflow-hidden rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-sm">
+    <Link
+      href={href}
+      className="block focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-link-teal)]"
+    >
+      <article className="flex h-full flex-col overflow-hidden rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] shadow-sm transition hover:border-[var(--app-link-teal)]/30 hover:shadow-md">
       <div className="relative h-32 overflow-hidden bg-[var(--app-surface-subtle)]">
         <Image
           src={mapSrc}
@@ -433,7 +440,7 @@ function BranchLocationCard({
             );
           })}
         </dl>
-        <button
+        {/* <button
           type="button"
           onClick={async () => {
             await onManageLogistics(
@@ -453,8 +460,9 @@ function BranchLocationCard({
           className="mt-auto w-full rounded-lg bg-[var(--app-input-bg)] py-2 text-center text-base font-semibold text-[var(--app-brand)] transition hover:bg-[var(--app-input-focus-bg)]"
         >
           Manage Logistics
-        </button>
+        </button> */}
       </div>
-    </article>
+      </article>
+    </Link>
   );
 }

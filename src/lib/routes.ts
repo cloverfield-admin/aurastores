@@ -23,6 +23,7 @@ export const ROUTES = {
     stockAdd: "/dashboard/stock/add",
     stockBulkAdd: "/dashboard/stock/bulk-add",
     stockBatch: (batchId: string) => `/dashboard/stock/batches/${batchId}`,
+    stockProductEdit: (productId: string) => `/dashboard/stock/products/${productId}/edit`,
     stockExpiring: "/dashboard/stock/expiring",
     sales: "/dashboard/sales",
     salesAdd: "/dashboard/sales/add",
@@ -30,6 +31,11 @@ export const ROUTES = {
     productCategories: "/dashboard/product-categories",
     pay: "/dashboard/pay",
     organization: "/dashboard/organization",
+    organizationBranches: {
+      new: "/dashboard/organization/branches/new",
+      detail: (branchId: string) => `/dashboard/organization/branches/${branchId}`,
+      edit: (branchId: string) => `/dashboard/organization/branches/${branchId}/edit`,
+    },
     onboarding: {
       root: "/dashboard/onboarding",
       pharmacyDetails: "/dashboard/onboarding/pharmacy-details",

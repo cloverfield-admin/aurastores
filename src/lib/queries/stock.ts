@@ -13,11 +13,13 @@ import type { StockAdjustmentInput } from "@/lib/validation/stock";
 export const stockDashboardQueryKey = ["stock", "dashboard"] as const;
 export const stockCatalogQueryKey = ["stock", "catalog"] as const;
 export const stockProductSuggestQueryKey = ["stock", "products", "suggest"] as const;
+export const stockProductDetailQueryKey = ["stock", "products", "detail"] as const;
 export const stockBranchesQueryKey = ["stock", "branches"] as const;
 export const stockBatchDetailQueryKey = ["stock", "batch"] as const;
 
 export type StockBatchDetailResponse = {
   id: string;
+  productId: string;
   batchNumber: string;
   purchaseOrderNumber: string | null;
   productName: string;
@@ -88,6 +90,7 @@ export type StockDashboardResponse = {
   };
   inventory: Array<{
     id: string;
+    productId: string;
     productName: string;
     sku: string;
     categoryName: string;
@@ -191,6 +194,17 @@ export type StockProductSuggestResponse = {
   products: StockCatalogResponse["products"];
 };
 
+export type StockProductDetailResponse = {
+  id: string;
+  name: string;
+  sku: string;
+  barcode: string | null;
+  categoryId: string | null;
+  categoryName: string;
+  defaultSellingPriceCents: number;
+  status: "active" | "discontinued";
+};
+
 export type StockBranchesResponse = {
   branch: {
     id: string;
@@ -265,6 +279,63 @@ export function useStockProductSuggestQuery(q: string) {
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     placeholderData: (previousData) => previousData,
+    meta: {
+      suppressGlobalLoading: true,
+    },
+  });
+}
+
+export function useStockProductQuery(productId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: [...stockProductDetailQueryKey, productId],
+    queryFn: () =>
+      fetchJson<StockProductDetailResponse>(`${apiUrl("/stock/products")}/${productId}`, {
+        method: "GET",
+      }),
+    enabled: Boolean(productId) && enabled,
+    staleTime: 30_000,
+    meta: {
+      suppressGlobalLoading: true,
+    },
+  });
+}
+
+export function useUpdateStockProductMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      productId,
+      payload,
+    }: {
+      productId: string;
+      payload: {
+        name?: string;
+        categoryName?: string | null;
+        barcode?: string | null;
+        defaultSellingPrice?: number;
+        status?: "active" | "discontinued";
+      };
+    }) =>
+      fetchJson<StockProductDetailResponse>(`${apiUrl("/stock/products")}/${productId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: async (_data, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: stockDashboardQueryKey }),
+        queryClient.invalidateQueries({ queryKey: stockCatalogQueryKey, refetchType: "none" }),
+        queryClient.invalidateQueries({ queryKey: stockProductSuggestQueryKey, refetchType: "none" }),
+        queryClient.invalidateQueries({ queryKey: stockBatchDetailQueryKey }),
+        queryClient.invalidateQueries({
+          queryKey: [...stockProductDetailQueryKey, variables.productId],
+          refetchType: "none",
+        }),
+      ]);
+    },
     meta: {
       suppressGlobalLoading: true,
     },

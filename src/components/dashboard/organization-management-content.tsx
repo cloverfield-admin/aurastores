@@ -87,7 +87,7 @@ export function OrganizationManagementContent({ organization }: { organization: 
       {
         label: "Add branch",
         description: "Onboard a new pharmacy location",
-        href: ROUTES.dashboard.onboarding.pharmacyDetails,
+        href: ROUTES.dashboard.organizationBranches.new,
         icon: "add_business",
       },
     ];
@@ -334,7 +334,7 @@ export function OrganizationManagementContent({ organization }: { organization: 
               <div className="rounded-xl border border-dashed border-[var(--app-border-ui)] bg-[#fafbfc] p-8 text-center text-sm text-[var(--app-text-muted)]">
                 No branches yet.{" "}
                 <Link
-                  href={ROUTES.dashboard.onboarding.pharmacyDetails}
+                  href={ROUTES.dashboard.organizationBranches.new}
                   className="font-semibold text-[var(--app-link-teal)] underline"
                 >
                   Add your first branch

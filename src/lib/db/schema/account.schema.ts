@@ -72,7 +72,7 @@ export const organizations = pgTable(
     hqCity: varchar("hq_city", { length: 128 }),
     hqState: varchar("hq_state", { length: 128 }),
     hqPostalCode: varchar("hq_postal_code", { length: 32 }),
-    hqCountry: varchar("hq_country", { length: 2 }).notNull().default("US"),
+    hqCountry: varchar("hq_country", { length: 2 }).notNull().default("ZM"),
     salesTaxEnabled: boolean("sales_tax_enabled").notNull().default(false),
     /** e.g. 1600 = 16.00% */
     salesTaxRateBps: integer("sales_tax_rate_bps").notNull().default(0),

@@ -144,6 +144,7 @@ function buildExpiringViewFilter(todayStr: string) {
 function mapBatchRowToInventoryItem(
   row: {
     id: string;
+    productId: string;
     batchNumber: string;
     productName: string;
     sku: string;
@@ -169,6 +170,7 @@ function mapBatchRowToInventoryItem(
 
   return {
     id: row.id,
+    productId: row.productId,
     productName: row.productName,
     sku: row.sku,
     categoryName: row.categoryName,
@@ -1186,6 +1188,7 @@ export class StockRepositoryImpl implements StockRepository {
 
     const batchSelect = {
       id: inventoryBatches.id,
+      productId: inventoryBatches.productId,
       batchNumber: inventoryBatches.batchNumber,
       productName: products.name,
       sku: products.sku,
@@ -1791,6 +1794,7 @@ export class StockRepositoryImpl implements StockRepository {
     batchId: string,
   ): Promise<{
     id: string;
+    productId: string;
     batchNumber: string;
     purchaseOrderNumber: string | null;
     productName: string;
@@ -1826,6 +1830,7 @@ export class StockRepositoryImpl implements StockRepository {
     const row = await db
       .select({
         id: inventoryBatches.id,
+        productId: inventoryBatches.productId,
         batchNumber: inventoryBatches.batchNumber,
         purchaseOrderNumber: inventoryBatches.purchaseOrderNumber,
         receivedAt: inventoryBatches.receivedAt,
@@ -1905,6 +1910,7 @@ export class StockRepositoryImpl implements StockRepository {
 
     return {
       id: row.id,
+      productId: row.productId,
       batchNumber: row.batchNumber,
       purchaseOrderNumber: row.purchaseOrderNumber,
       productName: row.productName,

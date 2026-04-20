@@ -151,6 +151,7 @@ export class OnboardingRepositoryImpl implements OnboardingRepository {
           hqCity: input.city,
           hqState: input.state,
           hqPostalCode: input.zip,
+          hqCountry: context.organization.hqCountry?.trim() ? context.organization.hqCountry : "ZM",
           updatedAt: new Date(),
         })
         .where(eq(organizations.id, context.organization.id));
@@ -197,6 +198,7 @@ export class OnboardingRepositoryImpl implements OnboardingRepository {
         status: "draft" as const,
         isPrimary: true,
         addressLine1: input.branchLocation,
+        country: existingBranch?.country ?? "ZM",
         latitude:
           input.latitude != null && input.longitude != null ? input.latitude : null,
         longitude:
