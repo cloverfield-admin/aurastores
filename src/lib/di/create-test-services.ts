@@ -20,11 +20,17 @@ import type { StockRepository } from "@/lib/repositories/stock/stock.repository"
 import { stockRepository } from "@/lib/repositories/stock/stock.repository.impl";
 import type { BillingRepository } from "@/lib/repositories/billing/billing.repository";
 import { billingRepository } from "@/lib/repositories/billing/billing.repository.impl";
+import type { BranchesRepository } from "@/lib/repositories/branches/branches.repository";
+import { branchesRepository } from "@/lib/repositories/branches/branches.repository.impl";
+import type { ProductsRepository } from "@/lib/repositories/products/products.repository";
+import { productsRepository } from "@/lib/repositories/products/products.repository.impl";
 import { AuthService } from "@/lib/services/auth/auth.service";
 import { BillingService } from "@/lib/services/billing/billing.service";
+import { BranchesService } from "@/lib/services/branches/branches.service";
 import { NetworkService } from "@/lib/services/network/network.service";
 import { OnboardingService } from "@/lib/services/onboarding/onboarding.service";
 import { ProductCategoriesService } from "@/lib/services/product-categories/product-categories.service";
+import { ProductsService } from "@/lib/services/products/products.service";
 import { SalesService } from "@/lib/services/sales/sales.service";
 import { StaffService } from "@/lib/services/staff/staff.service";
 import { PharmacySearchService } from "@/lib/services/pharmacy-search/pharmacy-search.service";
@@ -35,6 +41,7 @@ import type { AppServices } from "@/lib/di/services";
 export type TestServiceOverrides = Partial<{
   auth: AuthRepository;
   billing: BillingRepository;
+  branches: BranchesRepository;
   avatarStorage: AvatarStorageRepository;
   stock: StockRepository;
   sales: SalesRepository;
@@ -44,11 +51,13 @@ export type TestServiceOverrides = Partial<{
   network: NetworkRepository;
   pharmacySearch: PharmacySearchRepository;
   productCategories: ProductCategoriesRepository;
+  products: ProductsRepository;
 }>;
 
 export function createTestServices(overrides: TestServiceOverrides = {}): AppServices {
   const auth = overrides.auth ?? authRepository;
   const billing = overrides.billing ?? billingRepository;
+  const branches = overrides.branches ?? branchesRepository;
   const avatarStorage = overrides.avatarStorage ?? avatarStorageRepository;
   const stock = overrides.stock ?? stockRepository;
   const sales = overrides.sales ?? salesRepository;
@@ -58,10 +67,12 @@ export function createTestServices(overrides: TestServiceOverrides = {}): AppSer
   const network = overrides.network ?? networkRepository;
   const pharmacySearch = overrides.pharmacySearch ?? pharmacySearchRepository;
   const productCategories = overrides.productCategories ?? productCategoriesRepository;
+  const products = overrides.products ?? productsRepository;
 
   return {
     auth: new AuthService({ auth, avatarStorage }),
     billing: new BillingService({ billing }),
+    branches: new BranchesService({ branches }),
     stock: new StockService({ stock }),
     sales: new SalesService({ sales }),
     onboarding: new OnboardingService({ onboarding, documentStorage }),
@@ -69,5 +80,6 @@ export function createTestServices(overrides: TestServiceOverrides = {}): AppSer
     network: new NetworkService({ network }),
     pharmacySearch: new PharmacySearchService({ pharmacySearch }),
     productCategories: new ProductCategoriesService({ productCategories }),
+    products: new ProductsService({ products }),
   };
 }
