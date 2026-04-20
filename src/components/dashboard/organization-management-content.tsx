@@ -585,14 +585,15 @@ export function OrganizationManagementContent({ organization }: { organization: 
                 </p>
                 <div className="mt-4 flex flex-wrap gap-3">
                   {isOrganizationOwnerOrAdmin(workspace.membershipRole) ? (
-                    <Link
-                      href={ROUTES.billingPortal}
-                      prefetch={false}
+                    <a
+                      href={ROUTES.marketing.pricing}
+                      target="_blank"
+                      rel="noreferrer"
                       className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-95"
                     >
                       <span className="material-symbols-outlined notranslate text-base">upgrade</span>
                       View plans
-                    </Link>
+                    </a>
                   ) : null}
                   <Link
                     href={ROUTES.billingPortal}
