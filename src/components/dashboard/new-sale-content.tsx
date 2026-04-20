@@ -9,6 +9,7 @@ import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { isOfflineQueuedError } from "@/lib/offline/offline-queued-error";
 import { useCreateSaleMutation, useSalesCatalogQuery } from "@/lib/queries/sales";
 import { useOrganizationOverviewQuery } from "@/lib/queries/organization";
+import { useAppMeQuery } from "@/lib/queries/staff";
 import { ROUTES } from "@/lib/routes";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
@@ -398,6 +399,7 @@ export function NewSaleContent() {
   const salesHref = branch ? `${ROUTES.dashboard.sales}?branch=${branch}` : ROUTES.dashboard.sales;
   const salesCatalogQuery = useSalesCatalogQuery(branch, true);
   const orgQuery = useOrganizationOverviewQuery();
+  const meQuery = useAppMeQuery();
   const createSaleMutation = useCreateSaleMutation();
   const [customerSearch, setCustomerSearch] = useState("");
   const [patientId, setPatientId] = useState("");
@@ -453,6 +455,11 @@ export function NewSaleContent() {
   const taxRateBps = orgQuery.data?.salesTax.enabled ? orgQuery.data.salesTax.rateBps : 0;
   const taxRate = taxRateBps / 10_000;
   const taxRatePctLabel = Math.round(taxRate * 100);
+
+  const salesLimit = meQuery.data?.entitlements?.limits?.salesTransactions ?? null;
+  const salesUsage = meQuery.data?.usage?.salesTransactions ?? null;
+  const isSalesMonthlyLimitReached =
+    salesLimit != null && salesUsage != null && salesUsage >= salesLimit;
 
   const { subtotal, tax, discount, grandTotal, auraPoints } = useMemo(() => {
     const sub = items.reduce((acc, row) => acc + row.qty * row.unitPrice, 0);
@@ -710,6 +717,12 @@ export function NewSaleContent() {
       throw new Error("Add at least one valid medication line item.");
     }
 
+    if (status === "completed" && isSalesMonthlyLimitReached) {
+      throw new Error(
+        "Monthly completed sales limit reached for your plan. Wait until the next UTC month or upgrade in Billing.",
+      );
+    }
+
     const idempotencyKey = crypto.randomUUID();
 
     return createSaleMutation.mutateAsync({
@@ -944,6 +957,10 @@ export function NewSaleContent() {
       return message;
     }
 
+    if (message.includes("Plan limit reached for salesTransactions")) {
+      return "You have reached your plan’s completed sales allowance for this UTC month. It resets when the next month starts (UTC), or you can upgrade for a higher cap.";
+    }
+
     return message;
   }
 
@@ -1039,6 +1056,24 @@ export function NewSaleContent() {
             </button>
           </div>
         </div>
+
+        {isSalesMonthlyLimitReached ? (
+          <div
+            className="mb-6 rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-950 sm:px-5"
+            role="status"
+          >
+            <p className="font-semibold">Monthly completed sales limit reached</p>
+            <p className="mt-1 text-amber-900/90">
+              You have used {salesUsage ?? 0} of {salesLimit ?? "—"} completed sales this UTC month. You can still save
+              drafts; completing a sale unlocks when the next UTC month starts (this page refreshes usage automatically),
+              or upgrade in{" "}
+              <Link href={ROUTES.billingPortal} className="font-semibold underline underline-offset-2 hover:no-underline">
+                Billing
+              </Link>
+              .
+            </p>
+          </div>
+        ) : null}
 
         <div className="grid min-w-0 gap-6 sm:gap-8 lg:grid-cols-12 lg:items-start">
           {/* Left column */}
@@ -1536,6 +1571,12 @@ export function NewSaleContent() {
 
                   <button
                     type="button"
+                    disabled={isSalesMonthlyLimitReached}
+                    title={
+                      isSalesMonthlyLimitReached
+                        ? `Monthly cap reached (${salesUsage ?? 0}/${salesLimit ?? "—"} completed sales this UTC month).`
+                        : undefined
+                    }
                     onClick={async () => {
                       if (!validateBeforeSubmit()) {
                         return;
@@ -1571,7 +1612,7 @@ export function NewSaleContent() {
                         });
                       }
                     }}
-                    className="flex w-full items-center justify-center gap-2 rounded-[20px] bg-gradient-to-br from-[#0fb9b1] to-[#4648d4] px-3 py-3.5 text-sm font-semibold text-white shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] transition hover:opacity-95 sm:py-4 sm:text-base"
+                    className="flex w-full items-center justify-center gap-2 rounded-[20px] bg-gradient-to-br from-[#0fb9b1] to-[#4648d4] px-3 py-3.5 text-sm font-semibold text-white shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1)] transition hover:opacity-95 enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-45 sm:py-4 sm:text-base"
                   >
                     Complete Transaction
                     <span className="material-symbols-outlined notranslate text-lg">arrow_forward</span>

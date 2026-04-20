@@ -87,7 +87,10 @@ export default async function HomePage() {
   ];
 
   function limitLabel(kind: "products" | "categories" | "salesTransactions", value: number | null | undefined) {
-    const suffix = kind === "salesTransactions" ? "Sales Transactions" : kind === "products" ? "Products" : "Categories";
+    if (kind === "salesTransactions") {
+      return value != null ? `${value} sales / month` : "Unlimited sales";
+    }
+    const suffix = kind === "products" ? "Products" : "Categories";
     return value != null ? `${value} ${suffix}` : `Unlimited ${suffix}`;
   }
 
@@ -99,6 +102,8 @@ export default async function HomePage() {
 
     const caps = plan.features.capabilities;
     const prevCaps = prev?.features.capabilities ?? null;
+    const limits = plan.features.limits;
+
     for (const item of capabilityBullets) {
       const enabled = Boolean(caps[item.key]);
       const wasEnabled = prevCaps ? Boolean(prevCaps[item.key]) : false;
@@ -107,16 +112,12 @@ export default async function HomePage() {
       out.push(item.label);
     }
 
-    const limits = plan.features.limits;
-
-    // Show numeric limits where they apply (and keep parity with previous design).
     out.push(limits.branches != null ? `Multi-branch Sync (Up to ${limits.branches})` : "Multi-branch Sync (Unlimited)");
     out.push(limitLabel("products", limits.products));
     out.push(limitLabel("categories", limits.categories));
     out.push(limitLabel("salesTransactions", limits.salesTransactions));
     out.push(limits.staffUsers != null ? `${limits.staffUsers} Staff Users` : "Unlimited Staff Users");
 
-    // Keep cards even: show a consistent set.
     return out.slice(0, 7);
   }
 

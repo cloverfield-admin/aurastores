@@ -197,6 +197,20 @@
       "when": 1779500000000,
       "tag": "0027_paid_plan_intro_trial",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1779600000000,
+      "tag": "0028_plan_sales_limits_monthly_caps",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1779700000000,
+      "tag": "0029_sales_monthly_completed_limit_trigger",
+      "breakpoints": true
     }
   ]
 }

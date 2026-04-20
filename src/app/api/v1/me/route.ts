@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireAppApiContext } from "@/lib/auth/require-api-context";
 import { services } from "@/lib/di";
-import { and, count, eq, isNull } from "drizzle-orm";
+import { and, count, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { productCategories, products, sales } from "@/lib/db/schema";
 import { getUserAvatarPublicUrl } from "@/lib/supabase/user-avatar-public-url";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { utcMonthRangeForInstant } from "@/lib/dates/utc-month-range";
 import { DEFAULT_USER_PREFERENCES, patchMeSchema } from "@/lib/validation/me";
 
 export async function GET() {
@@ -16,6 +17,10 @@ export async function GET() {
   const { capabilities, allowedBranchIds, membership, user, entitlements, subscription } = gate.context;
   const preferences = { ...DEFAULT_USER_PREFERENCES, ...(user.preferences ?? {}) };
   const avatarUrl = user.avatarStorageKey ? getUserAvatarPublicUrl(user.avatarStorageKey) : null;
+
+  const { startInclusive, endExclusive } = utcMonthRangeForInstant(new Date());
+  const monthStartIso = startInclusive.toISOString();
+  const monthEndIso = endExclusive.toISOString();
 
   const [productCountRow, activeCategoryCountRow, completedSalesCountRow] = await Promise.all([
     db
@@ -40,6 +45,8 @@ export async function GET() {
         and(
           eq(sales.organizationId, gate.context.organization.id),
           eq(sales.status, "completed"),
+          sql`coalesce(${sales.completedAt}, ${sales.createdAt}) >= ${monthStartIso}::timestamptz`,
+          sql`coalesce(${sales.completedAt}, ${sales.createdAt}) < ${monthEndIso}::timestamptz`,
         ),
       )
       .then((rows) => rows[0]),

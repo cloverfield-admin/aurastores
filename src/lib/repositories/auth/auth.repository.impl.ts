@@ -13,11 +13,13 @@ import {
   users,
 } from "@/lib/db/schema";
 import { introPaidTrialEligibleForSnapshot } from "@/lib/billing/intro-trial";
+import { withPublicPlanSalesLimitFallback } from "@/lib/billing/plan-feature-defaults";
 import { ROUTES } from "@/lib/routes";
 import { uniqueSlug } from "@/lib/utils/slug";
 import { DEFAULT_USER_PREFERENCES } from "@/lib/validation/me";
 import type { UserPreferences } from "@/lib/db/schema";
 import type { AuthContext, AuthRepository, RegisteredUserParams } from "@/lib/repositories/auth/auth.repository";
+import type { SubscriptionPlanCode } from "@/lib/repositories/billing/billing.repository";
 import { billingRepository } from "@/lib/repositories/billing/billing.repository.impl";
 import { capabilitiesFromPlan, intersectCapabilities } from "@/lib/billing/entitlements";
 import { resolveAllowedBranchIdsFromAssignments } from "@/lib/rbac/branch-access";
@@ -113,32 +115,34 @@ async function loadSubscriptionSlice(
       .limit(1)
       .then((rows) => rows[0] ?? null);
 
+    const rawEntitlements =
+      free?.entitlements ??
+      ({
+        capabilities: {
+          stock: true,
+          sales: true,
+          catalog: true,
+          insights: false,
+          pay: false,
+          staff: false,
+          organization: true,
+        },
+        limits: {
+          products: 20,
+          salesTransactions: 100,
+          categories: 20,
+          staffUsers: 1,
+          branches: 1,
+        },
+      } as const);
+
     return {
-      entitlements:
-        free?.entitlements ??
-        ({
-          capabilities: {
-            stock: true,
-            sales: true,
-            catalog: true,
-            insights: false,
-            pay: false,
-            staff: false,
-            organization: true,
-          },
-          limits: {
-            products: 20,
-            salesTransactions: 50,
-            categories: 20,
-            staffUsers: 1,
-            branches: 1,
-          },
-        } as const),
+      entitlements: withPublicPlanSalesLimitFallback("free", rawEntitlements),
       subscription: null,
     };
   }
 
-  const planCode = base.planCode;
+  const planCode = base.planCode as SubscriptionPlanCode;
   const subStatus = normalizeAuthSubscriptionStatus(base.status);
 
   const scheduledPlanId =
@@ -150,7 +154,7 @@ async function loadSubscriptionSlice(
     : null;
 
   return {
-    entitlements: base.entitlements,
+    entitlements: withPublicPlanSalesLimitFallback(planCode, base.entitlements),
     subscription: {
       planCode,
       planName: base.planName,
@@ -355,7 +359,7 @@ export class AuthRepositoryImpl implements AuthRepository {
           },
           limits: {
             products: 20,
-            salesTransactions: 50,
+            salesTransactions: 100,
             categories: 20,
             staffUsers: 1,
             branches: 1,

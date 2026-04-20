@@ -581,7 +581,7 @@ export function BillingPortalContent() {
                   </p>
                   {enterpriseComingSoon ? (
                     <p className="mt-2 text-xs font-semibold text-[#6063ee]">
-                      Enterprise is coming soon. Pick Basic or Pro for now.
+                      
                     </p>
                   ) : null}
                 </div>

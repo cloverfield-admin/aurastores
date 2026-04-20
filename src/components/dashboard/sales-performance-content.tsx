@@ -6,7 +6,6 @@ import { useMemo, useRef, useState } from "react";
 import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
 import { LockedCapabilityTease } from "@/components/dashboard/locked-capability-tease";
-import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { type SalesDateRangeInput, useSalesDashboardQuery, useSalesRecentSalesQuery } from "@/lib/queries/sales";
 import { useAppMeQuery } from "@/lib/queries/staff";
 import { ROUTES } from "@/lib/routes";
@@ -201,7 +200,6 @@ export function SalesPerformanceContent() {
   const workspace = useDashboardWorkspaceAccess();
   const canSales = hasCapability(workspace.capabilities, "sales");
   const locked = !canSales;
-  const { notify } = useAuraFeedback();
   const meQuery = useAppMeQuery();
   const branch = searchParams.get("branch") ?? undefined;
   const addSaleHref = branch ? `${ROUTES.dashboard.salesAdd}?branch=${branch}` : ROUTES.dashboard.salesAdd;
@@ -370,23 +368,13 @@ export function SalesPerformanceContent() {
             {isSalesLimitReached ? (
               <button
                 type="button"
-                aria-disabled="true"
+                disabled
                 title={
                   salesLimit != null
-                    ? `Plan limit reached: ${salesUsage ?? 0}/${salesLimit} sales transactions. Upgrade to add more.`
+                    ? `Monthly plan limit reached: ${salesUsage ?? 0}/${salesLimit} completed sales this UTC month. Resets at the start of the next UTC month, or upgrade to raise the cap.`
                     : "Plan limit reached. Upgrade to add more."
                 }
-                onClick={() => {
-                  notify({
-                    variant: "info",
-                    title: "Sales limit reached",
-                    description:
-                      salesLimit != null
-                        ? `You’re at ${salesUsage ?? 0}/${salesLimit} sales transactions. Upgrade to add more.`
-                        : "You’ve reached your sales limit. Upgrade to add more.",
-                  });
-                }}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-5 py-2.5 text-base font-semibold text-white opacity-50"
+                className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-5 py-2.5 text-base font-semibold text-white opacity-50"
               >
                 <span className="material-symbols-outlined notranslate text-lg">lock</span>
                 Add Sale
