@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { BarcodeScannerModal } from "@/components/dashboard/barcode-scanner-modal";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
+import { useAllProductCategoriesQuery } from "@/lib/queries/product-categories";
 import { useCreateStockBatchesMutation, useStockCatalogQuery } from "@/lib/queries/stock";
 import { ROUTES } from "@/lib/routes";
 import { createStockBatchSchema } from "@/lib/validation/stock";
@@ -86,6 +87,11 @@ export function BulkAddBatchesContent() {
     suppressGlobalLoading: true,
   });
   const createBatchesMutation = useCreateStockBatchesMutation();
+  const categoriesQuery = useAllProductCategoriesQuery({ includeArchived: false });
+  const categoryOptions = useMemo(() => {
+    const categories = categoriesQuery.data?.categories ?? [];
+    return [...categories].sort((a, b) => a.name.localeCompare(b.name));
+  }, [categoriesQuery.data]);
 
   const resolvedBranchId = branchId ?? stockCatalogQuery.data?.branch.id ?? undefined;
   const backToStockHref = buildStockHref(resolvedBranchId);
@@ -393,6 +399,11 @@ export function BulkAddBatchesContent() {
           ) : null}
 
           <div className="mt-6 space-y-6">
+            <datalist id="product-category-suggestions">
+              {categoryOptions.map((c) => (
+                <option key={c.id} value={c.name} />
+              ))}
+            </datalist>
             {rows.map((row, index) => {
               const result = results[row.id] ?? { status: "idle" as const };
               const statusPill =
@@ -518,14 +529,24 @@ export function BulkAddBatchesContent() {
                           <label className={fieldLabel} htmlFor={`category-${row.id}`}>
                             Category
                           </label>
-                          <input
-                            id={`category-${row.id}`}
-                            type="text"
-                            value={row.categoryName}
-                            onChange={(e) => updateRow(row.id, { categoryName: e.target.value })}
-                            placeholder="e.g. Antibiotics"
-                            className={inputClass}
-                          />
+                          <div className="relative">
+                            <input
+                              id={`category-${row.id}`}
+                              type="text"
+                              list="product-category-suggestions"
+                              value={row.categoryName}
+                              onChange={(e) => updateRow(row.id, { categoryName: e.target.value })}
+                              placeholder="Search or select a category"
+                              className={`${inputClass} pr-10 ${
+                                row.categoryName ? "text-[var(--app-text)]" : "text-[#6b7280]"
+                              }`}
+                              autoComplete="off"
+                              spellCheck={false}
+                            />
+                            <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--app-text-muted)]">
+                              expand_more
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>

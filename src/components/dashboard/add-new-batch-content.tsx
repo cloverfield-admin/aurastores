@@ -7,6 +7,7 @@ import { BarcodeScannerModal } from "@/components/dashboard/barcode-scanner-moda
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { fetchJson } from "@/lib/api/client";
 import { apiUrl } from "@/lib/api/version";
+import { useAllProductCategoriesQuery } from "@/lib/queries/product-categories";
 import {
   useCreateStockBatchMutation,
   useStockCatalogQuery,
@@ -71,6 +72,11 @@ export function AddNewBatchContent() {
     suppressGlobalLoading: true,
   });
   const createBatchMutation = useCreateStockBatchMutation();
+  const categoriesQuery = useAllProductCategoriesQuery({ includeArchived: false });
+  const categoryOptions = useMemo(() => {
+    const categories = categoriesQuery.data?.categories ?? [];
+    return [...categories].sort((a, b) => a.name.localeCompare(b.name));
+  }, [categoriesQuery.data]);
   const productFieldRef = useRef<HTMLDivElement>(null);
   const openedAtRef = useRef(typeof performance !== "undefined" ? performance.now() : 0);
   const hasLoggedReadyRef = useRef(false);
@@ -535,14 +541,29 @@ export function AddNewBatchContent() {
                   <label className={fieldLabel} htmlFor="category">
                     Category
                   </label>
-                  <input
-                    id="category"
-                    type="text"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    placeholder="e.g. Antibiotics"
-                    className={inputClass}
-                  />
+                  <div className="relative">
+                    <input
+                      id="category"
+                      type="text"
+                      list="product-category-suggestions"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      placeholder="Search or select a category"
+                      className={`${inputClass} pr-10 ${
+                        category ? "text-[var(--app-text)]" : "text-[#6b7280]"
+                      }`}
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                    <datalist id="product-category-suggestions">
+                      {categoryOptions.map((c) => (
+                        <option key={c.id} value={c.name} />
+                      ))}
+                    </datalist>
+                    <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--app-text-muted)]">
+                      expand_more
+                    </span>
+                  </div>
                 </div>
               </div>
             </section>
