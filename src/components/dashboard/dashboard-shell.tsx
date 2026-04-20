@@ -997,15 +997,28 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                   <span className="font-semibold text-[var(--app-text)]">{lockedFeature.label}</span>. Upgrade to unlock this
                   module, or ask an organization admin to enable access for your account.
                 </p>
-                <div className="mt-5 flex flex-wrap justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setLockedFeature(null)}
-                    className="rounded-xl bg-[var(--app-input-bg)] px-4 py-2 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-input-focus-bg)]"
-                  >
-                    Not now
-                  </button>
-                  {isOrganizationOwnerOrAdmin(workspaceAccess.membershipRole) ? (
+                <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    {workspaceAccess.membershipRole === "owner" ? (
+                      <Link
+                        href={ROUTES.billingPortal}
+                        prefetch={false}
+                        onClick={() => setLockedFeature(null)}
+                        className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-95"
+                      >
+                        <span className="material-symbols-outlined notranslate text-base">payments</span>
+                        Billing
+                      </Link>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => setLockedFeature(null)}
+                      className="rounded-xl bg-[var(--app-input-bg)] px-4 py-2 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-input-focus-bg)]"
+                    >
+                      Not now
+                    </button>
+                  </div>
+                  {workspaceAccess.membershipRole !== "owner" ? (
                     <a
                       href={ROUTES.marketing.pricing}
                       target="_blank"
