@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 import type { MembershipCapability } from "@/lib/rbac/capabilities";
 import { membershipCapabilityLabel } from "@/lib/rbac/capabilities";
@@ -40,14 +39,15 @@ export function LockedCapabilityTease({
               </p>
               <div className="mt-4 flex flex-wrap gap-3">
                 {showOwnerAdminPlans ? (
-                  <Link
-                    href={ROUTES.billingPortal}
-                    prefetch={false}
+                  <a
+                    href={ROUTES.marketing.pricing}
+                    target="_blank"
+                    rel="noreferrer"
                     className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95"
                   >
                     <span className="material-symbols-outlined notranslate text-base">upgrade</span>
                     View plans
-                  </Link>
+                  </a>
                 ) : null}
                 <span className="inline-flex items-center gap-2 rounded-xl bg-[var(--app-input-bg)] px-4 py-2.5 text-xs font-semibold text-[var(--app-text-muted)]">
                   <span className="material-symbols-outlined notranslate text-base">visibility</span>

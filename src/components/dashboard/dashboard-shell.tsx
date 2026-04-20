@@ -61,6 +61,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
     label: string;
     moduleLabel: string;
   } | null>(null);
+  const [supportOpen, setSupportOpen] = useState(false);
   const [headerHeightPx, setHeaderHeightPx] = useState<number | null>(null);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileNavCloseRef = useRef<HTMLButtonElement>(null);
@@ -81,6 +82,10 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
 
   const closeMobileTools = useCallback(() => {
     setMobileToolsOpen(false);
+  }, []);
+
+  const closeSupport = useCallback(() => {
+    setSupportOpen(false);
   }, []);
 
   const userMenuOpen = userMenuAnchor != null;
@@ -108,9 +113,10 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
       closeMobileNav();
       closeMobileTools();
       closeUserMenu();
+      closeSupport();
     });
     return () => cancelAnimationFrame(id);
-  }, [pathname, closeMobileNav, closeMobileTools, closeUserMenu]);
+  }, [pathname, closeMobileNav, closeMobileTools, closeUserMenu, closeSupport]);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 1024px)");
@@ -615,9 +621,21 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
         <div className="mt-auto shrink-0 border-t border-[var(--app-border-ui-soft)] pt-4">
           <nav className="flex flex-col gap-1" aria-label="Account">
             <Link
-              href={ROUTES.features}
-              onClick={closeMobileNav}
+              href="#"
               className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]/80"
+              role="button"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  closeMobileNav();
+                  setSupportOpen(true);
+                }
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                closeMobileNav();
+                setSupportOpen(true);
+              }}
             >
               <span className="material-symbols-outlined notranslate text-xl">support_agent</span>
               Support
@@ -955,8 +973,17 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
       </div>
 
       {lockedFeature ? (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-2xl">
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Locked feature"
+          onClick={() => setLockedFeature(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start gap-3">
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(99,102,241,0.12)]">
                 <span className="material-symbols-outlined notranslate text-xl text-[#6063ee]">lock</span>
@@ -979,26 +1006,98 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                     Not now
                   </button>
                   {isOrganizationOwnerOrAdmin(workspaceAccess.membershipRole) ? (
-                    <Link
-                      href={ROUTES.billingPortal}
-                      prefetch={false}
+                    <a
+                      href={ROUTES.marketing.pricing}
+                      target="_blank"
+                      rel="noreferrer"
                       onClick={() => setLockedFeature(null)}
                       className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-95"
                     >
                       <span className="material-symbols-outlined notranslate text-base">upgrade</span>
                       View plans
-                    </Link>
+                    </a>
                   ) : null}
                 </div>
               </div>
             </div>
           </div>
-          <button
-            type="button"
-            aria-label="Close"
-            className="absolute inset-0 cursor-default"
-            onClick={() => setLockedFeature(null)}
-          />
+        </div>
+      ) : null}
+
+      {supportOpen ? (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Support options"
+          onClick={closeSupport}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(15,185,177,0.12)]">
+                <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">
+                  support_agent
+                </span>
+              </div>
+              <div className="min-w-0">
+                <p className="font-[family-name:var(--font-manrope)] text-lg font-extrabold text-[var(--app-text)]">
+                  Support
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-[var(--app-text-secondary)]">
+                  Choose a WhatsApp option below. The channel is for announcements; tech support is for help and troubleshooting.
+                </p>
+
+                <div className="mt-5 grid gap-3">
+                  <a
+                    href="https://whatsapp.com/channel/0029Vb7eng71yT2EJz7AKy24"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-start justify-between gap-3 rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-input-bg)] px-4 py-3 transition hover:bg-[var(--app-input-focus-bg)]"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-extrabold text-[var(--app-text)]">Channel</p>
+                      <p className="mt-1 text-xs text-[var(--app-text-secondary)]">
+                        Product updates, announcements, and tips.
+                      </p>
+                    </div>
+                    <span className="material-symbols-outlined notranslate text-lg text-[var(--app-text-faint)]">
+                      open_in_new
+                    </span>
+                  </a>
+
+                  <a
+                    href="https://chat.whatsapp.com/I2wUAyQsqsGECKvheNWgC8?mode=gi_t"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-start justify-between gap-3 rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-input-bg)] px-4 py-3 transition hover:bg-[var(--app-input-focus-bg)]"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-extrabold text-[var(--app-text)]">Tech support</p>
+                      <p className="mt-1 text-xs text-[var(--app-text-secondary)]">
+                        Get help with bugs, onboarding, and setup.
+                      </p>
+                    </div>
+                    <span className="material-symbols-outlined notranslate text-lg text-[var(--app-text-faint)]">
+                      open_in_new
+                    </span>
+                  </a>
+                </div>
+
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={closeSupport}
+                    className="rounded-xl bg-[var(--app-input-bg)] px-4 py-2 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-input-focus-bg)]"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
     </div>
