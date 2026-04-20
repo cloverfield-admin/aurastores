@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
+import { useRouter } from "next/navigation";
 import {
   useAdjustStockMutation,
   useBatchDetailQuery,
@@ -173,6 +174,7 @@ type BatchDetailContentProps = {
 };
 
 export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
+  const router = useRouter();
   const { withLoading, notify } = useAuraFeedback();
   const batchQuery = useBatchDetailQuery(batchId);
   const disposeMutation = useDisposeStockBatchMutation();
@@ -347,13 +349,7 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  notify({
-                    variant: "info",
-                    title: "Edit product details",
-                    description: "Product editing is not wired yet in this dashboard flow.",
-                  })
-                }
+                onClick={() => router.push(ROUTES.dashboard.stockProductEdit(batch.productId))}
                 className="inline-flex items-center gap-2 rounded-xl bg-[var(--app-cancel-bg)] px-5 py-2.5 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[#d5dade]"
               >
                 <span className="material-symbols-outlined notranslate text-[18px]">edit</span>

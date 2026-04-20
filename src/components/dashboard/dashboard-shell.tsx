@@ -335,7 +335,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
           <span>No branches available for your account.</span>
           {canOpenBranchSetup ? (
             <Link
-              href={ROUTES.dashboard.onboarding.pharmacyDetails}
+              href={ROUTES.dashboard.organizationBranches.new}
               className="font-semibold text-[var(--app-link-teal)] underline decoration-[rgba(20,184,166,0.35)]"
             >
               Branch setup

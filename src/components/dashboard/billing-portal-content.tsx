@@ -114,6 +114,7 @@ export function BillingPortalContent() {
   const [planCode, setPlanCode] = useState<SubscriptionPlanCode>(currentPlanCode);
   const [interval, setInterval] = useState<SubscriptionInterval>(defaultInterval);
   const showIntroTrialCta = introTrialEligible && planCode !== "free";
+  const enterpriseComingSoon = planCode === "enterprise";
   const [activeInvoiceId, setActiveInvoiceId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"ussd" | "momo" | "card">("ussd");
   const [momoMsisdn, setMomoMsisdn] = useState("");
@@ -567,8 +568,9 @@ export function BillingPortalContent() {
                     className="mt-2 w-full rounded-lg border border-[var(--app-border-ui)] bg-[var(--app-surface)] px-3 py-2 text-sm font-semibold text-[var(--app-text)] outline-none"
                   >
                     {orderedPlans.map((p) => (
-                      <option key={p.code} value={p.code}>
-                        {p.name} ({p.code})
+                      <option key={p.code} value={p.code} disabled={p.code === "enterprise"}>
+                        {p.name}
+                        {p.code === "enterprise" ? " (Coming soon)" : ` (${p.code})`}
                       </option>
                     ))}
                   </select>
@@ -577,6 +579,11 @@ export function BillingPortalContent() {
                       ? `Price: ${formatMoney(selectedPrice.currency, selectedPrice.amountCents)} / ${interval}`
                       : "Pricing not configured for this interval."}
                   </p>
+                  {enterpriseComingSoon ? (
+                    <p className="mt-2 text-xs font-semibold text-[#6063ee]">
+                      Enterprise is coming soon. Pick Basic or Pro for now.
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="rounded-xl border border-[var(--app-border-ui-soft)] bg-[var(--app-input-bg)] p-4">
@@ -606,7 +613,7 @@ export function BillingPortalContent() {
                     <button
                       type="button"
                       onClick={() => void handleStartIntroTrial()}
-                      disabled={startIntroTrial.isPending}
+                      disabled={startIntroTrial.isPending || enterpriseComingSoon}
                       className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-4 py-3 text-sm font-extrabold text-white shadow-sm transition hover:opacity-95 disabled:opacity-60"
                     >
                       <span className="material-symbols-outlined notranslate text-base">timer</span>
@@ -616,7 +623,7 @@ export function BillingPortalContent() {
                   <button
                     type="button"
                     onClick={() => void handleCreateInvoice()}
-                    disabled={createInvoice.isPending}
+                    disabled={createInvoice.isPending || enterpriseComingSoon}
                     className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-extrabold shadow-sm transition disabled:opacity-60 ${
                       showIntroTrialCta
                         ? "border-2 border-[var(--app-border-ui)] bg-[var(--app-surface)] text-[var(--app-text)] hover:bg-[var(--app-input-bg)]"

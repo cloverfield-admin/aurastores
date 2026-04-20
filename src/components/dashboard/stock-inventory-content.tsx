@@ -946,6 +946,13 @@ export function StockInventoryContent() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => router.push(ROUTES.dashboard.stockProductEdit(row.productId))}
+                              className="rounded-md bg-[var(--app-input-bg)] px-3 py-1 text-[10px] font-semibold text-[var(--app-text)] hover:bg-[var(--app-input-focus-bg)]"
+                            >
+                              Edit
+                            </button>
                             {canAdjust ? (
                               <button
                                 type="button"

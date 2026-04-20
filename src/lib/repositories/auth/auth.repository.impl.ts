@@ -290,6 +290,7 @@ export class AuthRepositoryImpl implements AuthRepository {
           displayName: params.pharmacyName,
           legalName: params.pharmacyName,
           primaryEmail: params.email,
+          hqCountry: "ZM",
           signupSelectedPlanCode: params.selectedPlanCode ?? null,
         })
         .returning();

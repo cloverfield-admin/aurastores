@@ -457,8 +457,11 @@ export default async function HomePage() {
                 const cta = highlight
                   ? "block w-full rounded-xl bg-white py-3 text-center font-bold text-[#006a65] shadow-lg transition hover:bg-white/95"
                   : "block w-full rounded-xl border-2 border-[#006a65] py-3.5 text-center font-bold text-[#006a65] transition hover:bg-[#006a65]/5";
+                const ctaDisabled =
+                  "block w-full cursor-not-allowed rounded-xl border-2 border-[#bbc9c7] bg-[#f2f4f6] py-3.5 text-center font-bold text-[#6c7a78] opacity-80";
 
                 const bullets = buildPlanBullets(plan, prev);
+                const isEnterprise = plan.code === "enterprise";
 
                 return (
                   <div key={plan.code} className={plan.code === "pro" ? "relative order-first lg:order-none" : ""}>
@@ -470,6 +473,11 @@ export default async function HomePage() {
                     <div className={wrapper}>
                       <div className={`space-y-2 ${divider}`}>
                         <h3 className={heading}>{plan.name}</h3>
+                        {isEnterprise ? (
+                          <p className={highlight ? "text-xs font-semibold uppercase tracking-[0.12em] text-white/90" : "text-xs font-semibold uppercase tracking-[0.12em] text-[#6063ee]"}>
+                            Coming soon
+                          </p>
+                        ) : null}
                         <p className={subText}>
                           {plan.code === "free"
                             ? "Start with the essentials for a single location."
@@ -529,20 +537,22 @@ export default async function HomePage() {
                           </li>
                         ))}
                       </ul>
-                      <Link
-                        href={
-                          plan.code === "basic" || plan.code === "pro"
-                            ? `${ROUTES.auth.register}?plan=${plan.code}`
-                            : ROUTES.auth.register
-                        }
-                        className={cta}
-                      >
-                        {plan.code === "free"
-                          ? "Get Started"
-                          : plan.code === "enterprise"
-                            ? "Contact Sales"
-                            : "Choose Plan"}
-                      </Link>
+                      {isEnterprise ? (
+                        <span className={ctaDisabled} aria-disabled="true">
+                          Coming soon
+                        </span>
+                      ) : (
+                        <Link
+                          href={
+                            plan.code === "basic" || plan.code === "pro"
+                              ? `${ROUTES.auth.register}?plan=${plan.code}`
+                              : ROUTES.auth.register
+                          }
+                          className={cta}
+                        >
+                          {plan.code === "free" ? "Get Started" : "Choose Plan"}
+                        </Link>
+                      )}
                     </div>
                   </div>
                 );
