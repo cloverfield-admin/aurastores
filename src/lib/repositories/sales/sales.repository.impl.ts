@@ -14,6 +14,7 @@ import {
 import type { CreateSaleInput } from "@/lib/validation/sales";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 import { assertWithinLimit } from "@/lib/billing/entitlements";
+import { utcMonthRangeForInstant } from "@/lib/dates/utc-month-range";
 import { filterBranchesForContext } from "@/lib/rbac/branch-access";
 import type {
   SalesCatalogData,
@@ -685,10 +686,20 @@ export class SalesRepositoryImpl implements SalesRepository {
       const saleNumber = buildSaleNumber();
 
       if (input.status === "completed") {
+        const { startInclusive, endExclusive } = utcMonthRangeForInstant(new Date());
+        const monthStartIso = startInclusive.toISOString();
+        const monthEndIso = endExclusive.toISOString();
         const [{ value: completedCount }] = await tx
           .select({ value: count() })
           .from(sales)
-          .where(and(eq(sales.organizationId, context.organization.id), eq(sales.status, "completed")));
+          .where(
+            and(
+              eq(sales.organizationId, context.organization.id),
+              eq(sales.status, "completed"),
+              sql`coalesce(${sales.completedAt}, ${sales.createdAt}) >= ${monthStartIso}::timestamptz`,
+              sql`coalesce(${sales.completedAt}, ${sales.createdAt}) < ${monthEndIso}::timestamptz`,
+            ),
+          );
 
         assertWithinLimit({
           kind: "salesTransactions",

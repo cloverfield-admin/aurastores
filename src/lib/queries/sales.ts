@@ -8,6 +8,7 @@ import { enqueueOutboxEntry } from "@/lib/offline/outbox";
 import { OUTBOX_KIND_SALE_CREATE } from "@/lib/offline/outbox-kinds";
 import { OfflineQueuedError } from "@/lib/offline/offline-queued-error";
 import { isLikelyNetworkError } from "@/lib/offline/network-error";
+import { appMeQueryKey } from "@/lib/queries/staff";
 import type { CreateSaleInput } from "@/lib/validation/sales";
 
 export const salesDashboardQueryKey = ["sales", "dashboard"] as const;
@@ -199,6 +200,7 @@ export function useCreateSaleMutation() {
         queryClient.invalidateQueries({ queryKey: salesDashboardQueryKey }),
         queryClient.invalidateQueries({ queryKey: salesCatalogQueryKey }),
         queryClient.invalidateQueries({ queryKey: ["stock", "dashboard"] }),
+        queryClient.invalidateQueries({ queryKey: appMeQueryKey }),
       ]);
     },
   });

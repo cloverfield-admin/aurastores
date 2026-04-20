@@ -1,5 +1,6 @@
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { introPaidTrialEligibleForSnapshot, introTrialPeriodEnd, normalizeSignupSelectedPlanCode } from "@/lib/billing/intro-trial";
+import { withPublicPlanSalesLimitFallback } from "@/lib/billing/plan-feature-defaults";
 import { db } from "@/lib/db";
 import {
   lipilaTransactions,
@@ -151,13 +152,16 @@ export class BillingRepositoryImpl implements BillingRepository {
       pricesByPlan.set(row.planId, existing);
     }
 
-    return plans.map((p): PublicPlan => ({
-      code: normalizePlanCode(p.code),
-      name: p.name,
-      sortOrder: p.sortOrder,
-      features: p.features,
-      prices: pricesByPlan.get(p.planId) ?? {},
-    }));
+    return plans.map((p): PublicPlan => {
+      const code = normalizePlanCode(p.code);
+      return {
+        code,
+        name: p.name,
+        sortOrder: p.sortOrder,
+        features: withPublicPlanSalesLimitFallback(code, p.features),
+        prices: pricesByPlan.get(p.planId) ?? {},
+      };
+    });
   }
 
   async ensureIntroTrialReconciled(organizationId: string): Promise<void> {

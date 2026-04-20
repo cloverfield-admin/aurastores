@@ -624,7 +624,7 @@ export function OrganizationManagementContent({ organization }: { organization: 
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-[var(--app-text-muted)]">Sales</span>
+                    <span className="text-[var(--app-text-muted)]">Sales this month</span>
                     <span className="font-semibold text-[var(--app-text)]">
                       {meQuery.data?.usage?.salesTransactions ?? "—"} /{" "}
                       {meQuery.data?.entitlements?.limits?.salesTransactions ?? "∞"}

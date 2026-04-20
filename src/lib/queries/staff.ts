@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/api/client";
 import { apiUrl } from "@/lib/api/version";
+import { msUntilNextUtcMonthStart } from "@/lib/dates/utc-month-range";
 import type { AddStaffByEmailPayload, UpdateStaffMemberPayload } from "@/lib/validation/staff";
 import { networkDashboardQueryKey } from "@/lib/queries/network";
 
@@ -108,10 +109,32 @@ export type AppMeResponse = {
   } | null;
 };
 
+function shouldPollMeWhileSalesCapReached(data: AppMeResponse | undefined) {
+  if (!data?.usage || data.entitlements?.limits == null) return false;
+  const limit = data.entitlements.limits.salesTransactions;
+  const usage = data.usage.salesTransactions;
+  return limit != null && usage >= limit;
+}
+
 export function useAppMeQuery() {
   return useQuery({
     queryKey: appMeQueryKey,
     queryFn: () => fetchJson<AppMeResponse>(apiUrl("/me")),
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    /** While the monthly sales cap is reached, refetch so the UI unlocks as soon as the UTC month rolls over. */
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!shouldPollMeWhileSalesCapReached(data)) {
+        return false;
+      }
+      const untilFlip = msUntilNextUtcMonthStart();
+      if (untilFlip < 120_000) {
+        return Math.max(1_000, untilFlip);
+      }
+      return 45_000;
+    },
   });
 }
 
