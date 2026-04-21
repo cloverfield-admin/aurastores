@@ -2170,37 +2170,23 @@ export class StockRepositoryImpl implements StockRepository {
         })),
       );
 
-      const quantityCase = sql<number>`case ${inventoryBatches.id} ${sql.join(
-        adjustments.map(({ batch, nextQuantity }) => sql`when ${batch.id} then ${nextQuantity}`),
-        sql.raw(" "),
-      )} end`;
-      const statusCase = sql<string>`case ${inventoryBatches.id} ${sql.join(
-        adjustments.map(({ batch, nextStatus }) => sql`when ${batch.id} then ${nextStatus}`),
-        sql.raw(" "),
-      )} end`;
-      const notesCase = sql<string | null>`case ${inventoryBatches.id} ${sql.join(
-        adjustments.map(({ batch, nextNotes }) => sql`when ${batch.id} then ${nextNotes}`),
-        sql.raw(" "),
-      )} end`;
-
-      await tx
-        .update(inventoryBatches)
-        .set({
-          quantityAvailable: quantityCase,
-          status: statusCase,
-          notes: notesCase,
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(inventoryBatches.organizationId, context.organization.id),
-            eq(inventoryBatches.branchId, branch.id),
-            inArray(
-              inventoryBatches.id,
-              adjustments.map(({ batch }) => batch.id),
+      for (const { batch, nextQuantity, nextStatus, nextNotes } of adjustments) {
+        await tx
+          .update(inventoryBatches)
+          .set({
+            quantityAvailable: nextQuantity,
+            status: nextStatus,
+            notes: nextNotes,
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(inventoryBatches.id, batch.id),
+              eq(inventoryBatches.organizationId, context.organization.id),
+              eq(inventoryBatches.branchId, branch.id),
             ),
-          ),
-        );
+          );
+      }
 
       updatedBatches.push(
         ...adjustments.map(({ batch, nextQuantity, nextUiStatus }) => ({
