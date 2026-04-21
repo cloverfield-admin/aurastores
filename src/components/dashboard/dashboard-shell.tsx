@@ -506,7 +506,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
       {/* Sidebar: off-canvas below lg */}
       <aside
         id="dashboard-mobile-nav"
-        className={`fixed left-0 top-0 z-[100] flex h-dvh w-64 max-w-[min(100vw,20rem)] flex-col border-r border-[var(--app-surface-subtle)] bg-white px-4 pb-4 pt-2 shadow-[4px_0_24px_rgba(15,23,42,0.08)] transition-transform duration-200 ease-out motion-reduce:transition-none lg:z-40 lg:max-w-none lg:translate-x-0 lg:p-4 lg:shadow-none ${
+        className={`fixed left-0 top-0 z-[100] flex h-dvh w-64 max-w-[min(100vw,20rem)] flex-col border-r border-[var(--app-surface-subtle)] bg-[var(--app-surface)] px-4 pb-4 pt-2 shadow-[4px_0_24px_rgba(15,23,42,0.08)] transition-transform duration-200 ease-out motion-reduce:transition-none dark:shadow-[4px_0_24px_rgba(0,0,0,0.45)] lg:z-40 lg:max-w-none lg:translate-x-0 lg:p-4 lg:shadow-none ${
           mobileNavOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >

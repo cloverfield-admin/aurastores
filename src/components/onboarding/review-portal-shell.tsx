@@ -80,7 +80,7 @@ export function ReviewPortalShell({
                     key={step.id}
                     href={step.href}
                     aria-current="page"
-                    className="flex items-center gap-3 rounded-lg bg-white px-4 py-3 shadow-sm"
+                    className="flex items-center gap-3 rounded-lg bg-[var(--app-surface)] px-4 py-3 shadow-sm"
                   >
                     <span className="material-symbols-outlined notranslate text-lg text-[var(--app-link-teal)]">
                       {step.icon}
