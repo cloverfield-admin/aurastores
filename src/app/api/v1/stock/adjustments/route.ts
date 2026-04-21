@@ -34,10 +34,24 @@ export async function POST(request: Request) {
         const result = await services.stock.adjustBatches(context, parsed.data);
         return { status: 200, body: result };
       } catch (error) {
+        const pg = error && typeof error === "object" ? (error as Record<string, unknown>) : null;
+        const code = pg && typeof pg.code === "string" ? pg.code : undefined;
+        const detail = pg && typeof pg.detail === "string" ? pg.detail : undefined;
+        const constraint = pg && typeof pg.constraint === "string" ? pg.constraint : undefined;
+        const table = pg && typeof pg.table === "string" ? pg.table : undefined;
+        const schema = pg && typeof pg.schema === "string" ? pg.schema : undefined;
+        const routine = pg && typeof pg.routine === "string" ? pg.routine : undefined;
+
         return {
           status: 400,
           body: {
             error: error instanceof Error ? error.message : "Unable to apply stock adjustment.",
+            ...(code ? { code } : {}),
+            ...(detail ? { detail } : {}),
+            ...(constraint ? { constraint } : {}),
+            ...(table ? { table } : {}),
+            ...(schema ? { schema } : {}),
+            ...(routine ? { routine } : {}),
           },
         };
       }
