@@ -156,12 +156,12 @@ export default async function HomePage() {
               <Link href={ROUTES.auth.register} className={gradientBtn}>
                 Get Started for Free
               </Link>
-              <Link
+              {/* <Link
                 href={ROUTES.demoSuccess}
                 className="rounded-xl bg-[#e0e3e5] px-8 py-4 text-center font-bold text-[#191c1e] transition hover:bg-[#d5d8db]"
               >
                 Watch Demo
-              </Link>
+              </Link> */}
             </div>
 
             <div className="relative mt-10 w-full max-w-6xl pt-4">
@@ -364,7 +364,7 @@ export default async function HomePage() {
                   optimizing our highest-moving drug categories with Aura Insights.&rdquo;
                 </p>
                 <footer className="text-sm font-semibold text-[#6063ee]">
-                  — Dr. Elena Vance, Chief Pharmacist
+                  — Zanele Tembo, Owner @ Health First Pharmacy
                 </footer>
               </blockquote>
             </div>
