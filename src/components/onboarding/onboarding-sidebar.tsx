@@ -53,7 +53,7 @@ export function OnboardingSidebar({
             aria-current={isActive ? "page" : undefined}
             className={`flex items-center gap-3 py-3 pl-6 pr-4 text-sm tracking-wide transition ${
               isActive
-                ? "rounded-r-full bg-white font-bold text-[var(--app-link-teal)] shadow-sm"
+                ? "rounded-r-full bg-[var(--app-surface)] font-bold text-[var(--app-link-teal)] shadow-sm"
                 : "text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]/90"
             }`}
           >
@@ -81,7 +81,7 @@ export function OnboardingSidebar({
         aria-current={isActive ? "page" : undefined}
         className={`flex items-center gap-3 px-3 py-2 text-sm font-medium transition ${
           isActive
-            ? "rounded-2xl bg-[#f0fdfa] text-[var(--app-link-teal)]"
+            ? "rounded-2xl bg-[var(--app-search-hit-active)] text-[var(--app-link-teal)]"
             : "rounded-lg text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]"
         }`}
       >
@@ -99,7 +99,7 @@ export function OnboardingSidebar({
 
   if (variant === "clinical") {
     return (
-      <aside className="flex w-full shrink-0 flex-col justify-between border-b border-[rgba(226,232,240,0.5)] bg-[var(--app-surface-muted)] px-0 py-4 lg:h-[calc(100dvh-4rem)] lg:w-64 lg:border-b-0 lg:border-r lg:pt-8 lg:pb-8">
+      <aside className="flex w-full shrink-0 flex-col justify-between border-b border-[var(--app-border-ui-soft)] bg-[var(--app-surface-muted)] px-0 py-4 lg:h-[calc(100dvh-4rem)] lg:w-64 lg:border-b-0 lg:border-r lg:pt-8 lg:pb-8">
         <div>
           <div className="px-6 pb-8">
             <h2 className="font-[family-name:var(--font-manrope)] text-lg font-bold text-[var(--app-link-teal)]">
@@ -112,9 +112,9 @@ export function OnboardingSidebar({
           </nav>
         </div>
         <div className="mt-8 space-y-4 px-6 pt-4">
-          <div className="rounded-xl border border-[rgba(204,251,241,0.5)] bg-[#f0fdfa] p-4">
-            <p className="text-xs font-medium text-[#115e59]">Need Help?</p>
-            <p className="mt-2 text-[10px] leading-relaxed text-[var(--app-link-teal)]">
+          <div className="rounded-xl border border-[var(--app-brand-border)] bg-[var(--app-brand-soft)] p-4">
+            <p className="text-xs font-medium text-[var(--app-header-title)]">Need Help?</p>
+            <p className="mt-2 text-[10px] leading-relaxed text-[var(--app-text-muted)]">
               Our clinical support team is available 24/7 for verification assistance.
             </p>
           </div>

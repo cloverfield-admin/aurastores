@@ -25,11 +25,11 @@ export function OnboardingScorePanel({ progressPercent = 25 }: OnboardingScorePa
           You are moving 40% faster than the average pharmacy setup.
         </p>
         <div className="mt-8 space-y-4">
-          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.1em] text-[#6c7a78]">
+          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.1em] text-[var(--app-text-muted)]">
             <span>Progress</span>
             <span>{pct}%</span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-[#e0e3e5]">
+          <div className="h-2 overflow-hidden rounded-full bg-[var(--app-border-ui)]">
             <div
               className="h-full rounded-full bg-[var(--app-brand)] transition-[width]"
               style={{ width: `${pct}%` }}
@@ -44,13 +44,13 @@ export function OnboardingScorePanel({ progressPercent = 25 }: OnboardingScorePa
             </span>
           </div>
           <div className="flex items-center gap-3 opacity-40">
-            <span className="size-2 shrink-0 rounded-full bg-[#6c7a78]" />
+            <span className="size-2 shrink-0 rounded-full bg-[var(--app-text-faint)]" />
             <span className="text-xs font-medium text-[var(--app-text)]">
               Compliance Mapping
             </span>
           </div>
           <div className="flex items-center gap-3 opacity-40">
-            <span className="size-2 shrink-0 rounded-full bg-[#6c7a78]" />
+            <span className="size-2 shrink-0 rounded-full bg-[var(--app-text-faint)]" />
             <span className="text-xs font-medium text-[var(--app-text)]">
               Clinical Network Entry
             </span>

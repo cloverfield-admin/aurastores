@@ -5,6 +5,10 @@ import { getSiteUrl } from "@/lib/site-url";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { signUpSchema } from "@/lib/validation/auth";
 
+/** Initial attempt plus this many retries (max 4 `signUp` calls). */
+const SIGNUP_MAX_RETRIES = 3;
+const SIGNUP_RETRY_DELAY_MS = 5_000;
+
 function isRetryableSupabaseSignupError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const maybe = error as { status?: number; message?: string; name?: string };
@@ -36,8 +40,10 @@ export async function POST(request: Request) {
   const emailRedirectTo = `${getSiteUrl()}/auth/callback?next=${confirmNext}`;
 
   let signUpResult: Awaited<ReturnType<typeof supabase.auth.signUp>> | null = null;
-  const maxAttempts = 3;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+  for (let retry = 0; retry <= SIGNUP_MAX_RETRIES; retry++) {
+    if (retry > 0) {
+      await new Promise((r) => setTimeout(r, SIGNUP_RETRY_DELAY_MS));
+    }
     const result = await supabase.auth.signUp({
       email: parsed.data.email,
       password: parsed.data.password,
@@ -52,8 +58,7 @@ export async function POST(request: Request) {
 
     signUpResult = result;
     if (!result.error) break;
-    if (!isRetryableSupabaseSignupError(result.error) || attempt === maxAttempts) break;
-    await new Promise((r) => setTimeout(r, 200 * attempt));
+    if (!isRetryableSupabaseSignupError(result.error)) break;
   }
 
   if (!signUpResult) {
