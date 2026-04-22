@@ -51,7 +51,7 @@ export function defaultCapabilitiesForAppRole(role: string): MembershipCapabilit
       catalog: true,
       staff: false,
       pay: false,
-      organization: false,
+      organization: true,
     };
   }
   if (role === "analyst") {
@@ -62,7 +62,7 @@ export function defaultCapabilitiesForAppRole(role: string): MembershipCapabilit
       catalog: true,
       staff: false,
       pay: false,
-      organization: false,
+      organization: true,
     };
   }
   return {
@@ -72,7 +72,7 @@ export function defaultCapabilitiesForAppRole(role: string): MembershipCapabilit
     catalog: false,
     staff: false,
     pay: false,
-    organization: false,
+    organization: true,
   };
 }
 

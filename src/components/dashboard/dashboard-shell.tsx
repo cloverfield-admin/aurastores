@@ -234,6 +234,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
 
   const isStock = pathname === ROUTES.dashboard.stock || pathname.startsWith(`${ROUTES.dashboard.stock}/`);
   const isSales = pathname === ROUTES.dashboard.sales || pathname.startsWith(`${ROUTES.dashboard.sales}/`);
+  const isPay = pathname === ROUTES.dashboard.pay || pathname.startsWith(`${ROUTES.dashboard.pay}/`);
   const isInsights =
     pathname === ROUTES.dashboard.insights || pathname.startsWith(`${ROUTES.dashboard.insights}/`);
   const isProductCategories =
@@ -742,7 +743,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
               hidden={!mobileToolsOpen}
               className="border-t border-[var(--app-surface-subtle)] px-4 py-3"
             >
-              {isStaff || isInsights ? (
+              {isStaff ? (
                 <div className="flex flex-col gap-4">
                   <label className="relative block w-full min-w-0">
                     <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[var(--app-text-faint)]">
@@ -759,7 +760,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                     onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
                   })}
                 </div>
-              ) : isSales ? (
+              ) : isSales || isInsights || isPay ? (
                 <div className="flex flex-col gap-4">
                   {branchSwitcherNav({
                     ariaLabel: "Active branch context",
@@ -845,7 +846,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                 <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[var(--app-header-title)] sm:text-lg">
                   Add New Staff
                 </h1>
-              ) : isStaff || isInsights ? (
+              ) : isStaff ? (
                 <>
                   <label className="relative hidden w-full min-w-0 sm:block sm:w-64">
                     <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[var(--app-text-faint)]">
@@ -862,7 +863,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                     onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
                   })}
                 </>
-              ) : isSales ? (
+              ) : isSales || isInsights || isPay ? (
                 <>
                   {branchSwitcherNav({
                     ariaLabel: "Active branch context",
@@ -904,6 +905,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
             <div className="flex flex-wrap items-center justify-end gap-3 border-t border-transparent pt-2 sm:border-t-0 sm:pt-0">
               {!isSales &&
                 !isInsights &&
+                !isPay &&
                 !isSettings &&
                 !isOrganization &&
                 !isProductCategories &&
