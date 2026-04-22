@@ -355,6 +355,37 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
         </div>
       );
     }
+
+    if (sectionBranchTabs.length > 3) {
+      return (
+        <div className="flex min-w-0 items-center gap-3" aria-label={opts.ariaLabel}>
+          <label className="sr-only" htmlFor="dashboard-branch-selector">
+            Branch
+          </label>
+          <div className="relative">
+            <select
+              id="dashboard-branch-selector"
+              value={activeSectionBranchId ?? ""}
+              onChange={(e) => opts.onSelectBranch(e.target.value)}
+              className="appearance-none rounded-full border border-[var(--app-border-ui)] bg-[var(--app-surface)] px-4 py-2 pr-10 text-sm font-semibold text-[var(--app-text)] shadow-sm outline-none transition focus:ring-2 focus:ring-[rgba(20,184,166,0.25)]"
+            >
+              {sectionBranchTabs.map((tab) => (
+                <option key={tab.id} value={tab.id}>
+                  {tab.name}
+                </option>
+              ))}
+            </select>
+            <span className="material-symbols-outlined notranslate pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-lg text-[var(--app-text-faint)]">
+              expand_more
+            </span>
+          </div>
+          <span className="hidden text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--app-text-faint)] sm:inline">
+            Branch
+          </span>
+        </div>
+      );
+    }
+
     return (
       <nav
         className="flex min-w-0 max-w-full flex-wrap items-center gap-x-4 gap-y-2 overflow-x-auto overscroll-x-contain sm:gap-x-6"
