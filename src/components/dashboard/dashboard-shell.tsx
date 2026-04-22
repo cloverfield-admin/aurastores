@@ -234,6 +234,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
 
   const isStock = pathname === ROUTES.dashboard.stock || pathname.startsWith(`${ROUTES.dashboard.stock}/`);
   const isSales = pathname === ROUTES.dashboard.sales || pathname.startsWith(`${ROUTES.dashboard.sales}/`);
+  const isPay = pathname === ROUTES.dashboard.pay || pathname.startsWith(`${ROUTES.dashboard.pay}/`);
   const isInsights =
     pathname === ROUTES.dashboard.insights || pathname.startsWith(`${ROUTES.dashboard.insights}/`);
   const isProductCategories =
@@ -354,6 +355,37 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
         </div>
       );
     }
+
+    if (sectionBranchTabs.length > 3) {
+      return (
+        <div className="flex min-w-0 items-center gap-3" aria-label={opts.ariaLabel}>
+          <label className="sr-only" htmlFor="dashboard-branch-selector">
+            Branch
+          </label>
+          <div className="relative">
+            <select
+              id="dashboard-branch-selector"
+              value={activeSectionBranchId ?? ""}
+              onChange={(e) => opts.onSelectBranch(e.target.value)}
+              className="appearance-none rounded-full border border-[var(--app-border-ui)] bg-[var(--app-surface)] px-4 py-2 pr-10 text-sm font-semibold text-[var(--app-text)] shadow-sm outline-none transition focus:ring-2 focus:ring-[rgba(20,184,166,0.25)]"
+            >
+              {sectionBranchTabs.map((tab) => (
+                <option key={tab.id} value={tab.id}>
+                  {tab.name}
+                </option>
+              ))}
+            </select>
+            <span className="material-symbols-outlined notranslate pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-lg text-[var(--app-text-faint)]">
+              expand_more
+            </span>
+          </div>
+          <span className="hidden text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--app-text-faint)] sm:inline">
+            Branch
+          </span>
+        </div>
+      );
+    }
+
     return (
       <nav
         className="flex min-w-0 max-w-full flex-wrap items-center gap-x-4 gap-y-2 overflow-x-auto overscroll-x-contain sm:gap-x-6"
@@ -742,7 +774,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
               hidden={!mobileToolsOpen}
               className="border-t border-[var(--app-surface-subtle)] px-4 py-3"
             >
-              {isStaff || isInsights ? (
+              {isStaff ? (
                 <div className="flex flex-col gap-4">
                   <label className="relative block w-full min-w-0">
                     <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[var(--app-text-faint)]">
@@ -759,7 +791,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                     onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
                   })}
                 </div>
-              ) : isSales ? (
+              ) : isSales || isInsights || isPay ? (
                 <div className="flex flex-col gap-4">
                   {branchSwitcherNav({
                     ariaLabel: "Active branch context",
@@ -845,7 +877,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                 <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[var(--app-header-title)] sm:text-lg">
                   Add New Staff
                 </h1>
-              ) : isStaff || isInsights ? (
+              ) : isStaff ? (
                 <>
                   <label className="relative hidden w-full min-w-0 sm:block sm:w-64">
                     <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[var(--app-text-faint)]">
@@ -862,7 +894,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                     onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
                   })}
                 </>
-              ) : isSales ? (
+              ) : isSales || isInsights || isPay ? (
                 <>
                   {branchSwitcherNav({
                     ariaLabel: "Active branch context",
@@ -904,6 +936,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
             <div className="flex flex-wrap items-center justify-end gap-3 border-t border-transparent pt-2 sm:border-t-0 sm:pt-0">
               {!isSales &&
                 !isInsights &&
+                !isPay &&
                 !isSettings &&
                 !isOrganization &&
                 !isProductCategories &&
