@@ -86,6 +86,6 @@ export type CreateSaleResult = {
 export interface SalesRepository {
   getDashboard(context: AuthContext, branchId?: string, range?: SalesDateRange): Promise<SalesDashboardData>;
   getRecentSales(context: AuthContext, branchId?: string): Promise<SalesRecentSalesData>;
-  getCatalog(context: AuthContext, branchId?: string): Promise<SalesCatalogData>;
+  getCatalog(context: AuthContext, branchId?: string, q?: string): Promise<SalesCatalogData>;
   createSale(context: AuthContext, input: CreateSaleInput): Promise<CreateSaleResult>;
 }
