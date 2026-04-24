@@ -7,6 +7,7 @@ import { BarcodeScannerModal } from "@/components/dashboard/barcode-scanner-moda
 import { OutboxFeatureStatus } from "@/components/outbox/outbox-detail-dialog";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { isOfflineQueuedError } from "@/lib/offline/offline-queued-error";
+import type { SalesCatalogResponse } from "@/lib/queries/sales";
 import { useCreateSaleMutation, useSalesCatalogQuery, useSalesCatalogSearchQuery } from "@/lib/queries/sales";
 import { useOrganizationOverviewQuery } from "@/lib/queries/organization";
 import { useAppMeQuery } from "@/lib/queries/staff";
@@ -415,6 +416,9 @@ export function NewSaleContent() {
   const branch = searchParams.get("branch") ?? undefined;
   const salesHref = branch ? `${ROUTES.dashboard.sales}?branch=${branch}` : ROUTES.dashboard.sales;
   const salesCatalogQuery = useSalesCatalogQuery(branch, true);
+  const [pinnedCatalogProducts, setPinnedCatalogProducts] = useState<
+    Record<string, SalesCatalogResponse["products"][number]>
+  >({});
   const [productSearch, setProductSearch] = useState("");
   const [productSearchDebounced, setProductSearchDebounced] = useState("");
   useEffect(() => {
@@ -504,14 +508,18 @@ export function NewSaleContent() {
 
   const mergedCatalogProducts = useMemo(() => {
     const base = salesCatalogQuery.data?.products ?? [];
+    const pinned = Object.values(pinnedCatalogProducts);
     const searched = salesCatalogSearchQuery.data?.products ?? [];
-    if (searched.length === 0) return base;
-    const map = new Map(base.map((p) => [p.id, p]));
+    if (pinned.length === 0 && searched.length === 0) return base;
+    const map = new Map<string, SalesCatalogResponse["products"][number]>(base.map((p) => [p.id, p]));
+    for (const p of pinned) {
+      map.set(p.id, p);
+    }
     for (const p of searched) {
       map.set(p.id, p);
     }
     return Array.from(map.values());
-  }, [salesCatalogQuery.data?.products, salesCatalogSearchQuery.data?.products]);
+  }, [salesCatalogQuery.data?.products, pinnedCatalogProducts, salesCatalogSearchQuery.data?.products]);
 
   const productById = useMemo(() => {
     return new Map(mergedCatalogProducts.map((product) => [product.id, product] as const));
@@ -647,12 +655,13 @@ export function NewSaleContent() {
   }
 
   function updateItemProduct(id: string, productId: string) {
-    const product = salesCatalogQuery.data?.products.find((option) => option.id === productId);
+    const product = productById.get(productId);
     if (!product) {
       return;
     }
 
     const batch = getPreferredBatch(product.batches);
+    setPinnedCatalogProducts((prev) => (prev[product.id] ? prev : { ...prev, [product.id]: product }));
 
     setItems((prev) =>
       prev.map((item) =>
