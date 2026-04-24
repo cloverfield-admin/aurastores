@@ -49,6 +49,7 @@ type MedicationComboboxProps = {
   className?: string;
   onChange: (nextProductId: string) => void;
   onQueryChange?: (q: string) => void;
+  queryLoading?: boolean;
 };
 
 function MedicationCombobox({
@@ -60,6 +61,7 @@ function MedicationCombobox({
   className,
   onChange,
   onQueryChange,
+  queryLoading = false,
 }: MedicationComboboxProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -264,10 +266,18 @@ function MedicationCombobox({
           aria-autocomplete="list"
           className="min-w-0 w-full rounded-xl border-0 bg-[var(--app-input-bg)] px-3 py-2 pr-10 text-sm text-[var(--app-text)] outline-none focus:ring-2 focus:ring-[var(--app-brand)]/20 disabled:cursor-not-allowed disabled:opacity-60"
         />
-        <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--app-text-muted)]">
-          search
+        <span
+          className={`material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--app-text-muted)] ${
+            queryLoading ? "animate-spin" : ""
+          }`}
+        >
+          {queryLoading ? "progress_activity" : "search"}
         </span>
       </div>
+
+      {open && queryLoading ? (
+        <p className="mt-1 text-[11px] font-medium text-[var(--app-text-muted)]">Searching…</p>
+      ) : null}
 
       {showFullValueHint ? (
         <p className="mt-1 text-[11px] leading-snug text-[var(--app-text-muted)] break-words whitespace-normal">
@@ -411,6 +421,8 @@ export function NewSaleContent() {
     return () => window.clearTimeout(handle);
   }, [productSearch]);
   const salesCatalogSearchQuery = useSalesCatalogSearchQuery(branch, productSearchDebounced, true);
+  const isProductSearchLoading =
+    productSearchDebounced.trim().length >= 2 && salesCatalogSearchQuery.isFetching;
   const orgQuery = useOrganizationOverviewQuery();
   const meQuery = useAppMeQuery();
   const createSaleMutation = useCreateSaleMutation();
@@ -1258,6 +1270,7 @@ export function NewSaleContent() {
                             products={productOptions}
                             disabled={salesCatalogQuery.isLoading || salesCatalogQuery.isError}
                             onQueryChange={setProductSearch}
+                            queryLoading={isProductSearchLoading}
                             onChange={(nextId) => updateItemProduct(row.id, nextId)}
                             className="min-w-0 flex-1"
                           />
@@ -1370,6 +1383,7 @@ export function NewSaleContent() {
                               products={productOptions}
                               disabled={salesCatalogQuery.isLoading || salesCatalogQuery.isError}
                               onQueryChange={setProductSearch}
+                              queryLoading={isProductSearchLoading}
                               onChange={(nextId) => updateItemProduct(row.id, nextId)}
                               className="min-w-0 flex-1"
                             />
