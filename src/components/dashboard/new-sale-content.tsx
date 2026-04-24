@@ -7,7 +7,7 @@ import { BarcodeScannerModal } from "@/components/dashboard/barcode-scanner-moda
 import { OutboxFeatureStatus } from "@/components/outbox/outbox-detail-dialog";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { isOfflineQueuedError } from "@/lib/offline/offline-queued-error";
-import { useCreateSaleMutation, useSalesCatalogQuery } from "@/lib/queries/sales";
+import { useCreateSaleMutation, useSalesCatalogQuery, useSalesCatalogSearchQuery } from "@/lib/queries/sales";
 import { useOrganizationOverviewQuery } from "@/lib/queries/organization";
 import { useAppMeQuery } from "@/lib/queries/staff";
 import { ROUTES } from "@/lib/routes";
@@ -48,6 +48,7 @@ type MedicationComboboxProps = {
   placeholder?: string;
   className?: string;
   onChange: (nextProductId: string) => void;
+  onQueryChange?: (q: string) => void;
 };
 
 function MedicationCombobox({
@@ -58,6 +59,7 @@ function MedicationCombobox({
   placeholder = "Select medication",
   className,
   onChange,
+  onQueryChange,
 }: MedicationComboboxProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -226,7 +228,9 @@ function MedicationCombobox({
           title={open ? query : selectedName}
           disabled={disabled}
           onChange={(e) => {
-            setQuery(e.target.value);
+            const next = e.target.value;
+            setQuery(next);
+            onQueryChange?.(next);
             setOpen(true);
             setHighlightedIndex(0);
             updatePanelPosition();
@@ -235,6 +239,7 @@ function MedicationCombobox({
             if (!disabled) {
               setOpen(true);
               setQuery("");
+              onQueryChange?.("");
               setHighlightedIndex(0);
               updatePanelPosition();
             }
@@ -246,6 +251,7 @@ function MedicationCombobox({
               setOpen(false);
               setHighlightedIndex(-1);
               setQuery("");
+              onQueryChange?.("");
               setPanelStyle(null);
             }, 0);
           }}
@@ -398,6 +404,13 @@ export function NewSaleContent() {
   const branch = searchParams.get("branch") ?? undefined;
   const salesHref = branch ? `${ROUTES.dashboard.sales}?branch=${branch}` : ROUTES.dashboard.sales;
   const salesCatalogQuery = useSalesCatalogQuery(branch, true);
+  const [productSearch, setProductSearch] = useState("");
+  const [productSearchDebounced, setProductSearchDebounced] = useState("");
+  useEffect(() => {
+    const handle = window.setTimeout(() => setProductSearchDebounced(productSearch), 200);
+    return () => window.clearTimeout(handle);
+  }, [productSearch]);
+  const salesCatalogSearchQuery = useSalesCatalogSearchQuery(branch, productSearchDebounced, true);
   const orgQuery = useOrganizationOverviewQuery();
   const meQuery = useAppMeQuery();
   const createSaleMutation = useCreateSaleMutation();
@@ -476,18 +489,28 @@ export function NewSaleContent() {
     };
   }, [items, taxRate]);
 
+  const mergedCatalogProducts = useMemo(() => {
+    const base = salesCatalogQuery.data?.products ?? [];
+    const searched = salesCatalogSearchQuery.data?.products ?? [];
+    if (searched.length === 0) return base;
+    const map = new Map(base.map((p) => [p.id, p]));
+    for (const p of searched) {
+      map.set(p.id, p);
+    }
+    return Array.from(map.values());
+  }, [salesCatalogQuery.data?.products, salesCatalogSearchQuery.data?.products]);
+
   const productById = useMemo(() => {
-    const entries = (salesCatalogQuery.data?.products ?? []).map((product) => [product.id, product] as const);
-    return new Map(entries);
-  }, [salesCatalogQuery.data?.products]);
+    return new Map(mergedCatalogProducts.map((product) => [product.id, product] as const));
+  }, [mergedCatalogProducts]);
 
   const productOptions: ProductOption[] = useMemo(() => {
-    return (salesCatalogQuery.data?.products ?? []).map((p) => ({
+    return mergedCatalogProducts.map((p) => ({
       id: p.id,
       name: p.name,
       categoryName: p.categoryName,
     }));
-  }, [salesCatalogQuery.data?.products]);
+  }, [mergedCatalogProducts]);
 
   function getPreferredBatch<T extends { quantityAvailable: number }>(batches: T[]) {
     return batches.find((batch) => batch.quantityAvailable > 0) ?? batches[0];
@@ -498,13 +521,12 @@ export function NewSaleContent() {
     if (!trimmed) {
       return undefined;
     }
-    const catalog = salesCatalogQuery.data?.products ?? [];
-    const direct = catalog.find((p) => p.barcode === trimmed);
+    const direct = mergedCatalogProducts.find((p) => p.barcode === trimmed);
     if (direct) {
       return direct;
     }
     if (trimmed.length === 12) {
-      return catalog.find((p) => p.barcode === `0${trimmed}`);
+      return mergedCatalogProducts.find((p) => p.barcode === `0${trimmed}`);
     }
     return undefined;
   }
@@ -528,7 +550,7 @@ export function NewSaleContent() {
       return;
     }
 
-    const product = salesCatalogQuery.data?.products.find((p) => p.id === productId);
+    const product = productById.get(productId);
     if (!product) {
       notify({
         variant: "warning",
@@ -1235,6 +1257,7 @@ export function NewSaleContent() {
                             value={row.productId ?? ""}
                             products={productOptions}
                             disabled={salesCatalogQuery.isLoading || salesCatalogQuery.isError}
+                            onQueryChange={setProductSearch}
                             onChange={(nextId) => updateItemProduct(row.id, nextId)}
                             className="min-w-0 flex-1"
                           />
@@ -1346,6 +1369,7 @@ export function NewSaleContent() {
                               value={row.productId ?? ""}
                               products={productOptions}
                               disabled={salesCatalogQuery.isLoading || salesCatalogQuery.isError}
+                              onQueryChange={setProductSearch}
                               onChange={(nextId) => updateItemProduct(row.id, nextId)}
                               className="min-w-0 flex-1"
                             />

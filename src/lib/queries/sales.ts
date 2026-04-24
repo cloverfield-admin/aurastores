@@ -148,14 +148,36 @@ export function useSalesRecentSalesQuery(branchId?: string, enabled = true) {
 export function useSalesCatalogQuery(branchId?: string, enabled = true) {
   return useQuery({
     queryKey: [...salesCatalogQueryKey, { branchId }],
-    queryFn: () =>
-      fetchJson<SalesCatalogResponse>(
-        `${apiUrl("/sales/catalog")}?branch=${encodeURIComponent(branchId ?? "")}`,
-        {
-          method: "GET",
-        },
-      ),
+    queryFn: () => {
+      const params = new URLSearchParams();
+      params.set("branch", branchId ?? "");
+      return fetchJson<SalesCatalogResponse>(`${apiUrl("/sales/catalog")}?${params.toString()}`, {
+        method: "GET",
+      });
+    },
     enabled,
+  });
+}
+
+export function useSalesCatalogSearchQuery(branchId: string | undefined, q: string, enabled = true) {
+  const trimmed = q.trim();
+  return useQuery({
+    queryKey: [...salesCatalogQueryKey, { branchId, q: trimmed }],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      params.set("branch", branchId ?? "");
+      params.set("q", trimmed);
+      return fetchJson<SalesCatalogResponse>(`${apiUrl("/sales/catalog")}?${params.toString()}`, {
+        method: "GET",
+      });
+    },
+    enabled: enabled && trimmed.length >= 2,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    placeholderData: (previousData) => previousData,
+    meta: {
+      suppressGlobalLoading: true,
+    },
   });
 }
 

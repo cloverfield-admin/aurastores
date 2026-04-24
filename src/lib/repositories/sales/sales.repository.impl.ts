@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql, or, ilike } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   branches,
@@ -422,9 +422,12 @@ export class SalesRepositoryImpl implements SalesRepository {
     }));
   }
 
-  async getCatalog(context: AuthContext, branchId?: string): Promise<SalesCatalogData> {
+  async getCatalog(context: AuthContext, branchId?: string, q?: string): Promise<SalesCatalogData> {
     const { branch, branchOptions } = await resolveBranchContext(context, branchId);
-    const limit = clampPageSize(100, 100);
+    const trimmed = (q ?? "").trim();
+    const isSearching = trimmed.length >= 2;
+    const limit = clampPageSize(isSearching ? 50 : 100, isSearching ? 50 : 100);
+    const pattern = `%${trimmed}%`;
 
     const productRows = await db
       .select({
@@ -437,7 +440,19 @@ export class SalesRepositoryImpl implements SalesRepository {
       })
       .from(products)
       .leftJoin(productCategories, eq(products.categoryId, productCategories.id))
-      .where(eq(products.organizationId, context.organization.id))
+      .where(
+        and(
+          eq(products.organizationId, context.organization.id),
+          isSearching
+            ? or(
+                eq(products.barcode, trimmed),
+                ilike(products.name, pattern),
+                ilike(products.sku, pattern),
+                ilike(productCategories.name, pattern),
+              )
+            : sql`true`,
+        ),
+      )
       .orderBy(asc(products.name))
       .limit(limit);
     const productIds = productRows.map((row) => row.id);
