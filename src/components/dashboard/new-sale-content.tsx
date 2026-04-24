@@ -40,6 +40,7 @@ type ProductOption = {
   categoryName?: string;
 };
 
+
 type MedicationComboboxProps = {
   id?: string;
   value: string;
