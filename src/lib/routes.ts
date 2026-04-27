@@ -30,6 +30,7 @@ export const ROUTES = {
     insights: "/dashboard/insights",
     productCategories: "/dashboard/product-categories",
     pay: "/dashboard/pay",
+    expenses: "/dashboard/expenses",
     payTransaction: (paymentId: string) => `/dashboard/pay/transactions/${paymentId}`,
     organization: "/dashboard/organization",
     organizationBranches: {

@@ -32,6 +32,7 @@ const MODULE_NAV: { label: string; icon: string; href: string; capability: Membe
   { label: "Aura Stock", icon: "inventory_2", href: ROUTES.dashboard.stock, capability: "stock" },
   { label: "Aura Sales", icon: "trending_up", href: ROUTES.dashboard.sales, capability: "sales" },
   { label: "Aura Pay", icon: "payments", href: ROUTES.dashboard.pay, capability: "pay" },
+  { label: "Expenses", icon: "receipt_long", href: ROUTES.dashboard.expenses, capability: "pay" },
   { label: "Aura Insights", icon: "insights", href: ROUTES.dashboard.insights, capability: "insights" },
   {
     label: "Product Categories",

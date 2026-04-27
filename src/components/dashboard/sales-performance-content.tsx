@@ -306,7 +306,7 @@ export function SalesPerformanceContent() {
     {
       label: "Gross Profit",
       value: currencyFormatter.format((metrics?.grossProfitCents ?? 0) / 100),
-      sub: `COGS ${currencyFormatter.format((metrics?.totalCogsCents ?? 0) / 100)} (${rangeDays}d)`,
+      sub: `COGS ${currencyFormatter.format((metrics?.totalCogsCents ?? 0) / 100)} · Charges ${currencyFormatter.format((metrics?.totalChargeExpensesCents ?? 0) / 100)} (${rangeDays}d)`,
       badge: `${rangeDays}d`,
       badgeClass: "bg-[#eff6ff] text-[#2563eb]",
       icon: "trending_up",

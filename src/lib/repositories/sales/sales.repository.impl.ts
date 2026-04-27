@@ -2,6 +2,7 @@ import { and, asc, count, desc, eq, inArray, sql, or, ilike } from "drizzle-orm"
 import { db } from "@/lib/db";
 import {
   branches,
+  expenses,
   inventoryBatches,
   inventoryTransactions,
   patients,
@@ -170,6 +171,7 @@ export class SalesRepositoryImpl implements SalesRepository {
     const [
       metricsRows,
       cogsRows,
+      chargeExpenseRows,
       topProductsRows,
       branchRevenueRows,
       unitsRows,
@@ -212,6 +214,22 @@ export class SalesRepositoryImpl implements SalesRepository {
               eq(sales.branchId, branch.id),
               eq(sales.status, "completed"),
               sql`${sales.createdAt} >= ${prevStartIso}::timestamptz`,
+            ),
+          ),
+        db
+          .select({
+            totalChargeExpensesCents:
+              sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseDate} >= ${startIso}::timestamptz and ${expenses.expenseDate} < ${endExclusiveIso}::timestamptz), 0)::int`,
+            previousChargeExpensesCents:
+              sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseDate} >= ${prevStartIso}::timestamptz and ${expenses.expenseDate} < ${prevEndExclusiveIso}::timestamptz), 0)::int`,
+          })
+          .from(expenses)
+          .where(
+            and(
+              eq(expenses.organizationId, context.organization.id),
+              eq(expenses.branchId, branch.id),
+              eq(expenses.expenseType, "charge"),
+              sql`${expenses.expenseDate} >= ${prevStartIso}::timestamptz`,
             ),
           ),
         db
@@ -320,8 +338,11 @@ export class SalesRepositoryImpl implements SalesRepository {
       totalCogsCents: 0,
       previousCogsCents: 0,
     };
+    const chargeMetrics = chargeExpenseRows[0] ?? {
+      totalChargeExpensesCents: 0,
+      previousChargeExpensesCents: 0,
+    };
     const topTotal = topProductsRows.reduce((sum, row) => sum + row.amountCents, 0);
-    const branchTotalRevenue = branchRevenueRows.reduce((sum, row) => sum + row.amountCents, 0);
     const dateLabelFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit" });
     const trendRawUnknown: unknown = trendRows;
     const trendRaw: Array<{ day: unknown; revenueCents: unknown; unitsSold: unknown }> = Array.isArray(trendRawUnknown)
@@ -350,6 +371,8 @@ export class SalesRepositoryImpl implements SalesRepository {
       };
     });
     const branchTotalRevenueExpanded = branchDistributionExpanded.reduce((sum, row) => sum + row.amountCents, 0);
+    const grossProfitBeforeChargesCents = metrics.totalRevenueCents - cogsMetrics.totalCogsCents;
+    const previousGrossProfitBeforeChargesCents = metrics.previousRevenueCents - cogsMetrics.previousCogsCents;
 
     return {
       branch: {
@@ -366,8 +389,13 @@ export class SalesRepositoryImpl implements SalesRepository {
         previousRevenueCents: metrics.previousRevenueCents,
         totalCogsCents: cogsMetrics.totalCogsCents,
         previousCogsCents: cogsMetrics.previousCogsCents,
-        grossProfitCents: metrics.totalRevenueCents - cogsMetrics.totalCogsCents,
-        previousGrossProfitCents: metrics.previousRevenueCents - cogsMetrics.previousCogsCents,
+        totalChargeExpensesCents: chargeMetrics.totalChargeExpensesCents,
+        previousChargeExpensesCents: chargeMetrics.previousChargeExpensesCents,
+        grossProfitBeforeChargesCents,
+        previousGrossProfitBeforeChargesCents,
+        grossProfitCents: grossProfitBeforeChargesCents - chargeMetrics.totalChargeExpensesCents,
+        previousGrossProfitCents:
+          previousGrossProfitBeforeChargesCents - chargeMetrics.previousChargeExpensesCents,
         totalSalesCount: metrics.totalSalesCount,
         averageOrderValueCents: metrics.averageOrderValueCents,
         unitsSoldLast30Days: units.unitsSoldLast30Days,

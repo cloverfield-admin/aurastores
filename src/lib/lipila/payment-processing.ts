@@ -7,6 +7,7 @@ import {
   payments,
   saleItems,
   sales,
+  expenses,
   walletAccounts,
   walletLedgerEntries,
 } from "@/lib/db/schema";
@@ -277,6 +278,26 @@ async function finalizeSaleCollection(
       });
     }
   }
+
+  if ((transaction.feePayer ?? "merchant") === "merchant" && (transaction.feeCents ?? 0) > 0) {
+    await tx
+      .insert(expenses)
+      .values({
+        organizationId: sale.organizationId,
+        branchId: sale.branchId,
+        expenseType: "charge",
+        chargeType: "momo_sale_fee",
+        amountCents: transaction.feeCents ?? 0,
+        currency: payment.currency,
+        description: `Lipila mobile money collection fee (Sale ${sale.saleNumber})`,
+        expenseDate: paidAt,
+        sourceRef: transaction.referenceId,
+        updatedAt: new Date(),
+      })
+      .onConflictDoNothing({
+        target: [expenses.organizationId, expenses.chargeType, expenses.sourceRef],
+      });
+  }
 }
 
 async function finalizeWalletDisbursement(
@@ -297,6 +318,7 @@ async function finalizeWalletDisbursement(
 
   const status = normalizeLipilaStatus(payload.status);
   if (status === "successful") {
+    const postedAt = new Date();
     if (ledger.status === "pending") {
       await tx
         .update(walletLedgerEntries)
@@ -310,9 +332,29 @@ async function finalizeWalletDisbursement(
             lipilaIdentifier: payload.identifier ?? transaction.identifier,
             lipilaExternalId: payload.externalId ?? transaction.externalId,
           },
-          postedAt: new Date(),
+          postedAt,
         })
         .where(eq(walletLedgerEntries.id, ledger.id));
+    }
+
+    if ((transaction.feeCents ?? 0) > 0) {
+      await tx
+        .insert(expenses)
+        .values({
+          organizationId: ledger.organizationId,
+          branchId: ledger.branchId,
+          expenseType: "charge",
+          chargeType: "wallet_withdrawal_fee",
+          amountCents: transaction.feeCents ?? 0,
+          currency: ledger.currency,
+          description: "Lipila mobile money withdrawal fee (Aura Pay)",
+          expenseDate: postedAt,
+          sourceRef: transaction.referenceId,
+          updatedAt: new Date(),
+        })
+        .onConflictDoNothing({
+          target: [expenses.organizationId, expenses.chargeType, expenses.sourceRef],
+        });
     }
     return;
   }

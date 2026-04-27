@@ -232,6 +232,13 @@
       "when": 1780000000000,
       "tag": "0032_lipila_payment_fee_breakdown",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1780100000000,
+      "tag": "0033_expenses",
+      "breakpoints": true
     }
   ]
 }
