@@ -33,6 +33,7 @@ export const saleStatusEnum = pgEnum("sale_status", ["draft", "completed", "void
 export const paymentMethodEnum = pgEnum("payment_method", [
   "aura_pay_wallet",
   "card",
+  "mobile_money",
   "cash",
   "insurance",
   "bank_transfer",

@@ -10,6 +10,8 @@ import {
   products,
   saleItems,
   sales,
+  walletAccounts,
+  walletLedgerEntries,
 } from "@/lib/db/schema";
 import type { CreateSaleInput } from "@/lib/validation/sales";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
@@ -758,22 +760,64 @@ export class SalesRepositoryImpl implements SalesRepository {
         })),
       );
 
-      await tx.insert(payments).values({
+      const paymentMethod =
+        input.paymentMethod === "aura-pay"
+          ? "aura_pay_wallet"
+          : input.paymentMethod === "bank-transfer"
+            ? "bank_transfer"
+            : input.paymentMethod === "mobile-money"
+              ? "mobile_money"
+              : input.paymentMethod;
+
+      const [payment] = await tx.insert(payments).values({
         saleId: sale.id,
         organizationId: context.organization.id,
         branchId: branch.id,
-        method:
-          input.paymentMethod === "aura-pay"
-            ? "aura_pay_wallet"
-            : input.paymentMethod === "bank-transfer"
-              ? "bank_transfer"
-              : input.paymentMethod,
+        method: paymentMethod,
         status: input.status === "completed" ? "paid" : "pending",
         reference: input.paymentReference,
         amountCents: totalCents,
         currency: "ZMW",
         paidAt: input.status === "completed" ? new Date() : null,
-      });
+      }).returning();
+
+      if (input.status === "completed" && (paymentMethod === "card" || paymentMethod === "mobile_money")) {
+        const [wallet] = await tx
+          .update(walletAccounts)
+          .set({
+            balanceCents: sql`${walletAccounts.balanceCents} + ${totalCents}`,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(walletAccounts.organizationId, context.organization.id),
+              eq(walletAccounts.branchId, branch.id),
+              eq(walletAccounts.status, "active"),
+            ),
+          )
+          .returning();
+
+        if (wallet) {
+          await tx.insert(walletLedgerEntries).values({
+            walletId: wallet.id,
+            organizationId: context.organization.id,
+            branchId: branch.id,
+            paymentId: payment.id,
+            entryType: "settlement",
+            sourceMethod: paymentMethod,
+            status: "posted",
+            amountCents: totalCents,
+            currency: "ZMW",
+            reference: input.paymentReference,
+            note: `Sale ${sale.saleNumber} settlement`,
+            metadata: {
+              saleId: sale.id,
+              saleNumber: sale.saleNumber,
+            },
+            postedAt: new Date(),
+          });
+        }
+      }
 
       if (input.status === "completed") {
         const batchUpdates = Array.from(

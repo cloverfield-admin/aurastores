@@ -7,6 +7,7 @@ import { networkRepository } from "@/lib/repositories/network/network.repository
 import { insightsRepository } from "@/lib/repositories/insights/insights.repository.impl";
 import { pharmacySearchRepository } from "@/lib/repositories/pharmacy-search/pharmacy-search.repository.impl";
 import { onboardingRepository } from "@/lib/repositories/onboarding/onboarding.repository.impl";
+import { payRepository } from "@/lib/repositories/pay/pay.repository.impl";
 import { productCategoriesRepository } from "@/lib/repositories/product-categories/product-categories.repository.impl";
 import { productsRepository } from "@/lib/repositories/products/products.repository.impl";
 import { salesRepository } from "@/lib/repositories/sales/sales.repository.impl";
@@ -19,6 +20,7 @@ import { NetworkService } from "@/lib/services/network/network.service";
 import { InsightsService } from "@/lib/services/insights/insights.service";
 import { PharmacySearchService } from "@/lib/services/pharmacy-search/pharmacy-search.service";
 import { OnboardingService } from "@/lib/services/onboarding/onboarding.service";
+import { PayService } from "@/lib/services/pay/pay.service";
 import { ProductCategoriesService } from "@/lib/services/product-categories/product-categories.service";
 import { ProductsService } from "@/lib/services/products/products.service";
 import { SalesService } from "@/lib/services/sales/sales.service";
@@ -35,6 +37,7 @@ export type AppServices = {
   staff: StaffService;
   network: NetworkService;
   insights: InsightsService;
+  pay: PayService;
   pharmacySearch: PharmacySearchService;
   productCategories: ProductCategoriesService;
   products: ProductsService;
@@ -53,6 +56,7 @@ export const services: AppServices = {
   staff: new StaffService({ staff: staffRepository, documentStorage: documentStorageRepository }),
   network: new NetworkService({ network: networkRepository }),
   insights: new InsightsService({ insights: insightsRepository }),
+  pay: new PayService({ pay: payRepository }),
   pharmacySearch: new PharmacySearchService({ pharmacySearch: pharmacySearchRepository }),
   productCategories: new ProductCategoriesService({ productCategories: productCategoriesRepository }),
   products: new ProductsService({ products: productsRepository }),

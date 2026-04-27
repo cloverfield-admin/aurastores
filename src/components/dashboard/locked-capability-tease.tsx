@@ -24,10 +24,10 @@ export function LockedCapabilityTease({
       <div className="pointer-events-none select-none opacity-60 blur-[0.2px]">{children}</div>
 
       <div className="absolute inset-0 z-10 flex items-start justify-center px-4 pt-10 sm:pt-16">
-        <div className="w-full max-w-xl rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] p-5 shadow-[var(--app-shadow-card)]">
+        <div className="aura-card-tint w-full max-w-xl rounded-2xl border p-5 shadow-[var(--app-shadow-card)]">
           <div className="flex items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(99,102,241,0.12)]">
-              <span className="material-symbols-outlined notranslate text-xl text-[#6063ee]">lock</span>
+            <div className="aura-icon flex size-10 shrink-0 items-center justify-center rounded-xl">
+              <span className="material-symbols-outlined notranslate text-xl">lock</span>
             </div>
             <div className="min-w-0">
               <p className="font-[family-name:var(--font-manrope)] text-base font-extrabold text-[var(--app-text)]">
@@ -42,7 +42,7 @@ export function LockedCapabilityTease({
                   {isOwner ? (
                     <Link
                       href={ROUTES.billingPortal}
-                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95"
+                      className="aura-primary-button inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition"
                     >
                       <span className="material-symbols-outlined notranslate text-base">payments</span>
                       Billing
@@ -54,7 +54,7 @@ export function LockedCapabilityTease({
                     href={ROUTES.marketing.pricing}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95"
+                    className="aura-primary-button inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition"
                   >
                     <span className="material-symbols-outlined notranslate text-base">upgrade</span>
                     View plans

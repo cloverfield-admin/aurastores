@@ -1,11 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { useAllProductCategoriesQuery } from "@/lib/queries/product-categories";
-import { useStockProductQuery, useUpdateStockProductMutation } from "@/lib/queries/stock";
+import {
+  useStockProductBatchesQuery,
+  useStockProductQuery,
+  useUpdateStockBatchMutation,
+  useUpdateStockProductMutation,
+} from "@/lib/queries/stock";
 import { ROUTES } from "@/lib/routes";
 
 const fieldLabel =
@@ -13,28 +18,25 @@ const fieldLabel =
 const inputClass =
   "w-full rounded-lg border-0 bg-[var(--app-input-bg)] px-4 py-4 text-base text-[var(--app-text)] outline-none placeholder:text-[#6c7a78]/60 focus:ring-2 focus:ring-[var(--app-brand)]/20";
 
+function toDateInputValue(value: string) {
+  return new Date(value).toISOString().slice(0, 10);
+}
+
 export function ProductEditContent({ productId }: { productId: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { withLoading, notify } = useAuraFeedback();
   const productQuery = useStockProductQuery(productId);
   const updateMutation = useUpdateStockProductMutation();
+  const updateBatchMutation = useUpdateStockBatchMutation();
   const categoriesQuery = useAllProductCategoriesQuery({ includeArchived: false });
 
-  const product = productQuery.data ?? null;
-  const [name, setName] = useState("");
-  const [categoryName, setCategoryName] = useState("");
-  const [barcode, setBarcode] = useState("");
-  const [defaultSellingPrice, setDefaultSellingPrice] = useState("");
-  const [status, setStatus] = useState<"active" | "discontinued">("active");
+  const branchId = searchParams.get("branch") ?? undefined;
+  const batchesQuery = useStockProductBatchesQuery(productId, branchId, Boolean(productId));
 
-  useEffect(() => {
-    if (!product) return;
-    setName(product.name);
-    setCategoryName(product.categoryName === "Uncategorized" ? "" : product.categoryName);
-    setBarcode(product.barcode ?? "");
-    setDefaultSellingPrice((product.defaultSellingPriceCents / 100).toFixed(2));
-    setStatus(product.status);
-  }, [product]);
+  const product = productQuery.data ?? null;
+
+  const batches = batchesQuery.data?.batches ?? [];
 
   const categoryOptions = useMemo(() => {
     const categories = categoriesQuery.data?.categories ?? [];
@@ -42,27 +44,7 @@ export function ProductEditContent({ productId }: { productId: string }) {
   }, [categoriesQuery.data]);
 
   const isLoading = productQuery.isLoading && !productQuery.data;
-  const isSaving = updateMutation.isPending;
-
-  const hasChanges = useMemo(() => {
-    if (!product) return false;
-    const nextName = name.trim();
-    const nextCategory = categoryName.trim();
-    const nextBarcode = barcode.trim();
-    const nextPrice = Number.parseFloat(defaultSellingPrice);
-    const nextPriceCents = Number.isFinite(nextPrice) ? Math.round(nextPrice * 100) : NaN;
-
-    return (
-      nextName !== product.name ||
-      (nextCategory || "") !== (product.categoryName === "Uncategorized" ? "" : product.categoryName) ||
-      (nextBarcode || "") !== (product.barcode ?? "") ||
-      (Number.isFinite(nextPriceCents) ? nextPriceCents : product.defaultSellingPriceCents) !==
-        product.defaultSellingPriceCents ||
-      status !== product.status
-    );
-  }, [barcode, categoryName, defaultSellingPrice, name, product, status]);
-
-  const canSave = Boolean(product) && hasChanges && !isSaving && !isLoading;
+  const isSaving = updateMutation.isPending || updateBatchMutation.isPending;
 
   if (isLoading) {
     return (
@@ -100,6 +82,185 @@ export function ProductEditContent({ productId }: { productId: string }) {
   }
 
   return (
+    <ProductEditForm
+      key={`${product.id}::${batchesQuery.data?.branchId ?? branchId ?? "no-branch"}`}
+      productId={productId}
+      branchId={branchId}
+      product={product}
+      batches={batches}
+      batchesLoading={batchesQuery.isLoading}
+      categoryOptions={categoryOptions}
+      isSaving={isSaving}
+      canSave={!isSaving}
+      onSave={async ({ productPayload, batchId, batchPatch }) => {
+        await withLoading("dashboard-edit-product", "Saving product...", async () => {
+          if (batchId && batchPatch) {
+            await updateBatchMutation.mutateAsync({
+              batchId,
+              payload: {
+                branchId,
+                ...batchPatch,
+              },
+            });
+          }
+          if (Object.keys(productPayload).length > 0) {
+            await updateMutation.mutateAsync({ productId, payload: productPayload });
+          }
+        });
+      }}
+      onCancel={() => router.back()}
+      onDone={() => router.push(ROUTES.dashboard.stock)}
+      notify={notify}
+    />
+  );
+}
+
+function ProductEditForm({
+  product,
+  batches,
+  batchesLoading,
+  categoryOptions,
+  isSaving,
+  canSave,
+  onSave,
+  onCancel,
+  onDone,
+  notify,
+}: {
+  product: {
+    id: string;
+    name: string;
+    sku: string;
+    barcode: string | null;
+    categoryId: string | null;
+    categoryName: string;
+    defaultSellingPriceCents: number;
+    status: "active" | "discontinued";
+  };
+  batches: Array<{
+    id: string;
+    batchNumber: string;
+    expiresAt: string;
+    status: "active" | "expiring_soon" | "expired" | "disposed" | "depleted";
+    quantityAvailable: number;
+    receivedAt: string;
+  }>;
+  batchesLoading: boolean;
+  categoryOptions: Array<{ id: string; name: string }>;
+  isSaving: boolean;
+  canSave: boolean;
+  onSave: (args: {
+    productPayload: Parameters<ReturnType<typeof useUpdateStockProductMutation>["mutateAsync"]>[0]["payload"];
+    batchId?: string;
+    batchPatch?: {
+      expiresAt?: string;
+      batchNumber?: string;
+      purchaseOrderNumber?: string | null;
+      manufacturedAt?: string | null;
+      unitOrderPrice?: number;
+      unitSellingPrice?: number;
+      notes?: string | null;
+      status?: "draft" | "active" | "quarantined" | "expired" | "disposed" | "depleted";
+    };
+  }) => Promise<void>;
+  onCancel: () => void;
+  onDone: () => void;
+  notify: (args: { variant: "error" | "info" | "success"; title: string; description: string }) => void;
+}) {
+  const [name, setName] = useState(product.name);
+  const [categoryName, setCategoryName] = useState(
+    product.categoryName === "Uncategorized" ? "" : product.categoryName,
+  );
+  const [barcode, setBarcode] = useState(product.barcode ?? "");
+  const [defaultSellingPrice, setDefaultSellingPrice] = useState(
+    (product.defaultSellingPriceCents / 100).toFixed(2),
+  );
+  const [status, setStatus] = useState<"active" | "discontinued">(product.status);
+  const [selectedBatchId, setSelectedBatchId] = useState<string>("");
+  const [batchExpiryById, setBatchExpiryById] = useState<Record<string, string>>({});
+  const [batchNumberById, setBatchNumberById] = useState<Record<string, string>>({});
+  const [batchPoNumberById, setBatchPoNumberById] = useState<Record<string, string>>({});
+  const [batchManufacturedAtById, setBatchManufacturedAtById] = useState<Record<string, string>>({});
+  const [batchUnitOrderPriceById, setBatchUnitOrderPriceById] = useState<Record<string, string>>({});
+  const [batchUnitSellingPriceById, setBatchUnitSellingPriceById] = useState<Record<string, string>>({});
+  const [batchNotesById, setBatchNotesById] = useState<Record<string, string>>({});
+  const [batchStatusById, setBatchStatusById] = useState<
+    Record<string, "draft" | "active" | "quarantined" | "expired" | "disposed" | "depleted">
+  >({});
+
+  const effectiveBatchId = selectedBatchId || batches[0]?.id || "";
+  const selectedBatch = useMemo(
+    () => batches.find((batch) => batch.id === effectiveBatchId) ?? null,
+    [batches, effectiveBatchId],
+  );
+
+  const defaultBatchExpiry = selectedBatch ? toDateInputValue(selectedBatch.expiresAt) : "";
+  const batchExpiry = (effectiveBatchId ? batchExpiryById[effectiveBatchId] : undefined) ?? defaultBatchExpiry;
+  const batchNumber = (effectiveBatchId ? batchNumberById[effectiveBatchId] : undefined) ?? (selectedBatch?.batchNumber ?? "");
+  const purchaseOrderNumber =
+    (effectiveBatchId ? batchPoNumberById[effectiveBatchId] : undefined) ?? "";
+  const manufacturedAt =
+    (effectiveBatchId ? batchManufacturedAtById[effectiveBatchId] : undefined) ?? "";
+  const unitOrderPrice =
+    (effectiveBatchId ? batchUnitOrderPriceById[effectiveBatchId] : undefined) ?? "";
+  const unitSellingPrice =
+    (effectiveBatchId ? batchUnitSellingPriceById[effectiveBatchId] : undefined) ?? "";
+  const notes = (effectiveBatchId ? batchNotesById[effectiveBatchId] : undefined) ?? "";
+  const batchStatus =
+    (effectiveBatchId ? batchStatusById[effectiveBatchId] : undefined) ?? "active";
+
+  const hasChanges = useMemo(() => {
+    const nextName = name.trim();
+    const nextCategory = categoryName.trim();
+    const nextBarcode = barcode.trim();
+    const nextPrice = Number.parseFloat(defaultSellingPrice);
+    const nextPriceCents = Number.isFinite(nextPrice) ? Math.round(nextPrice * 100) : NaN;
+
+    const batchExpiryChanged =
+      Boolean(selectedBatch) &&
+      /^\d{4}-\d{2}-\d{2}$/.test(batchExpiry.trim()) &&
+      batchExpiry.trim() !== defaultBatchExpiry;
+
+    const batchNumberChanged = Boolean(selectedBatch) && batchNumber.trim() !== selectedBatch.batchNumber;
+
+    return (
+      nextName !== product.name ||
+      (nextCategory || "") !== (product.categoryName === "Uncategorized" ? "" : product.categoryName) ||
+      (nextBarcode || "") !== (product.barcode ?? "") ||
+      (Number.isFinite(nextPriceCents) ? nextPriceCents : product.defaultSellingPriceCents) !==
+        product.defaultSellingPriceCents ||
+      status !== product.status ||
+      batchExpiryChanged ||
+      batchNumberChanged ||
+      purchaseOrderNumber.trim() !== "" ||
+      manufacturedAt.trim() !== "" ||
+      unitOrderPrice.trim() !== "" ||
+      unitSellingPrice.trim() !== "" ||
+      notes.trim() !== "" ||
+      batchStatus !== "active"
+    );
+  }, [
+    barcode,
+    batchExpiry,
+    batchNumber,
+    purchaseOrderNumber,
+    manufacturedAt,
+    unitOrderPrice,
+    unitSellingPrice,
+    notes,
+    batchStatus,
+    categoryName,
+    defaultBatchExpiry,
+    defaultSellingPrice,
+    name,
+    product,
+    selectedBatch,
+    status,
+  ]);
+
+  const canSubmit = hasChanges && canSave;
+
+  return (
     <div className="px-4 pb-16 pt-5 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-[900px] space-y-8">
         <div className="space-y-4">
@@ -125,19 +286,26 @@ export function ProductEditContent({ productId }: { productId: string }) {
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={() => router.back()}
+                onClick={onCancel}
                 className="rounded-xl bg-[var(--app-cancel-bg)] px-5 py-2.5 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[#d5dade]"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                disabled={!canSave}
+                disabled={!canSubmit}
                 onClick={async () => {
                   const trimmedName = name.trim();
                   const trimmedCategory = categoryName.trim();
                   const trimmedBarcode = barcode.trim();
                   const parsedPrice = Number.parseFloat(defaultSellingPrice);
+                  const trimmedBatchExpiry = batchExpiry.trim();
+                  const trimmedBatchNumber = batchNumber.trim();
+                  const trimmedPurchaseOrderNumber = purchaseOrderNumber.trim();
+                  const trimmedManufacturedAt = manufacturedAt.trim();
+                  const trimmedUnitOrderPrice = unitOrderPrice.trim();
+                  const trimmedUnitSellingPrice = unitSellingPrice.trim();
+                  const trimmedNotes = notes.trim();
 
                   if (!trimmedName || trimmedName.length < 2) {
                     notify({
@@ -157,7 +325,9 @@ export function ProductEditContent({ productId }: { productId: string }) {
                     return;
                   }
 
-                  const payload: Parameters<typeof updateMutation.mutateAsync>[0]["payload"] = {};
+                  const payload: Parameters<
+                    ReturnType<typeof useUpdateStockProductMutation>["mutateAsync"]
+                  >[0]["payload"] = {};
 
                   if (trimmedName !== product.name) {
                     payload.name = trimmedName;
@@ -182,7 +352,81 @@ export function ProductEditContent({ productId }: { productId: string }) {
                     payload.status = status;
                   }
 
-                  if (Object.keys(payload).length === 0) {
+                  const batchPatch: NonNullable<Parameters<typeof onSave>[0]["batchPatch"]> = {};
+                  if (selectedBatch) {
+                    if (trimmedBatchExpiry && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedBatchExpiry)) {
+                      notify({
+                        variant: "error",
+                        title: "Invalid expiry date",
+                        description: "Use the date picker to select a valid expiry date.",
+                      });
+                      return;
+                    }
+
+                    if (trimmedManufacturedAt && !/^\d{4}-\d{2}-\d{2}$/.test(trimmedManufacturedAt)) {
+                      notify({
+                        variant: "error",
+                        title: "Invalid manufactured date",
+                        description: "Use YYYY-MM-DD date format.",
+                      });
+                      return;
+                    }
+
+                    if (trimmedBatchExpiry && trimmedBatchExpiry !== defaultBatchExpiry) {
+                      batchPatch.expiresAt = trimmedBatchExpiry;
+                    }
+                    if (trimmedBatchNumber && trimmedBatchNumber !== selectedBatch.batchNumber) {
+                      batchPatch.batchNumber = trimmedBatchNumber;
+                    }
+                    if (trimmedPurchaseOrderNumber) {
+                      batchPatch.purchaseOrderNumber = trimmedPurchaseOrderNumber;
+                    }
+                    if (trimmedManufacturedAt) {
+                      batchPatch.manufacturedAt = trimmedManufacturedAt;
+                    }
+                    if (trimmedUnitOrderPrice) {
+                      const parsed = Number.parseFloat(trimmedUnitOrderPrice);
+                      if (!Number.isFinite(parsed) || parsed <= 0) {
+                        notify({
+                          variant: "error",
+                          title: "Invalid unit order price",
+                          description: "Enter a positive number.",
+                        });
+                        return;
+                      }
+                      batchPatch.unitOrderPrice = parsed;
+                    }
+                    if (trimmedUnitSellingPrice) {
+                      const parsed = Number.parseFloat(trimmedUnitSellingPrice);
+                      if (!Number.isFinite(parsed) || parsed < 0) {
+                        notify({
+                          variant: "error",
+                          title: "Invalid unit selling price",
+                          description: "Enter a non-negative number.",
+                        });
+                        return;
+                      }
+                      batchPatch.unitSellingPrice = parsed;
+                    }
+                    if (trimmedNotes) {
+                      batchPatch.notes = trimmedNotes;
+                    }
+                    if (batchStatus && batchStatus !== "active") {
+                      batchPatch.status = batchStatus;
+                    }
+                  }
+
+                  if (!selectedBatch && (trimmedBatchExpiry || trimmedBatchNumber)) {
+                    notify({
+                      variant: "error",
+                      title: "No batch selected",
+                      description: "Choose an inventory batch before updating batch details.",
+                    });
+                    return;
+                  }
+
+                  const hasBatchPatch = Object.keys(batchPatch).length > 0;
+                  if (Object.keys(payload).length === 0 && !hasBatchPatch) {
                     notify({
                       variant: "info",
                       title: "No changes",
@@ -192,15 +436,16 @@ export function ProductEditContent({ productId }: { productId: string }) {
                   }
 
                   try {
-                    await withLoading("dashboard-edit-product", "Saving product...", async () => {
-                      await updateMutation.mutateAsync({ productId, payload });
+                    await onSave({
+                      productPayload: payload,
+                      ...(hasBatchPatch ? { batchId: selectedBatch!.id, batchPatch } : null),
                     });
                     notify({
                       variant: "success",
-                      title: "Product updated",
+                      title: "Saved changes",
                       description: "Your changes have been saved.",
                     });
-                    router.push(ROUTES.dashboard.stock);
+                    onDone();
                   } catch (err) {
                     notify({
                       variant: "error",
@@ -310,6 +555,221 @@ export function ProductEditContent({ productId }: { productId: string }) {
                 <option value="active">Active</option>
                 <option value="discontinued">Discontinued</option>
               </select>
+            </div>
+
+            <div className="sm:col-span-2">
+              <div className="mt-2 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-2)] p-6">
+                <h2 className="font-[family-name:var(--font-manrope)] text-sm font-bold text-[var(--app-text)]">
+                  Inventory batch expiry
+                </h2>
+                <p className="mt-1 text-xs text-[var(--app-text-muted)]">
+                  Expiry dates are tracked per batch, not per product.
+                </p>
+
+                {batchesLoading ? (
+                  <p className="mt-4 text-sm text-[var(--app-text-muted)]">Loading batches…</p>
+                ) : batches.length === 0 ? (
+                  <p className="mt-4 text-sm text-[var(--app-text-muted)]">
+                    No batches found for this product in the current branch. Add stock to set an expiry date.
+                  </p>
+                ) : (
+                  <div className="mt-4 grid gap-6 sm:grid-cols-2">
+                    <div>
+                      <label className={fieldLabel} htmlFor="batch-select">
+                        Batch
+                      </label>
+                      <select
+                        id="batch-select"
+                        value={effectiveBatchId}
+                        onChange={(e) => setSelectedBatchId(e.target.value)}
+                        className={`${inputClass} cursor-pointer`}
+                      >
+                        {batches.map((batch) => (
+                          <option key={batch.id} value={batch.id}>
+                            {batch.batchNumber} · {batch.status.replace(/_/g, " ")} · {batch.quantityAvailable} left
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className={fieldLabel} htmlFor="batch-expiry">
+                        Expiry date
+                      </label>
+                      <input
+                        id="batch-expiry"
+                        type="date"
+                        value={batchExpiry}
+                        onChange={(e) =>
+                          setBatchExpiryById((prev) => ({
+                            ...prev,
+                            ...(effectiveBatchId ? { [effectiveBatchId]: e.target.value } : null),
+                          }))
+                        }
+                        className={inputClass}
+                      />
+                      <p className="mt-2 text-[11px] text-[#6c7a78]">
+                        This updates the selected batch in the current branch.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className={fieldLabel} htmlFor="batch-number">
+                        Batch number
+                      </label>
+                      <input
+                        id="batch-number"
+                        type="text"
+                        value={batchNumber}
+                        onChange={(e) =>
+                          setBatchNumberById((prev) => ({
+                            ...prev,
+                            ...(effectiveBatchId ? { [effectiveBatchId]: e.target.value } : null),
+                          }))
+                        }
+                        className={inputClass}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={fieldLabel} htmlFor="po-number">
+                        Purchase order number
+                      </label>
+                      <input
+                        id="po-number"
+                        type="text"
+                        value={purchaseOrderNumber}
+                        onChange={(e) =>
+                          setBatchPoNumberById((prev) => ({
+                            ...prev,
+                            ...(effectiveBatchId ? { [effectiveBatchId]: e.target.value } : null),
+                          }))
+                        }
+                        className={inputClass}
+                        placeholder="Optional"
+                      />
+                    </div>
+
+                    <div>
+                      <label className={fieldLabel} htmlFor="manufactured-at">
+                        Manufactured date
+                      </label>
+                      <input
+                        id="manufactured-at"
+                        type="date"
+                        value={manufacturedAt}
+                        onChange={(e) =>
+                          setBatchManufacturedAtById((prev) => ({
+                            ...prev,
+                            ...(effectiveBatchId ? { [effectiveBatchId]: e.target.value } : null),
+                          }))
+                        }
+                        className={inputClass}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={fieldLabel} htmlFor="unit-order-price">
+                        Unit order price
+                      </label>
+                      <input
+                        id="unit-order-price"
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={unitOrderPrice}
+                        onChange={(e) =>
+                          setBatchUnitOrderPriceById((prev) => ({
+                            ...prev,
+                            ...(effectiveBatchId ? { [effectiveBatchId]: e.target.value } : null),
+                          }))
+                        }
+                        className={inputClass}
+                        placeholder="Optional"
+                      />
+                    </div>
+
+                    <div>
+                      <label className={fieldLabel} htmlFor="unit-selling-price">
+                        Unit selling price
+                      </label>
+                      <input
+                        id="unit-selling-price"
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={unitSellingPrice}
+                        onChange={(e) =>
+                          setBatchUnitSellingPriceById((prev) => ({
+                            ...prev,
+                            ...(effectiveBatchId ? { [effectiveBatchId]: e.target.value } : null),
+                          }))
+                        }
+                        className={inputClass}
+                        placeholder="Optional"
+                      />
+                    </div>
+
+                    <div>
+                      <label className={fieldLabel} htmlFor="batch-status">
+                        Batch status
+                      </label>
+                      <select
+                        id="batch-status"
+                        value={batchStatus}
+                        onChange={(e) =>
+                          setBatchStatusById((prev) => ({
+                            ...prev,
+                            ...(effectiveBatchId
+                              ? {
+                                  [effectiveBatchId]:
+                                    e.target.value === "draft"
+                                      ? "draft"
+                                      : e.target.value === "quarantined"
+                                        ? "quarantined"
+                                        : e.target.value === "expired"
+                                          ? "expired"
+                                          : e.target.value === "disposed"
+                                            ? "disposed"
+                                            : e.target.value === "depleted"
+                                              ? "depleted"
+                                              : "active",
+                                }
+                              : null),
+                          }))
+                        }
+                        className={`${inputClass} cursor-pointer`}
+                      >
+                        <option value="active">Active</option>
+                        <option value="draft">Draft</option>
+                        <option value="quarantined">Quarantined</option>
+                        <option value="expired">Expired</option>
+                        <option value="depleted">Depleted</option>
+                        <option value="disposed">Disposed</option>
+                      </select>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className={fieldLabel} htmlFor="batch-notes">
+                        Batch notes
+                      </label>
+                      <textarea
+                        id="batch-notes"
+                        value={notes}
+                        onChange={(e) =>
+                          setBatchNotesById((prev) => ({
+                            ...prev,
+                            ...(effectiveBatchId ? { [effectiveBatchId]: e.target.value } : null),
+                          }))
+                        }
+                        className={inputClass}
+                        rows={4}
+                        placeholder="Optional"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </section>

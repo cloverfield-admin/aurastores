@@ -349,7 +349,14 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
               </button>
               <button
                 type="button"
-                onClick={() => router.push(ROUTES.dashboard.stockProductEdit(batch.productId))}
+                onClick={() => {
+                  const params = new URLSearchParams(window.location.search);
+                  const branchParam = params.get("branch");
+                  const href = branchParam
+                    ? `${ROUTES.dashboard.stockProductEdit(batch.productId)}?branch=${encodeURIComponent(branchParam)}`
+                    : ROUTES.dashboard.stockProductEdit(batch.productId);
+                  router.push(href);
+                }}
                 className="inline-flex items-center gap-2 rounded-xl bg-[var(--app-cancel-bg)] px-5 py-2.5 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[#d5dade]"
               >
                 <span className="material-symbols-outlined notranslate text-[18px]">edit</span>

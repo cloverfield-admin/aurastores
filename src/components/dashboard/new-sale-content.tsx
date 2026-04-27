@@ -7,11 +7,18 @@ import { BarcodeScannerModal } from "@/components/dashboard/barcode-scanner-moda
 import { OutboxFeatureStatus } from "@/components/outbox/outbox-detail-dialog";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { isOfflineQueuedError } from "@/lib/offline/offline-queued-error";
-import type { SalesCatalogResponse } from "@/lib/queries/sales";
-import { useCreateSaleMutation, useSalesCatalogQuery, useSalesCatalogSearchQuery } from "@/lib/queries/sales";
+import type { CreateSalePayload, SalesCatalogResponse } from "@/lib/queries/sales";
+import {
+  getSaleMobileMoneyStatus,
+  useCreateSaleMutation,
+  useSalesCatalogQuery,
+  useSalesCatalogSearchQuery,
+  useStartSaleMobileMoneyMutation,
+} from "@/lib/queries/sales";
 import { useOrganizationOverviewQuery } from "@/lib/queries/organization";
 import { useAppMeQuery } from "@/lib/queries/staff";
 import { ROUTES } from "@/lib/routes";
+import { calculateCollectionFee } from "@/lib/lipila/fees";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -34,6 +41,8 @@ const fieldLabel =
   "mb-2 block text-xs font-semibold uppercase tracking-[0.06em] text-[var(--app-text-muted)]";
 const inputClass =
   "w-full rounded-2xl border-0 bg-[var(--app-input-bg)] px-4 py-3.5 text-sm text-[var(--app-text)] outline-none placeholder:text-[var(--app-placeholder)] focus:ring-2 focus:ring-[var(--app-brand)]/20";
+const MOMO_APPROVAL_TIMEOUT_MESSAGE =
+  "We did not receive approval within one minute. The sale is still pending and has not been completed yet.";
 
 type ProductOption = {
   id: string;
@@ -431,6 +440,7 @@ export function NewSaleContent() {
   const orgQuery = useOrganizationOverviewQuery();
   const meQuery = useAppMeQuery();
   const createSaleMutation = useCreateSaleMutation();
+  const startSaleMobileMoneyMutation = useStartSaleMobileMoneyMutation();
   const [customerSearch, setCustomerSearch] = useState("");
   const [patientId, setPatientId] = useState("");
   const [mobile, setMobile] = useState("");
@@ -442,11 +452,16 @@ export function NewSaleContent() {
   const [discountCode, setDiscountCode] = useState("");
   const [notes] = useState("");
   const [scannerLineId, setScannerLineId] = useState<string | "add" | null>(null);
+  const [momoDialogOpen, setMomoDialogOpen] = useState(false);
+  const [momoNumber, setMomoNumber] = useState("");
+  const [momoPending, setMomoPending] = useState(false);
+  const [momoStatusMessage, setMomoStatusMessage] = useState<string | null>(null);
+  const [momoPaymentNotice, setMomoPaymentNotice] = useState<string | null>(null);
+  const [customerPaysLipilaFee, setCustomerPaysLipilaFee] = useState(false);
 
   const showCustomerInfo = customerInfoExpanded || Boolean(customerSearch || patientId || mobile);
   const showPaymentDetails = paymentDetailsExpanded || Boolean(reference || paymentMethod !== "cash");
 
-  /* eslint-disable react-hooks/set-state-in-effect -- hydrate placeholder line items when catalog loads */
   useEffect(() => {
     if (!salesCatalogQuery.data?.products.length) {
       return;
@@ -480,8 +495,6 @@ export function NewSaleContent() {
       }),
     );
   }, [salesCatalogQuery.data?.products]);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
   const taxRateBps = orgQuery.data?.salesTax.enabled ? orgQuery.data.salesTax.rateBps : 0;
   const taxRate = taxRateBps / 10_000;
   const taxRatePctLabel = Math.round(taxRate * 100);
@@ -505,6 +518,11 @@ export function NewSaleContent() {
       auraPoints: points,
     };
   }, [items, taxRate]);
+
+  const momoFeePreview = useMemo(() => {
+    const saleTotalCents = Math.max(0, Math.round(grandTotal * 100));
+    return calculateCollectionFee({ saleTotalCents, customerPaysFee: customerPaysLipilaFee });
+  }, [grandTotal, customerPaysLipilaFee]);
 
   const mergedCatalogProducts = useMemo(() => {
     const base = salesCatalogQuery.data?.products ?? [];
@@ -754,7 +772,7 @@ export function NewSaleContent() {
     return line * (1 + taxRate);
   }
 
-  async function submitSale(status: "draft" | "completed") {
+  function buildSalePayload(status: "draft" | "completed"): CreateSalePayload {
     const validItems = items.filter((item) => item.productId && item.unitPrice > 0 && item.qty > 0);
 
     if (validItems.length === 0) {
@@ -767,10 +785,7 @@ export function NewSaleContent() {
       );
     }
 
-    const idempotencyKey = crypto.randomUUID();
-
-    return createSaleMutation.mutateAsync({
-      idempotencyKey,
+    return {
       branchId: branch,
       customerName: customerSearch || undefined,
       patientCode: patientId || undefined,
@@ -778,6 +793,8 @@ export function NewSaleContent() {
       paymentMethod:
         paymentMethod === "aura-pay"
           ? "aura-pay"
+          : paymentMethod === "mobile-money"
+            ? "mobile-money"
           : paymentMethod === "insurance"
             ? "insurance"
             : paymentMethod === "card"
@@ -794,7 +811,60 @@ export function NewSaleContent() {
         unitPrice: item.unitPrice,
         description: item.name,
       })),
+    };
+  }
+
+  async function submitSale(status: "draft" | "completed") {
+    return createSaleMutation.mutateAsync({
+      ...buildSalePayload(status),
+      idempotencyKey: crypto.randomUUID(),
     });
+  }
+
+  async function waitForMobileMoneyApproval(referenceId: string) {
+    const deadline = Date.now() + 60_000;
+
+    while (Date.now() < deadline) {
+      const status = await getSaleMobileMoneyStatus(referenceId);
+      setMomoStatusMessage(status.message ?? "Waiting for the customer to approve the payment prompt.");
+
+      if (status.status === "successful") {
+        return status;
+      }
+      if (status.status === "failed") {
+        throw new Error(status.message ?? "The mobile money payment was declined or failed.");
+      }
+
+      await new Promise((resolve) => window.setTimeout(resolve, 2_000));
+    }
+
+    throw new Error(MOMO_APPROVAL_TIMEOUT_MESSAGE);
+  }
+
+  async function submitMobileMoneySale() {
+    const trimmedNumber = momoNumber.trim();
+    if (trimmedNumber.length < 7) {
+      throw new Error("Enter a valid customer mobile money number.");
+    }
+
+    const sale = buildSalePayload("completed");
+    const started = await startSaleMobileMoneyMutation.mutateAsync({
+      sale,
+      mobileMoneyNumber: trimmedNumber,
+      customerPaysLipilaFee,
+      idempotencyKey: crypto.randomUUID(),
+    });
+
+    setMomoStatusMessage(started.message ?? "Approve the payment prompt on the customer's phone.");
+
+    if (started.status === "failed") {
+      throw new Error(started.message ?? "The mobile money payment failed.");
+    }
+    if (started.status !== "successful") {
+      await waitForMobileMoneyApproval(started.referenceId);
+    }
+
+    return started;
   }
 
   function getLineItemIssue(item: LineItem) {
@@ -1508,6 +1578,7 @@ export function NewSaleContent() {
                       >
                         <option value="aura-pay">Aura Pay Wallet</option>
                         <option value="card">Card</option>
+                        <option value="mobile-money">Mobile Money</option>
                         <option value="cash">Cash</option>
                         <option value="insurance">Insurance</option>
                       </select>
@@ -1528,6 +1599,19 @@ export function NewSaleContent() {
                       placeholder="Optional"
                       className={inputClass}
                     />
+                  </div>
+                </div>
+              ) : null}
+              {momoPaymentNotice ? (
+                <div className="mt-5 rounded-2xl border border-[rgba(0,106,101,0.18)] bg-[rgba(0,106,101,0.08)] p-4 text-sm text-[var(--app-text)]">
+                  <div className="flex gap-3">
+                    <span className="material-symbols-outlined notranslate mt-0.5 text-base text-[var(--app-brand)]">
+                      info
+                    </span>
+                    <div>
+                      <p className="font-semibold text-[var(--app-text)]">Mobile money approval pending</p>
+                      <p className="mt-1 text-[var(--app-text-muted)]">{momoPaymentNotice}</p>
+                    </div>
                   </div>
                 </div>
               ) : null}
@@ -1619,7 +1703,7 @@ export function NewSaleContent() {
 
                   <button
                     type="button"
-                    disabled={isSalesMonthlyLimitReached}
+                    disabled={isSalesMonthlyLimitReached || momoPending}
                     title={
                       isSalesMonthlyLimitReached
                         ? `Monthly cap reached (${salesUsage ?? 0}/${salesLimit ?? "—"} completed sales this UTC month).`
@@ -1627,6 +1711,13 @@ export function NewSaleContent() {
                     }
                     onClick={async () => {
                       if (!validateBeforeSubmit()) {
+                        return;
+                      }
+                      if (paymentMethod === "mobile-money") {
+                        setMomoNumber(mobile);
+                        setMomoStatusMessage(null);
+                        setMomoPaymentNotice(null);
+                        setMomoDialogOpen(true);
                         return;
                       }
                       try {
@@ -1738,6 +1829,163 @@ export function NewSaleContent() {
           </aside>
         </div>
       </div>
+      {momoDialogOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-[24px] bg-white p-6 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--app-brand)]">
+                  Mobile Money
+                </p>
+                <h3 className="mt-1 font-[family-name:var(--font-manrope)] text-xl font-extrabold text-[var(--app-text)]">
+                  Customer approval required
+                </h3>
+                <p className="mt-2 text-sm text-[var(--app-text-muted)]">
+                  Enter the customer&apos;s mobile money number. Lipila will send them a prompt to approve this
+                  transaction.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={momoPending}
+                onClick={() => setMomoDialogOpen(false)}
+                className="rounded-full p-2 text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface-subtle)] disabled:opacity-40"
+                aria-label="Close mobile money dialog"
+              >
+                <span className="material-symbols-outlined notranslate text-lg">close</span>
+              </button>
+            </div>
+
+            <label className={fieldLabel} htmlFor="momoNumber">
+              Customer number
+            </label>
+            <input
+              id="momoNumber"
+              type="tel"
+              value={momoNumber}
+              disabled={momoPending}
+              onChange={(e) => setMomoNumber(e.target.value)}
+              placeholder="260..."
+              className={inputClass}
+            />
+
+            <label className="mt-4 flex items-start gap-3 rounded-2xl border border-[rgba(0,0,0,0.06)] bg-[rgba(99,102,241,0.06)] p-4">
+              <input
+                type="checkbox"
+                checked={customerPaysLipilaFee}
+                disabled={momoPending}
+                onChange={(e) => setCustomerPaysLipilaFee(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-[#4648d4]"
+              />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[var(--app-text)]">
+                  Customer will cover the Lipila mobile money fee (2.5%)
+                </p>
+                <p className="mt-1 text-xs text-[var(--app-text-muted)]">
+                  If checked, we’ll request a higher amount so the sale total is received after Lipila charges.
+                </p>
+              </div>
+            </label>
+
+            <div className="mt-4 rounded-2xl border border-[rgba(0,0,0,0.06)] bg-[rgba(0,106,101,0.05)] p-4 text-sm">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-[var(--app-text-muted)]">Sale total</span>
+                <span className="font-semibold text-[var(--app-text)]">
+                  {currencyFormatter.format(momoFeePreview.netAmountCents / 100)}
+                </span>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-4">
+                <span className="text-[var(--app-text-muted)]">Lipila fee (2.5%)</span>
+                <span className="font-semibold text-[var(--app-text)]">
+                  {currencyFormatter.format(momoFeePreview.feeCents / 100)}
+                </span>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-4">
+                <span className="text-[var(--app-text-muted)]">
+                  {customerPaysLipilaFee ? "Customer pays" : "Merchant receives"}
+                </span>
+                <span className="font-semibold text-[var(--app-text)]">
+                  {currencyFormatter.format(
+                    (customerPaysLipilaFee ? momoFeePreview.grossAmountCents : momoFeePreview.netAmountCents) / 100,
+                  )}
+                </span>
+              </div>
+            </div>
+
+            {momoStatusMessage ? (
+              <div className="mt-4 rounded-2xl bg-[rgba(0,106,101,0.08)] p-4 text-sm text-[var(--app-text)]">
+                <div className="flex gap-3">
+                  {momoPending ? (
+                    <span className="mt-0.5 h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[var(--app-brand)] border-t-transparent" />
+                  ) : (
+                    <span className="material-symbols-outlined notranslate text-base text-[var(--app-brand)]">
+                      info
+                    </span>
+                  )}
+                  <p>{momoStatusMessage}</p>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                disabled={momoPending}
+                onClick={() => setMomoDialogOpen(false)}
+                className="rounded-2xl bg-[var(--app-surface-subtle)] px-5 py-3 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-cancel-hover)] disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={momoPending}
+                onClick={async () => {
+                  try {
+                    setMomoPending(true);
+                    setMomoPaymentNotice(null);
+                    setMomoStatusMessage("Sending payment request to the customer...");
+                    const result = await submitMobileMoneySale();
+                    notify({
+                      variant: "success",
+                      title: "Transaction complete",
+                      description: `${result.saleNumber} paid and saved.`,
+                    });
+                    setMomoPaymentNotice(null);
+                    setMomoDialogOpen(false);
+                    router.push(salesHref);
+                  } catch (error) {
+                    const message = getSaleErrorMessage(error);
+                    if (message === MOMO_APPROVAL_TIMEOUT_MESSAGE) {
+                      setMomoDialogOpen(false);
+                      setMomoPaymentNotice(message);
+                      notify({
+                        variant: "info",
+                        title: "Payment approval timed out",
+                        description: message,
+                      });
+                    } else {
+                      notify({
+                        variant: "error",
+                        title: "Mobile money payment failed",
+                        description: message,
+                      });
+                      setMomoStatusMessage(message);
+                    }
+                  } finally {
+                    setMomoPending(false);
+                  }
+                }}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-[#0fb9b1] to-[#4648d4] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {momoPending ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : null}
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -211,6 +211,27 @@
       "when": 1779700000000,
       "tag": "0029_sales_monthly_completed_limit_trigger",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1779800000000,
+      "tag": "0030_branch_wallet_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1779900000000,
+      "tag": "0031_lipila_payment_transactions",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1780000000000,
+      "tag": "0032_lipila_payment_fee_breakdown",
+      "breakpoints": true
     }
   ]
 }
