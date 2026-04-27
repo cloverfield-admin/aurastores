@@ -95,6 +95,7 @@ export type StockDashboardResponse = {
     productId: string;
     productName: string;
     sku: string;
+    branchName: string;
     categoryName: string;
     supplierName: string | null;
     batchNumber: string;

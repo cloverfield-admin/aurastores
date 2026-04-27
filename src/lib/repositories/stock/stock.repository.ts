@@ -48,6 +48,7 @@ export type StockDashboardData = {
     productId: string;
     productName: string;
     sku: string;
+    branchName: string;
     categoryName: string;
     supplierName: string | null;
     batchNumber: string;

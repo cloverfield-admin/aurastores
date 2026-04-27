@@ -161,6 +161,7 @@ function mapBatchRowToInventoryItem(
     createdAt: Date;
   },
   today: Date,
+  branchName: string,
 ): StockDashboardData["inventory"][number] {
   const expiryDate = normalizeDate(row.expiresAt);
   const daysToExpiry = differenceInDays(expiryDate, today);
@@ -175,6 +176,7 @@ function mapBatchRowToInventoryItem(
     productId: row.productId,
     productName: row.productName,
     sku: row.sku,
+    branchName,
     categoryName: row.categoryName,
     supplierName: row.supplierName,
     batchNumber: row.batchNumber,
@@ -1377,7 +1379,7 @@ export class StockRepositoryImpl implements StockRepository {
         .offset(offset);
     }
 
-    const pagedInventory = pagedRows.map((row) => mapBatchRowToInventoryItem(row, today));
+    const pagedInventory = pagedRows.map((row) => mapBatchRowToInventoryItem(row, today, branch.name));
 
     const totalStockValueCents = Number(summaryRow?.totalStockValueCents ?? 0);
     const totalAvailableUnits = Number(summaryRow?.totalAvailableUnits ?? 0);
