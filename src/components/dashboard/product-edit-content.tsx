@@ -84,8 +84,6 @@ export function ProductEditContent({ productId }: { productId: string }) {
   return (
     <ProductEditForm
       key={`${product.id}::${batchesQuery.data?.branchId ?? branchId ?? "no-branch"}`}
-      productId={productId}
-      branchId={branchId}
       product={product}
       batches={batches}
       batchesLoading={batchesQuery.isLoading}
@@ -221,7 +219,7 @@ function ProductEditForm({
       /^\d{4}-\d{2}-\d{2}$/.test(batchExpiry.trim()) &&
       batchExpiry.trim() !== defaultBatchExpiry;
 
-    const batchNumberChanged = Boolean(selectedBatch) && batchNumber.trim() !== selectedBatch.batchNumber;
+    const batchNumberChanged = selectedBatch != null && batchNumber.trim() !== selectedBatch.batchNumber;
 
     return (
       nextName !== product.name ||
