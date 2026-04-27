@@ -131,7 +131,7 @@ export function ExpensesContent() {
   );
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [newType, setNewType] = useState<"general">("general");
+  const [newType, setNewType] = useState<"general" | "restocking">("general");
   const [newDate, setNewDate] = useState(todayIso);
   const [newAmount, setNewAmount] = useState("");
   const [newDescription, setNewDescription] = useState("");
@@ -554,7 +554,7 @@ export function ExpensesContent() {
                   <h2 className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[var(--app-text)]">
                     Add Expense
                   </h2>
-                  <p className="mt-1 text-sm text-[var(--app-text-muted)]">General expenses are available now.</p>
+                  <p className="mt-1 text-sm text-[var(--app-text-muted)]">Record general expenses or restocking costs.</p>
                 </div>
                 <button
                   type="button"
@@ -573,10 +573,11 @@ export function ExpensesContent() {
                   </span>
                   <select
                     value={newType}
-                    onChange={(e) => setNewType(e.target.value as "general")}
+                    onChange={(e) => setNewType(e.target.value as "general" | "restocking")}
                     className="w-full rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-input-bg)] px-4 py-3 text-sm text-[var(--app-text)]"
                   >
                     <option value="general">General expense</option>
+                    <option value="restocking">Restocking</option>
                   </select>
                 </label>
                 <label className="block space-y-2">
@@ -613,7 +614,7 @@ export function ExpensesContent() {
                     value={newDescription}
                     onChange={(e) => setNewDescription(e.target.value)}
                     className="w-full rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-input-bg)] px-4 py-3 text-sm text-[var(--app-text)]"
-                    placeholder="e.g. Cleaning supplies"
+                    placeholder={newType === "restocking" ? "e.g. Supplier restock invoice" : "e.g. Cleaning supplies"}
                   />
                 </label>
               </div>
