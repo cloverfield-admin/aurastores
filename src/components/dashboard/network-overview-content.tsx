@@ -142,7 +142,8 @@ export function NetworkOverviewContent() {
               {networkQuery.isPending || !totals ? "—" : money.format(totals.totalGrossProfitCents30d / 100)}
             </p>
             <p className="mt-2 text-xs text-[var(--app-text-muted)]">
-              COGS {networkQuery.isPending || !totals ? "—" : money.format(totals.totalCogsCents30d / 100)}
+              COGS {networkQuery.isPending || !totals ? "—" : money.format(totals.totalCogsCents30d / 100)} • Expenses{" "}
+              {networkQuery.isPending || !totals ? "—" : money.format(totals.totalExpensesCents30d / 100)}
             </p>
           </article>
 

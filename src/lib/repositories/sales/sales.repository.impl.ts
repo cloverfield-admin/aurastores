@@ -218,17 +218,20 @@ export class SalesRepositoryImpl implements SalesRepository {
           ),
         db
           .select({
-            totalChargeExpensesCents:
+            totalExpensesCents:
               sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseDate} >= ${startIso}::timestamptz and ${expenses.expenseDate} < ${endExclusiveIso}::timestamptz), 0)::int`,
-            previousChargeExpensesCents:
+            previousExpensesCents:
               sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseDate} >= ${prevStartIso}::timestamptz and ${expenses.expenseDate} < ${prevEndExclusiveIso}::timestamptz), 0)::int`,
+            totalChargeExpensesCents:
+              sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseType} = 'charge' and ${expenses.expenseDate} >= ${startIso}::timestamptz and ${expenses.expenseDate} < ${endExclusiveIso}::timestamptz), 0)::int`,
+            previousChargeExpensesCents:
+              sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseType} = 'charge' and ${expenses.expenseDate} >= ${prevStartIso}::timestamptz and ${expenses.expenseDate} < ${prevEndExclusiveIso}::timestamptz), 0)::int`,
           })
           .from(expenses)
           .where(
             and(
               eq(expenses.organizationId, context.organization.id),
               eq(expenses.branchId, branch.id),
-              eq(expenses.expenseType, "charge"),
               sql`${expenses.expenseDate} >= ${prevStartIso}::timestamptz`,
             ),
           ),
@@ -339,6 +342,8 @@ export class SalesRepositoryImpl implements SalesRepository {
       previousCogsCents: 0,
     };
     const chargeMetrics = chargeExpenseRows[0] ?? {
+      totalExpensesCents: 0,
+      previousExpensesCents: 0,
       totalChargeExpensesCents: 0,
       previousChargeExpensesCents: 0,
     };
@@ -371,8 +376,8 @@ export class SalesRepositoryImpl implements SalesRepository {
       };
     });
     const branchTotalRevenueExpanded = branchDistributionExpanded.reduce((sum, row) => sum + row.amountCents, 0);
-    const grossProfitBeforeChargesCents = metrics.totalRevenueCents - cogsMetrics.totalCogsCents;
-    const previousGrossProfitBeforeChargesCents = metrics.previousRevenueCents - cogsMetrics.previousCogsCents;
+    const grossProfitBeforeExpensesCents = metrics.totalRevenueCents - cogsMetrics.totalCogsCents;
+    const previousGrossProfitBeforeExpensesCents = metrics.previousRevenueCents - cogsMetrics.previousCogsCents;
 
     return {
       branch: {
@@ -389,13 +394,15 @@ export class SalesRepositoryImpl implements SalesRepository {
         previousRevenueCents: metrics.previousRevenueCents,
         totalCogsCents: cogsMetrics.totalCogsCents,
         previousCogsCents: cogsMetrics.previousCogsCents,
+        totalExpensesCents: chargeMetrics.totalExpensesCents,
+        previousExpensesCents: chargeMetrics.previousExpensesCents,
         totalChargeExpensesCents: chargeMetrics.totalChargeExpensesCents,
         previousChargeExpensesCents: chargeMetrics.previousChargeExpensesCents,
-        grossProfitBeforeChargesCents,
-        previousGrossProfitBeforeChargesCents,
-        grossProfitCents: grossProfitBeforeChargesCents - chargeMetrics.totalChargeExpensesCents,
+        grossProfitBeforeExpensesCents,
+        previousGrossProfitBeforeExpensesCents,
+        grossProfitCents: grossProfitBeforeExpensesCents - chargeMetrics.totalExpensesCents,
         previousGrossProfitCents:
-          previousGrossProfitBeforeChargesCents - chargeMetrics.previousChargeExpensesCents,
+          previousGrossProfitBeforeExpensesCents - chargeMetrics.previousExpensesCents,
         totalSalesCount: metrics.totalSalesCount,
         averageOrderValueCents: metrics.averageOrderValueCents,
         unitsSoldLast30Days: units.unitsSoldLast30Days,
