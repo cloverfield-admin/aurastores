@@ -12,6 +12,8 @@ import type { PharmacySearchRepository } from "@/lib/repositories/pharmacy-searc
 import { pharmacySearchRepository } from "@/lib/repositories/pharmacy-search/pharmacy-search.repository.impl";
 import type { OnboardingRepository } from "@/lib/repositories/onboarding/onboarding.repository";
 import { onboardingRepository } from "@/lib/repositories/onboarding/onboarding.repository.impl";
+import type { PayRepository } from "@/lib/repositories/pay/pay.repository";
+import { payRepository } from "@/lib/repositories/pay/pay.repository.impl";
 import type { ProductCategoriesRepository } from "@/lib/repositories/product-categories/product-categories.repository";
 import { productCategoriesRepository } from "@/lib/repositories/product-categories/product-categories.repository.impl";
 import type { SalesRepository } from "@/lib/repositories/sales/sales.repository";
@@ -32,6 +34,7 @@ import { BranchesService } from "@/lib/services/branches/branches.service";
 import { NetworkService } from "@/lib/services/network/network.service";
 import { InsightsService } from "@/lib/services/insights/insights.service";
 import { OnboardingService } from "@/lib/services/onboarding/onboarding.service";
+import { PayService } from "@/lib/services/pay/pay.service";
 import { ProductCategoriesService } from "@/lib/services/product-categories/product-categories.service";
 import { ProductsService } from "@/lib/services/products/products.service";
 import { SalesService } from "@/lib/services/sales/sales.service";
@@ -53,6 +56,7 @@ export type TestServiceOverrides = Partial<{
   staff: StaffRepository;
   network: NetworkRepository;
   insights: InsightsRepository;
+  pay: PayRepository;
   pharmacySearch: PharmacySearchRepository;
   productCategories: ProductCategoriesRepository;
   products: ProductsRepository;
@@ -70,6 +74,7 @@ export function createTestServices(overrides: TestServiceOverrides = {}): AppSer
   const staff = overrides.staff ?? staffRepository;
   const network = overrides.network ?? networkRepository;
   const insights = overrides.insights ?? insightsRepository;
+  const pay = overrides.pay ?? payRepository;
   const pharmacySearch = overrides.pharmacySearch ?? pharmacySearchRepository;
   const productCategories = overrides.productCategories ?? productCategoriesRepository;
   const products = overrides.products ?? productsRepository;
@@ -84,6 +89,7 @@ export function createTestServices(overrides: TestServiceOverrides = {}): AppSer
     staff: new StaffService({ staff, documentStorage }),
     network: new NetworkService({ network }),
     insights: new InsightsService({ insights }),
+    pay: new PayService({ pay }),
     pharmacySearch: new PharmacySearchService({ pharmacySearch }),
     productCategories: new ProductCategoriesService({ productCategories }),
     products: new ProductsService({ products }),

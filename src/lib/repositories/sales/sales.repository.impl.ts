@@ -2,6 +2,7 @@ import { and, asc, count, desc, eq, inArray, sql, or, ilike } from "drizzle-orm"
 import { db } from "@/lib/db";
 import {
   branches,
+  expenses,
   inventoryBatches,
   inventoryTransactions,
   patients,
@@ -10,6 +11,8 @@ import {
   products,
   saleItems,
   sales,
+  walletAccounts,
+  walletLedgerEntries,
 } from "@/lib/db/schema";
 import type { CreateSaleInput } from "@/lib/validation/sales";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
@@ -168,6 +171,7 @@ export class SalesRepositoryImpl implements SalesRepository {
     const [
       metricsRows,
       cogsRows,
+      chargeExpenseRows,
       topProductsRows,
       branchRevenueRows,
       unitsRows,
@@ -210,6 +214,25 @@ export class SalesRepositoryImpl implements SalesRepository {
               eq(sales.branchId, branch.id),
               eq(sales.status, "completed"),
               sql`${sales.createdAt} >= ${prevStartIso}::timestamptz`,
+            ),
+          ),
+        db
+          .select({
+            totalExpensesCents:
+              sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseDate} >= ${startIso}::timestamptz and ${expenses.expenseDate} < ${endExclusiveIso}::timestamptz), 0)::int`,
+            previousExpensesCents:
+              sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseDate} >= ${prevStartIso}::timestamptz and ${expenses.expenseDate} < ${prevEndExclusiveIso}::timestamptz), 0)::int`,
+            totalChargeExpensesCents:
+              sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseType} = 'charge' and ${expenses.expenseDate} >= ${startIso}::timestamptz and ${expenses.expenseDate} < ${endExclusiveIso}::timestamptz), 0)::int`,
+            previousChargeExpensesCents:
+              sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseType} = 'charge' and ${expenses.expenseDate} >= ${prevStartIso}::timestamptz and ${expenses.expenseDate} < ${prevEndExclusiveIso}::timestamptz), 0)::int`,
+          })
+          .from(expenses)
+          .where(
+            and(
+              eq(expenses.organizationId, context.organization.id),
+              eq(expenses.branchId, branch.id),
+              sql`${expenses.expenseDate} >= ${prevStartIso}::timestamptz`,
             ),
           ),
         db
@@ -318,8 +341,13 @@ export class SalesRepositoryImpl implements SalesRepository {
       totalCogsCents: 0,
       previousCogsCents: 0,
     };
+    const chargeMetrics = chargeExpenseRows[0] ?? {
+      totalExpensesCents: 0,
+      previousExpensesCents: 0,
+      totalChargeExpensesCents: 0,
+      previousChargeExpensesCents: 0,
+    };
     const topTotal = topProductsRows.reduce((sum, row) => sum + row.amountCents, 0);
-    const branchTotalRevenue = branchRevenueRows.reduce((sum, row) => sum + row.amountCents, 0);
     const dateLabelFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit" });
     const trendRawUnknown: unknown = trendRows;
     const trendRaw: Array<{ day: unknown; revenueCents: unknown; unitsSold: unknown }> = Array.isArray(trendRawUnknown)
@@ -348,6 +376,8 @@ export class SalesRepositoryImpl implements SalesRepository {
       };
     });
     const branchTotalRevenueExpanded = branchDistributionExpanded.reduce((sum, row) => sum + row.amountCents, 0);
+    const grossProfitBeforeExpensesCents = metrics.totalRevenueCents - cogsMetrics.totalCogsCents;
+    const previousGrossProfitBeforeExpensesCents = metrics.previousRevenueCents - cogsMetrics.previousCogsCents;
 
     return {
       branch: {
@@ -364,8 +394,15 @@ export class SalesRepositoryImpl implements SalesRepository {
         previousRevenueCents: metrics.previousRevenueCents,
         totalCogsCents: cogsMetrics.totalCogsCents,
         previousCogsCents: cogsMetrics.previousCogsCents,
-        grossProfitCents: metrics.totalRevenueCents - cogsMetrics.totalCogsCents,
-        previousGrossProfitCents: metrics.previousRevenueCents - cogsMetrics.previousCogsCents,
+        totalExpensesCents: chargeMetrics.totalExpensesCents,
+        previousExpensesCents: chargeMetrics.previousExpensesCents,
+        totalChargeExpensesCents: chargeMetrics.totalChargeExpensesCents,
+        previousChargeExpensesCents: chargeMetrics.previousChargeExpensesCents,
+        grossProfitBeforeExpensesCents,
+        previousGrossProfitBeforeExpensesCents,
+        grossProfitCents: grossProfitBeforeExpensesCents - chargeMetrics.totalExpensesCents,
+        previousGrossProfitCents:
+          previousGrossProfitBeforeExpensesCents - chargeMetrics.previousExpensesCents,
         totalSalesCount: metrics.totalSalesCount,
         averageOrderValueCents: metrics.averageOrderValueCents,
         unitsSoldLast30Days: units.unitsSoldLast30Days,
@@ -758,22 +795,64 @@ export class SalesRepositoryImpl implements SalesRepository {
         })),
       );
 
-      await tx.insert(payments).values({
+      const paymentMethod =
+        input.paymentMethod === "aura-pay"
+          ? "aura_pay_wallet"
+          : input.paymentMethod === "bank-transfer"
+            ? "bank_transfer"
+            : input.paymentMethod === "mobile-money"
+              ? "mobile_money"
+              : input.paymentMethod;
+
+      const [payment] = await tx.insert(payments).values({
         saleId: sale.id,
         organizationId: context.organization.id,
         branchId: branch.id,
-        method:
-          input.paymentMethod === "aura-pay"
-            ? "aura_pay_wallet"
-            : input.paymentMethod === "bank-transfer"
-              ? "bank_transfer"
-              : input.paymentMethod,
+        method: paymentMethod,
         status: input.status === "completed" ? "paid" : "pending",
         reference: input.paymentReference,
         amountCents: totalCents,
         currency: "ZMW",
         paidAt: input.status === "completed" ? new Date() : null,
-      });
+      }).returning();
+
+      if (input.status === "completed" && (paymentMethod === "card" || paymentMethod === "mobile_money")) {
+        const [wallet] = await tx
+          .update(walletAccounts)
+          .set({
+            balanceCents: sql`${walletAccounts.balanceCents} + ${totalCents}`,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(walletAccounts.organizationId, context.organization.id),
+              eq(walletAccounts.branchId, branch.id),
+              eq(walletAccounts.status, "active"),
+            ),
+          )
+          .returning();
+
+        if (wallet) {
+          await tx.insert(walletLedgerEntries).values({
+            walletId: wallet.id,
+            organizationId: context.organization.id,
+            branchId: branch.id,
+            paymentId: payment.id,
+            entryType: "settlement",
+            sourceMethod: paymentMethod,
+            status: "posted",
+            amountCents: totalCents,
+            currency: "ZMW",
+            reference: input.paymentReference,
+            note: `Sale ${sale.saleNumber} settlement`,
+            metadata: {
+              saleId: sale.id,
+              saleNumber: sale.saleNumber,
+            },
+            postedAt: new Date(),
+          });
+        }
+      }
 
       if (input.status === "completed") {
         const batchUpdates = Array.from(

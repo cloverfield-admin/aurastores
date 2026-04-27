@@ -24,10 +24,10 @@ export function AuraInlineAlert({
     },
     success: {
       wrapper:
-        "border-[rgba(15,185,177,0.18)] bg-[rgba(240,253,250,0.96)] dark:border-teal-500/25 dark:bg-teal-950/35",
-      badge: "bg-[rgba(15,185,177,0.16)] text-[#006a65] dark:bg-teal-500/15 dark:text-teal-200",
-      title: "text-[#065f5b] dark:text-teal-100",
-      body: "text-[#0f766e] dark:text-teal-200/90",
+        "border-[var(--aura-tint-border)] bg-[var(--aura-panel-tint)]",
+      badge: "aura-badge",
+      title: "text-[var(--aura-tint-text-strong)]",
+      body: "text-[var(--aura-tint-muted)]",
       icon: "check_circle",
     },
     warning: {
@@ -40,10 +40,10 @@ export function AuraInlineAlert({
     },
     info: {
       wrapper:
-        "border-[rgba(96,99,238,0.16)] bg-[rgba(245,243,255,0.94)] dark:border-indigo-500/25 dark:bg-indigo-950/35",
-      badge: "bg-[rgba(96,99,238,0.16)] text-[#4648d4] dark:bg-indigo-500/15 dark:text-indigo-200",
-      title: "text-[#3730a3] dark:text-indigo-100",
-      body: "text-[#4c51bf] dark:text-indigo-200/90",
+        "border-[rgba(99,102,241,0.18)] bg-[rgba(238,242,255,0.94)] dark:border-indigo-500/25 dark:bg-indigo-950/35",
+      badge: "bg-[var(--aura-info-bg)] text-[var(--aura-info-text)]",
+      title: "text-[var(--aura-tint-text-strong)]",
+      body: "text-[var(--aura-tint-muted)]",
       icon: "info",
     },
   }[variant];

@@ -8,6 +8,7 @@ import {
   ilike,
   inArray,
   isNull,
+  lte,
   ne,
   or,
   sql,
@@ -27,6 +28,7 @@ import type {
   CreateStockBatchInput,
   CreateStockBatchesInput,
   StockAdjustmentInput,
+  UpdateStockBatchInput,
 } from "@/lib/validation/stock";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 import { assertWithinLimit } from "@/lib/billing/entitlements";
@@ -235,6 +237,27 @@ function deriveBatchStatus(
   }
 
   return "active" as const;
+}
+
+function deriveBatchUiStatus(
+  currentStatus: string,
+  expiresAt: string | Date,
+  quantityAvailable: number,
+  today: Date,
+): "active" | "expiring_soon" | "expired" | "disposed" | "depleted" {
+  const nextStatus = deriveBatchStatus(currentStatus, expiresAt, quantityAvailable, today);
+  if (nextStatus === "disposed") {
+    return "disposed";
+  }
+  if (nextStatus === "depleted") {
+    return "depleted";
+  }
+  if (nextStatus === "expired") {
+    return "expired";
+  }
+
+  const daysToExpiry = differenceInDays(normalizeDate(expiresAt), today);
+  return quantityAvailable > 0 && daysToExpiry <= 30 ? "expiring_soon" : "active";
 }
 
 async function loadBranchesForOrg(queryable: QueryableDb, organizationId: string) {
@@ -1168,6 +1191,12 @@ export class StockRepositoryImpl implements StockRepository {
     const page = clampPage(options.page);
     const pageSize = clampPageSize(options.pageSize);
     const view = options.view === "expiring" ? "expiring" : "all";
+    const inventoryStatus =
+      options.inventoryStatus === "out_of_stock"
+        ? "out_of_stock"
+        : options.inventoryStatus === "reorder_attention"
+          ? "reorder_attention"
+          : "all";
     const todayStr = toDateStringUtc(today);
 
     const branchBase = and(
@@ -1175,13 +1204,41 @@ export class StockRepositoryImpl implements StockRepository {
       eq(inventoryBatches.branchId, branch.id),
     );
 
+    const branchStockSq = db.$with("branch_stock").as(
+      db
+        .select({
+          productId: inventoryBatches.productId,
+          totalAvailable: sql<number>`coalesce(sum(${inventoryBatches.quantityAvailable}), 0)::int`.as(
+            "total_available",
+          ),
+        })
+        .from(inventoryBatches)
+        .where(
+          and(
+            eq(inventoryBatches.organizationId, context.organization.id),
+            eq(inventoryBatches.branchId, branch.id),
+          ),
+        )
+        .groupBy(inventoryBatches.productId),
+    );
+
+    const totalAvailableByProduct = sql<number>`coalesce(${branchStockSq.totalAvailable}, 0)::int`;
+    const reorderThreshold = sql<number>`greatest(${products.reorderLevel}, 1)`;
+
     const searchFilter = buildStockSearchFilter(search);
     const viewFilter = view === "expiring" ? buildExpiringViewFilter(todayStr) : undefined;
+    const inventoryStatusFilter =
+      inventoryStatus === "out_of_stock"
+        ? and(ne(inventoryBatches.status, "disposed"), lte(totalAvailableByProduct, 0))
+        : inventoryStatus === "reorder_attention"
+          ? and(ne(inventoryBatches.status, "disposed"), lte(totalAvailableByProduct, reorderThreshold))
+          : undefined;
 
     const listWhere = and(
       branchBase,
       ...(searchFilter ? [searchFilter] : []),
       ...(viewFilter ? [viewFilter] : []),
+      ...(inventoryStatusFilter ? [inventoryStatusFilter] : []),
     );
 
     const todaySql = sql.raw(`'${todayStr}'::date`);
@@ -1205,17 +1262,21 @@ export class StockRepositoryImpl implements StockRepository {
 
     const inventoryJoin = () =>
       db
+        .with(branchStockSq)
         .select(batchSelect)
         .from(inventoryBatches)
         .innerJoin(products, eq(inventoryBatches.productId, products.id))
+        .leftJoin(branchStockSq, eq(branchStockSq.productId, products.id))
         .leftJoin(productCategories, eq(products.categoryId, productCategories.id))
         .leftJoin(suppliers, eq(inventoryBatches.supplierId, suppliers.id));
 
-    const listCountQuery = search
+    const listCountQuery = search || inventoryStatus !== "all"
       ? db
+          .with(branchStockSq)
           .select({ total: sql<number>`count(*)::int` })
           .from(inventoryBatches)
           .innerJoin(products, eq(inventoryBatches.productId, products.id))
+          .leftJoin(branchStockSq, eq(branchStockSq.productId, products.id))
           .leftJoin(productCategories, eq(products.categoryId, productCategories.id))
           .leftJoin(suppliers, eq(inventoryBatches.supplierId, suppliers.id))
           .where(listWhere)
@@ -1231,27 +1292,6 @@ export class StockRepositoryImpl implements StockRepository {
       .limit(pageSize)
       .offset(offsetGuess);
 
-    const branchStockSq = db.$with("branch_stock").as(
-      db
-        .select({
-          productId: inventoryBatches.productId,
-          totalAvailable: sql<number>`coalesce(sum(${inventoryBatches.quantityAvailable}), 0)::int`.as(
-            "total_available",
-          ),
-        })
-        .from(inventoryBatches)
-        .where(
-          and(
-            eq(inventoryBatches.organizationId, context.organization.id),
-            eq(inventoryBatches.branchId, branch.id),
-          ),
-        )
-        .groupBy(inventoryBatches.productId),
-    );
-
-    const totalAvailableByProduct = sql<number>`coalesce(${branchStockSq.totalAvailable}, 0)::int`;
-    const reorderThreshold = sql<number>`greatest(${products.reorderLevel}, 1)`;
-
     const productStockMetricsQuery = db
       .with(branchStockSq)
       .select({
@@ -1260,7 +1300,7 @@ export class StockRepositoryImpl implements StockRepository {
         reorderSuggestedCount: sql<number>`count(*) filter (where ${totalAvailableByProduct} <= ${reorderThreshold})::int`,
       })
       .from(products)
-      .leftJoin(branchStockSq, eq(branchStockSq.productId, products.id))
+      .innerJoin(branchStockSq, eq(branchStockSq.productId, products.id))
       .where(eq(products.organizationId, context.organization.id));
 
     const draftOrderRowsQuery = db
@@ -1269,7 +1309,7 @@ export class StockRepositoryImpl implements StockRepository {
         productName: products.name,
       })
       .from(products)
-      .leftJoin(branchStockSq, eq(branchStockSq.productId, products.id))
+      .innerJoin(branchStockSq, eq(branchStockSq.productId, products.id))
       .where(
         and(
           eq(products.organizationId, context.organization.id),
@@ -1369,6 +1409,7 @@ export class StockRepositoryImpl implements StockRepository {
       filters: {
         search,
         view,
+        inventoryStatus,
       },
       pagination: {
         page: normalizedPage,
@@ -1935,6 +1976,45 @@ export class StockRepositoryImpl implements StockRepository {
     };
   }
 
+  async listProductBatches(context: AuthContext, productId: string, preferredBranchId?: string) {
+    const branch = await resolveBranch(db, context, preferredBranchId);
+    const today = startOfTodayUtc();
+
+    const rows = await db
+      .select({
+        id: inventoryBatches.id,
+        batchNumber: inventoryBatches.batchNumber,
+        expiresAt: inventoryBatches.expiresAt,
+        quantityAvailable: inventoryBatches.quantityAvailable,
+        status: inventoryBatches.status,
+        receivedAt: inventoryBatches.receivedAt,
+      })
+      .from(inventoryBatches)
+      .where(
+        and(
+          eq(inventoryBatches.organizationId, context.organization.id),
+          eq(inventoryBatches.branchId, branch.id),
+          eq(inventoryBatches.productId, productId),
+        ),
+      )
+      .orderBy(asc(inventoryBatches.expiresAt), desc(inventoryBatches.receivedAt));
+
+    const batches = rows.map((row) => {
+      const expiresAtDate = normalizeDate(row.expiresAt);
+      const uiStatus = deriveBatchUiStatus(row.status, expiresAtDate, row.quantityAvailable, today);
+      return {
+        id: row.id,
+        batchNumber: row.batchNumber,
+        expiresAt: expiresAtDate.toISOString(),
+        status: uiStatus,
+        quantityAvailable: row.quantityAvailable,
+        receivedAt: new Date(row.receivedAt).toISOString(),
+      };
+    });
+
+    return { branchId: branch.id, batches };
+  }
+
   async disposeBatch(context: AuthContext, batchId: string, note?: string, branchId?: string) {
     const branch = await resolveBranch(db, context, branchId);
 
@@ -1993,6 +2073,85 @@ export class StockRepositoryImpl implements StockRepository {
       id: batch.id,
       batchNumber: batch.batchNumber,
       productName: batch.productName,
+    };
+  }
+
+  async updateBatch(context: AuthContext, batchId: string, input: UpdateStockBatchInput) {
+    const branch = await resolveBranch(db, context, input.branchId);
+
+    const patch: Partial<typeof inventoryBatches.$inferInsert> = {};
+
+    if (input.expiresAt !== undefined) {
+      patch.expiresAt = input.expiresAt;
+    }
+    if (input.manufacturedAt !== undefined) {
+      patch.manufacturedAt = input.manufacturedAt ? input.manufacturedAt : null;
+    }
+    if (input.batchNumber !== undefined) {
+      patch.batchNumber = input.batchNumber;
+    }
+    if (input.purchaseOrderNumber !== undefined) {
+      patch.purchaseOrderNumber = input.purchaseOrderNumber ?? null;
+    }
+    if (input.unitOrderPrice !== undefined) {
+      patch.unitOrderPriceCents = moneyToCents(input.unitOrderPrice);
+    }
+    if (input.unitSellingPrice !== undefined) {
+      patch.unitSalePriceCents = moneyToCents(input.unitSellingPrice);
+    }
+    if (input.notes !== undefined) {
+      patch.notes = input.notes ?? null;
+    }
+    if (input.status !== undefined) {
+      patch.status = input.status;
+    }
+
+    patch.updatedAt = new Date();
+
+    const [updated] = await db
+      .update(inventoryBatches)
+      .set(patch)
+      .where(
+        and(
+          eq(inventoryBatches.id, batchId),
+          eq(inventoryBatches.organizationId, context.organization.id),
+          eq(inventoryBatches.branchId, branch.id),
+        ),
+      )
+      .returning({
+        id: inventoryBatches.id,
+        batchNumber: inventoryBatches.batchNumber,
+        expiresAt: inventoryBatches.expiresAt,
+        productId: inventoryBatches.productId,
+        quantityAvailable: inventoryBatches.quantityAvailable,
+        status: inventoryBatches.status,
+      })
+      ;
+
+    if (!updated) {
+      throw new Error("Batch not found.");
+    }
+
+    if (updated.status === "disposed") {
+      throw new Error("Disposed batches can’t be edited.");
+    }
+
+    const product = await db.query.products.findFirst({
+      where: and(eq(products.organizationId, context.organization.id), eq(products.id, updated.productId)),
+      columns: {
+        name: true,
+      },
+    });
+
+    if (!product) {
+      throw new Error("Product not found.");
+    }
+
+    return {
+      id: updated.id,
+      batchNumber: updated.batchNumber,
+      productName: product.name,
+      expiresAt: normalizeDate(updated.expiresAt).toISOString(),
     };
   }
 

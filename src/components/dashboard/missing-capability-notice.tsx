@@ -34,7 +34,7 @@ export function MissingCapabilityNotice({
   return (
     <div
       role="status"
-      className={`rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-[var(--app-shadow-card)] ${className}`}
+      className={`aura-card-tint rounded-xl border p-6 shadow-[var(--app-shadow-card)] ${className}`}
     >
       <p className="text-sm leading-relaxed text-[var(--app-text-secondary)]">{prose}</p>
     </div>

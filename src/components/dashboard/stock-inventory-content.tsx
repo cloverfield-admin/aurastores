@@ -274,10 +274,19 @@ export function StockInventoryContent() {
     Record<string, { quantityAvailable: number; status: StockDashboardResponse["inventory"][number]["status"] }>
   >({});
   const [recentlyAdjustedBatchIds, setRecentlyAdjustedBatchIds] = useState<string[]>([]);
-  const branchId = searchParams.get("branch") ?? undefined;
+  const branchParam = searchParams.get("branch");
+  const branchId = branchParam ? branchParam : undefined;
+  const showBranchColumn = branchId == null;
   const [filter, setFilter] = useState<"all" | "expiring">(
     searchParams.get("view") === "expiring" ? "expiring" : "all",
   );
+  const [inventoryStatus, setInventoryStatus] = useState<"all" | "out_of_stock" | "reorder_attention">(() => {
+    const value = searchParams.get("inventoryStatus");
+    if (value === "out_of_stock" || value === "reorder_attention") {
+      return value;
+    }
+    return "all";
+  });
   const [search, setSearch] = useState(searchParams.get("q") ?? "");
   const [page, setPage] = useState(Math.max(1, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1));
   const [pageSize, setPageSize] = useState(
@@ -292,7 +301,15 @@ export function StockInventoryContent() {
     batchIds: [],
     label: "",
   });
-  const stockQuery = useStockDashboardQuery({ branchId, search, view: filter, page, pageSize, enabled: canStock });
+  const stockQuery = useStockDashboardQuery({
+    branchId,
+    search,
+    view: filter,
+    inventoryStatus,
+    page,
+    pageSize,
+    enabled: canStock,
+  });
   const adjustStockMutation = useAdjustStockMutation();
   const disposeBatchMutation = useDisposeStockBatchMutation();
   const restoreBatchMutation = useRestoreStockBatchMutation();
@@ -625,6 +642,7 @@ export function StockInventoryContent() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {metricCards.map((metric) => {
             const isNearExpiry = metric.label === "Items Near Expiry";
+            const isOutOfStock = metric.label === "Out of Stock";
             const cardContent = (
               <>
                 <div className="mb-4 flex items-start justify-between">
@@ -662,6 +680,40 @@ export function StockInventoryContent() {
                 >
                   {cardContent}
                 </Link>
+              );
+            }
+
+            if (isOutOfStock) {
+              const isActive = inventoryStatus === "reorder_attention";
+              return (
+                <button
+                  key={metric.label}
+                  type="button"
+                  onClick={() => {
+                    const next = inventoryStatus === "reorder_attention" ? "all" : "reorder_attention";
+                    setInventoryStatus(next);
+                    setPage(1);
+                    setSelectedBatchIds([]);
+
+                    const params = new URLSearchParams(window.location.search);
+                    if (next === "reorder_attention") {
+                      params.set("inventoryStatus", "reorder_attention");
+                    } else {
+                      params.delete("inventoryStatus");
+                    }
+                    params.set("page", "1");
+                    router.replace(params.toString() ? `${window.location.pathname}?${params}` : window.location.pathname);
+                  }}
+                  className={`block rounded-xl border bg-[var(--app-surface)] p-6 shadow-sm transition ${
+                    isActive
+                      ? "border-[#e11d48]/40 shadow-md"
+                      : "border-[var(--app-border)] hover:border-[#e11d48]/30 hover:shadow-md"
+                  }`}
+                  aria-pressed={isActive}
+                  title={isActive ? "Clear reorder-attention filter" : "Show products needing reorder attention"}
+                >
+                  {cardContent}
+                </button>
               );
             }
 
@@ -765,10 +817,12 @@ export function StockInventoryContent() {
             ) : rows.length === 0 && !stockQuery.isLoading ? (
               <div className="px-6 py-12 text-center">
                 <p className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[var(--app-text)]">
-                  {search || filter === "expiring" ? "No matching products" : "No products yet"}
+                  {search || filter === "expiring" || inventoryStatus === "out_of_stock"
+                    ? "No matching products"
+                    : "No products yet"}
                 </p>
                 <p className="mt-2 text-sm text-[var(--app-text-muted)]">
-                  {search || filter === "expiring"
+                  {search || filter === "expiring" || inventoryStatus === "out_of_stock"
                     ? "Try a different search term or switch back to the full inventory view."
                     : "Add your first stock product to start tracking metrics, expiry, and reorder risk."}
                 </p>
@@ -811,6 +865,11 @@ export function StockInventoryContent() {
                     <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--app-text-faint)]">
                       Product Name
                     </th>
+                    {showBranchColumn ? (
+                      <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--app-text-faint)]">
+                        Branch
+                      </th>
+                    ) : null}
                     <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--app-text-faint)]">
                       Category
                     </th>
@@ -880,6 +939,9 @@ export function StockInventoryContent() {
                             </p>
                           </Link>
                         </td>
+                        {showBranchColumn ? (
+                          <td className="px-6 py-4 text-sm text-[#475569]">{row.branchName}</td>
+                        ) : null}
                         <td className="px-6 py-4 text-sm text-[#475569]">{row.categoryName}</td>
                         <td className="px-6 py-4">
                           <Link
@@ -948,7 +1010,14 @@ export function StockInventoryContent() {
                           <div className="flex justify-end gap-2">
                             <button
                               type="button"
-                              onClick={() => router.push(ROUTES.dashboard.stockProductEdit(row.productId))}
+                              onClick={() => {
+                                const params = new URLSearchParams(window.location.search);
+                                const branchParam = params.get("branch");
+                                const href = branchParam
+                                  ? `${ROUTES.dashboard.stockProductEdit(row.productId)}?branch=${encodeURIComponent(branchParam)}`
+                                  : ROUTES.dashboard.stockProductEdit(row.productId);
+                                router.push(href);
+                              }}
                               className="rounded-md bg-[var(--app-input-bg)] px-3 py-1 text-[10px] font-semibold text-[var(--app-text)] hover:bg-[var(--app-input-focus-bg)]"
                             >
                               Edit

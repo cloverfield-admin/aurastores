@@ -12,6 +12,23 @@ export type LipilaCollectionStatusResponse = {
   message?: string;
 };
 
+export type LipilaDisbursementResponse = LipilaCollectionStatusResponse & {
+  createdAt?: string;
+};
+
+export type LipilaCardCollectionResponse = LipilaCollectionStatusResponse & {
+  reference?: string;
+  checkoutUrl?: string;
+  url?: string;
+  clientSecret?: string;
+  data?: {
+    referenceId?: string;
+    checkoutUrl?: string;
+    clientSecret?: string;
+    message?: string;
+  };
+};
+
 type LipilaClientConfig = {
   /** Example sandbox: https://api.lipila.dev ; production: https://blz.lipila.io */
   baseUrl: string;
@@ -36,10 +53,16 @@ export function getLipilaClientConfig(): LipilaClientConfig {
   return { baseUrl, apiKey };
 }
 
+export function getLipilaGlobalWalletClientConfig(): LipilaClientConfig {
+  const baseUrl = normalizeBaseUrl(process.env.LIPILA_BASE_URL?.trim() || "https://api.lipila.dev");
+  const apiKey = requiredEnv("LIPILA_GLOBAL_WALLET_API_KEY");
+  return { baseUrl, apiKey };
+}
+
 export class LipilaClient {
   constructor(private readonly cfg: LipilaClientConfig) {}
 
-  private async readResponseBody(res: Response): Promise<{ text: string; json: any | null }> {
+  private async readResponseBody(res: Response): Promise<{ text: string; json: unknown | null }> {
     const text = await res.text().catch(() => "");
     if (!text) return { text: "", json: null };
     try {
@@ -122,7 +145,7 @@ export class LipilaClient {
   startMobileMoneyCollection(body: unknown, opts?: { callbackUrl?: string }) {
     const path = process.env.LIPILA_MOMO_COLLECTIONS_PATH?.trim() || "/api/v1/collections/mobile-money";
     const callbackUrl = opts?.callbackUrl?.trim();
-    return this.postJson<any>(path, body, callbackUrl ? { callbackUrl } : undefined);
+    return this.postJson<LipilaCollectionStatusResponse>(path, body, callbackUrl ? { callbackUrl } : undefined);
   }
 
   /**
@@ -131,11 +154,25 @@ export class LipilaClient {
    */
   startCardCollection(body: unknown) {
     const path = process.env.LIPILA_CARD_COLLECTIONS_PATH?.trim() || "/api/v1/collections/card";
-    return this.postJson<any>(path, body);
+    return this.postJson<LipilaCardCollectionResponse>(path, body);
+  }
+
+  /**
+   * Initiate a mobile money disbursement from the configured Lipila wallet.
+   * https://docs.lipila.dev/docs/disbursements/momodisbursements.html
+   */
+  startMobileMoneyDisbursement(body: unknown, opts?: { callbackUrl?: string }) {
+    const path = process.env.LIPILA_MOMO_DISBURSEMENTS_PATH?.trim() || "/api/v1/disbursements/mobile-money";
+    const callbackUrl = opts?.callbackUrl?.trim();
+    return this.postJson<LipilaDisbursementResponse>(path, body, callbackUrl ? { callbackUrl } : undefined);
   }
 }
 
 export function createLipilaClient() {
   return new LipilaClient(getLipilaClientConfig());
+}
+
+export function createLipilaGlobalWalletClient() {
+  return new LipilaClient(getLipilaGlobalWalletClientConfig());
 }
 

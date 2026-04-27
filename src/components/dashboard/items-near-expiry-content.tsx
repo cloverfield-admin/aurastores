@@ -132,6 +132,7 @@ export function ItemsNearExpiryContent() {
     branchId,
     search: "",
     view: "all",
+    inventoryStatus: "all",
     page: 1,
     pageSize: 100,
     enabled: canStock,

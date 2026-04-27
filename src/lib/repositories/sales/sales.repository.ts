@@ -18,6 +18,12 @@ export type SalesDashboardData = {
     previousRevenueCents: number;
     totalCogsCents: number;
     previousCogsCents: number;
+    totalExpensesCents: number;
+    previousExpensesCents: number;
+    totalChargeExpensesCents: number;
+    previousChargeExpensesCents: number;
+    grossProfitBeforeExpensesCents: number;
+    previousGrossProfitBeforeExpensesCents: number;
     grossProfitCents: number;
     previousGrossProfitCents: number;
     totalSalesCount: number;

@@ -24,7 +24,9 @@ export function DashboardLayoutShell({
     return (
       <>
         <DashboardThemeSync initialTheme={workspaceAccess.initialTheme} />
-        {children}
+        <div className="aura-dashboard-root aura-landing min-h-dvh text-[var(--app-text)]">
+          <div className="app-shell-content">{children}</div>
+        </div>
       </>
     );
   }

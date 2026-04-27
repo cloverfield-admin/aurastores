@@ -37,6 +37,12 @@ export type SalesDashboardResponse = {
     previousRevenueCents: number;
     totalCogsCents: number;
     previousCogsCents: number;
+    totalExpensesCents: number;
+    previousExpensesCents: number;
+    totalChargeExpensesCents: number;
+    previousChargeExpensesCents: number;
+    grossProfitBeforeExpensesCents: number;
+    previousGrossProfitBeforeExpensesCents: number;
     grossProfitCents: number;
     previousGrossProfitCents: number;
     totalSalesCount: number;
@@ -100,7 +106,7 @@ export type CreateSalePayload = {
   customerName?: string;
   patientCode?: string;
   mobile?: string;
-  paymentMethod: "aura-pay" | "card" | "cash" | "insurance" | "bank-transfer";
+  paymentMethod: "aura-pay" | "card" | "mobile-money" | "cash" | "insurance" | "bank-transfer";
   paymentReference?: string;
   discountCode?: string;
   notes?: string;
@@ -115,6 +121,30 @@ export type CreateSalePayload = {
 };
 
 export type CreateSaleMutationInput = CreateSalePayload & { idempotencyKey?: string };
+
+export type LipilaFeeBreakdown = {
+  grossAmountCents: number;
+  feeCents: number;
+  netAmountCents: number;
+  feeBps: number;
+  feePayer: "merchant" | "customer" | "wallet";
+};
+
+export type StartSaleMobileMoneyResponse = {
+  saleId: string;
+  saleNumber: string;
+  paymentId: string;
+  referenceId: string;
+  status: "pending" | "successful" | "failed";
+  message: string | null;
+  fee: LipilaFeeBreakdown;
+};
+
+export type SaleMobileMoneyStatusResponse = {
+  referenceId: string;
+  status: "pending" | "successful" | "failed";
+  message: string | null;
+};
 
 export function useSalesDashboardQuery(branchId?: string, enabled = true, range?: SalesDateRangeInput) {
   return useQuery({
@@ -225,5 +255,38 @@ export function useCreateSaleMutation() {
         queryClient.invalidateQueries({ queryKey: appMeQueryKey }),
       ]);
     },
+  });
+}
+
+export function useStartSaleMobileMoneyMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: { sale: CreateSalePayload; mobileMoneyNumber: string; customerPaysLipilaFee: boolean; idempotencyKey?: string }) => {
+      const { idempotencyKey: explicitKey, ...payload } = input;
+      const idempotencyKey = explicitKey ?? crypto.randomUUID();
+      return fetchJson<StartSaleMobileMoneyResponse>(apiUrl("/sales/mobile-money/start"), {
+        method: "POST",
+        headers: {
+          "Idempotency-Key": idempotencyKey,
+        },
+        body: JSON.stringify(payload),
+      });
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: salesDashboardQueryKey }),
+        queryClient.invalidateQueries({ queryKey: salesCatalogQueryKey }),
+        queryClient.invalidateQueries({ queryKey: ["stock", "dashboard"] }),
+        queryClient.invalidateQueries({ queryKey: appMeQueryKey }),
+      ]);
+    },
+  });
+}
+
+export async function getSaleMobileMoneyStatus(referenceId: string) {
+  const params = new URLSearchParams({ referenceId });
+  return fetchJson<SaleMobileMoneyStatusResponse>(`${apiUrl("/sales/mobile-money/status")}?${params.toString()}`, {
+    method: "GET",
   });
 }

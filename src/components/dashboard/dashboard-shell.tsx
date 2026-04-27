@@ -32,6 +32,7 @@ const MODULE_NAV: { label: string; icon: string; href: string; capability: Membe
   { label: "Aura Stock", icon: "inventory_2", href: ROUTES.dashboard.stock, capability: "stock" },
   { label: "Aura Sales", icon: "trending_up", href: ROUTES.dashboard.sales, capability: "sales" },
   { label: "Aura Pay", icon: "payments", href: ROUTES.dashboard.pay, capability: "pay" },
+  { label: "Expenses", icon: "receipt_long", href: ROUTES.dashboard.expenses, capability: "pay" },
   { label: "Aura Insights", icon: "insights", href: ROUTES.dashboard.insights, capability: "insights" },
   {
     label: "Product Categories",
@@ -525,7 +526,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
   }
 
   return (
-    <div className="aura-landing min-h-dvh bg-[var(--app-canvas)] text-[var(--app-text)]">
+    <div className="aura-dashboard-root aura-landing min-h-dvh text-[var(--app-text)]">
       {mobileNavOpen ? (
         <button
           type="button"
@@ -538,7 +539,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
       {/* Sidebar: off-canvas below lg */}
       <aside
         id="dashboard-mobile-nav"
-        className={`fixed left-0 top-0 z-[100] flex h-dvh w-64 max-w-[min(100vw,20rem)] flex-col border-r border-[var(--app-surface-subtle)] bg-[var(--app-surface)] px-4 pb-4 pt-2 shadow-[4px_0_24px_rgba(15,23,42,0.08)] transition-transform duration-200 ease-out motion-reduce:transition-none dark:shadow-[4px_0_24px_rgba(0,0,0,0.45)] lg:z-40 lg:max-w-none lg:translate-x-0 lg:p-4 lg:shadow-none ${
+        className={`fixed left-0 top-0 z-[100] flex h-dvh w-64 max-w-[min(100vw,20rem)] flex-col border-r border-[var(--aura-tint-border)] bg-[var(--app-surface)]/95 px-4 pb-4 pt-2 shadow-[4px_0_24px_rgba(15,23,42,0.08)] backdrop-blur-md transition-transform duration-200 ease-out motion-reduce:transition-none dark:shadow-[4px_0_24px_rgba(0,0,0,0.45)] lg:z-40 lg:max-w-none lg:translate-x-0 lg:p-4 lg:shadow-none ${
           mobileNavOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
@@ -561,13 +562,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
             onClick={closeMobileNav}
             className="flex items-center gap-3 px-2 pb-4 pt-0 lg:pb-8 lg:pt-2"
           >
-            <div
-              className="flex size-10 items-center justify-center rounded-xl shadow-md"
-              style={{
-                background:
-                  "linear-gradient(135deg, rgb(15, 185, 177) 0%, rgb(99, 102, 241) 100%)",
-              }}
-            >
+            <div className="aura-gradient flex size-10 items-center justify-center rounded-xl shadow-md">
               <span className="material-symbols-outlined notranslate text-xl text-white">
                 local_pharmacy
               </span>
@@ -575,7 +570,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
             <br />
             <br />
             <div>
-              <p className="bg-gradient-to-r from-[#14b8a6] to-[#6366f1] bg-clip-text font-[family-name:var(--font-manrope)] text-xl font-bold tracking-tight text-transparent">
+              <p className="aura-gradient bg-clip-text font-[family-name:var(--font-manrope)] text-xl font-bold tracking-tight text-transparent">
                 AuraPharma
               </p>
               <p className="text-[10px] font-medium uppercase tracking-[-0.05em] text-[var(--app-text-muted)]">
@@ -634,8 +629,8 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                   onClick={closeMobileNav}
                   className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
                     active
-                      ? "bg-[var(--app-surface)] text-[var(--app-link-teal)] shadow-sm"
-                      : "text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]/80"
+                      ? "aura-panel-tint text-[var(--aura-tint-text)] shadow-sm"
+                      : "text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]/80 hover:text-[var(--app-text)]"
                   }`}
                 >
                   <span
@@ -682,7 +677,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
               Log out
             </Link>
           </nav>
-          <div className="mt-3 rounded-xl bg-[var(--app-surface-subtle)] p-3">
+          <div className="aura-panel-tint mt-3 rounded-xl border p-3">
             <div className="flex items-center gap-3">
               <AuraAvatar
                 name={workspaceAccess.userDisplayName}
@@ -704,7 +699,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
       {/* Top bar */}
       <header
         ref={headerRef}
-        className="fixed left-0 right-0 top-0 z-[110] border-b border-[var(--app-surface-subtle)] bg-[var(--app-surface)]/85 shadow-[var(--app-shadow-card)] backdrop-blur-md lg:left-64 lg:z-30"
+        className="fixed left-0 right-0 top-0 z-[110] border-b border-[var(--aura-tint-border)] bg-[var(--app-surface)]/88 shadow-[var(--app-shadow-card)] backdrop-blur-md lg:left-64 lg:z-30"
       >
         <div className="lg:hidden">
           <div className="mx-auto max-w-[1280px] px-4 py-3">
@@ -844,7 +839,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                       }}
                       className={`inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 font-[family-name:var(--font-manrope)] text-sm ${
                         topActionVariant === "primary"
-                          ? "bg-[var(--app-cta-bg)] font-bold text-[var(--app-cta-text)]"
+                          ? "aura-primary-button font-bold"
                           : "bg-[var(--app-input-bg)] font-medium text-[var(--app-text)]"
                       }`}
                     >
@@ -961,7 +956,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                   }}
                   className={`inline-flex items-center gap-2 rounded-lg px-4 py-1.5 font-[family-name:var(--font-manrope)] text-sm ${
                     topActionVariant === "primary"
-                      ? "bg-[var(--app-cta-bg)] font-bold text-[var(--app-cta-text)]"
+                      ? "aura-primary-button font-bold"
                       : "bg-[var(--app-input-bg)] font-medium text-[var(--app-text)]"
                   }`}
                 >
@@ -1001,7 +996,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                 : `calc(max(5.5rem, env(safe-area-inset-top, 0px)) + ${MAIN_BELOW_HEADER_GAP_PX}px)`,
           }}
         >
-          {children}
+          <div className="app-shell-content">{children}</div>
         </div>
       </div>
 
@@ -1014,12 +1009,12 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
           onClick={() => setLockedFeature(null)}
         >
           <div
-            className="w-full max-w-lg rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-2xl"
+            className="aura-card-tint w-full max-w-lg rounded-2xl border p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(99,102,241,0.12)]">
-                <span className="material-symbols-outlined notranslate text-xl text-[#6063ee]">lock</span>
+              <div className="aura-icon flex size-10 shrink-0 items-center justify-center rounded-xl">
+                <span className="material-symbols-outlined notranslate text-xl">lock</span>
               </div>
               <div className="min-w-0">
                 <p className="font-[family-name:var(--font-manrope)] text-lg font-extrabold text-[var(--app-text)]">
@@ -1079,12 +1074,12 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
           onClick={closeSupport}
         >
           <div
-            className="w-full max-w-lg rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-2xl"
+            className="aura-card-tint w-full max-w-lg rounded-2xl border p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(15,185,177,0.12)]">
-                <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">
+              <div className="aura-icon flex size-10 shrink-0 items-center justify-center rounded-xl">
+                <span className="material-symbols-outlined notranslate text-xl">
                   support_agent
                 </span>
               </div>

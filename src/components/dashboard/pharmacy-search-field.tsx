@@ -158,7 +158,7 @@ export function PharmacySearchField({ className }: PharmacySearchFieldProps) {
           aria-expanded={showPanel}
           aria-controls="pharmacy-search-results"
           aria-autocomplete="list"
-          className="w-full rounded-full border-0 bg-[var(--app-input-bg)] py-2 pl-10 pr-4 text-sm text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] outline-none ring-1 ring-transparent focus:ring-[var(--app-link-teal)]/25"
+          className="w-full rounded-full border-0 bg-[var(--app-input-bg)] py-2 pl-10 pr-4 text-sm text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] outline-none ring-1 ring-transparent transition focus:bg-[var(--app-surface)] focus:ring-[var(--app-link-teal)]/25"
         />
       </label>
 
@@ -166,7 +166,7 @@ export function PharmacySearchField({ className }: PharmacySearchFieldProps) {
         <div
           id="pharmacy-search-results"
           role="listbox"
-          className="absolute left-0 right-0 top-full z-50 mt-2 max-h-80 overflow-auto rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] py-2 shadow-lg"
+          className="aura-card-tint absolute left-0 right-0 top-full z-50 mt-2 max-h-80 overflow-auto rounded-xl border py-2 shadow-lg"
         >
           {searchQuery.isFetching && hits.length === 0 ? (
             <p className="px-4 py-3 text-sm text-[var(--app-text-muted)]">Searching…</p>
