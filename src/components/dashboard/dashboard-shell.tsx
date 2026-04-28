@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useCallback,
   useEffect,
@@ -24,6 +25,7 @@ import type { MembershipCapability } from "@/lib/rbac/capabilities";
 import { hasCapability, membershipCapabilityLabel } from "@/lib/rbac/capabilities";
 import { dashboardModuleCapabilityForPath } from "@/lib/rbac/dashboard-path-capability";
 import { isOrganizationOwnerOrAdmin } from "@/lib/membership-display";
+import { createQueryIdbPersister } from "@/lib/query-idb-persister";
 
 /** Breathing room between fixed header and main scroll area (px). */
 const MAIN_BELOW_HEADER_GAP_PX = 8;
@@ -52,6 +54,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const { withLoading, notify } = useAuraFeedback();
   const [localSearch, setLocalSearch] = useState("");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -667,15 +670,31 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
               <span className="material-symbols-outlined notranslate text-xl">support_agent</span>
               Support
             </Link>
-            <Link
-              href={apiUrl("/auth/sign-out")}
-              prefetch={false}
-              onClick={closeMobileNav}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface-subtle)]/80 hover:text-[#dc2626]"
+            <button
+              type="button"
+              onClick={async () => {
+                closeMobileNav();
+                closeMobileTools();
+                closeUserMenu();
+                await withLoading("auth:sign-out", "Signing you out...", async () => {
+                  // 1) Sign out on the server (clears auth cookies/session).
+                  await fetch(apiUrl("/auth/sign-out"), { method: "POST" }).catch(() => null);
+
+                  // 2) Cancel + clear all in-memory React Query state.
+                  await queryClient.cancelQueries();
+                  queryClient.clear();
+
+                  // 3) Remove persisted query cache (IDB) so the next user session starts clean.
+                  await Promise.resolve(createQueryIdbPersister().removeClient()).catch(() => null);
+                });
+                router.push(ROUTES.auth.signIn);
+                router.refresh();
+              }}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface-subtle)]/80 hover:text-[#dc2626]"
             >
               <span className="material-symbols-outlined notranslate text-xl">logout</span>
               Log out
-            </Link>
+            </button>
           </nav>
           <div className="aura-panel-tint mt-3 rounded-xl border p-3">
             <div className="flex items-center gap-3">
