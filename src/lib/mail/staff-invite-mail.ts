@@ -31,15 +31,15 @@ export async function sendStaffInviteCredentialsEmail(params: StaffInviteMailPar
   const password = escapeHtml(params.temporaryPassword);
   const signInHref = escapeHtml(signInUrl);
   const preheader = escapeHtml(
-    `${params.organizationName} invited you to AuraPharma — open this email for your sign-in details.`,
+    `${params.organizationName} invited you to AuraStores — open this email for your sign-in details.`,
   );
 
-  const subject = `You have been invited to join ${params.organizationName} on AuraPharma`;
+  const subject = `You have been invited to join ${params.organizationName} on AuraStores`;
 
   const text = [
     `Hi ${params.inviteeFullName},`,
     "",
-    `${params.organizationName} has invited you to AuraPharma as a team member.`,
+    `${params.organizationName} has invited you to AuraStores as a team member.`,
     "",
     `Sign in at: ${signInUrl}`,
     `Email: ${params.to}`,
@@ -47,7 +47,7 @@ export async function sendStaffInviteCredentialsEmail(params: StaffInviteMailPar
     "",
     "For security, you will be asked to choose a new password after you sign in.",
     "",
-    "— AuraPharma",
+    "— AuraStores",
   ].join("\n");
 
   const html = `<!DOCTYPE html>
@@ -56,7 +56,7 @@ export async function sendStaffInviteCredentialsEmail(params: StaffInviteMailPar
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="x-apple-disable-message-reformatting" />
-  <title>You’ve been invited to AuraPharma</title>
+  <title>You’ve been invited to AuraStores</title>
   <style type="text/css">
     @media only screen and (max-width: 620px) {
       .aura-container { width: 100% !important; }
@@ -111,14 +111,14 @@ export async function sendStaffInviteCredentialsEmail(params: StaffInviteMailPar
                       Hi ${name},
                     </p>
                     <p style="margin:0 0 20px 0;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#4b5563;text-align:center;">
-                      <strong style="color:#111827;">${org}</strong> has invited you to join their team on AuraPharma. Sign in with the button below using your temporary password, then choose a new password before using the dashboard.
+                      <strong style="color:#111827;">${org}</strong> has invited you to join their team on AuraStores. Sign in with the button below using your temporary password, then choose a new password before using the dashboard.
                     </p>
 
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:8px auto 24px auto;">
                       <tr>
                         <td align="center" bgcolor="#0d9488" style="border-radius:10px;background:linear-gradient(135deg,#0fb9b1,#0d9488);background-color:#0d9488;">
                           <a href="${signInHref}" style="display:inline-block;padding:14px 28px;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;">
-                            Sign in to AuraPharma
+                            Sign in to AuraStores
                           </a>
                         </td>
                       </tr>
@@ -152,7 +152,7 @@ export async function sendStaffInviteCredentialsEmail(params: StaffInviteMailPar
 
           <tr>
             <td style="padding:20px 8px 0 8px;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:11px;line-height:1.5;color:#9ca3af;text-align:center;">
-              &copy; AuraPharma. Pharmacy management with clarity.
+              &copy; AuraStores. Pharmacy management with clarity.
             </td>
           </tr>
         </table>

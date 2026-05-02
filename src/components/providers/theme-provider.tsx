@@ -2,6 +2,7 @@
 
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import type { ReactNode } from "react";
+import { STORAGE_KEYS } from "@/lib/brand";
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   return (
@@ -9,7 +10,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       attribute="class"
       defaultTheme="system"
       enableSystem
-      storageKey="aurapharma-theme"
+      storageKey={STORAGE_KEYS.theme}
       disableTransitionOnChange
     >
       {children}

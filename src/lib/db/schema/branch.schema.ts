@@ -45,8 +45,8 @@ export const branches = pgTable(
     latitude: doublePrecision("latitude"),
     longitude: doublePrecision("longitude"),
     timezone: varchar("timezone", { length: 64 }).notNull().default("UTC"),
-    licensedPharmacistCount: integer("licensed_pharmacist_count").notNull().default(1),
-    leadPharmacistUserId: uuid("lead_pharmacist_user_id").references(() => users.id, {
+    professionalStaffCount: integer("professional_staff_count").notNull().default(1),
+    leadStaffUserId: uuid("lead_staff_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
     openedAt: date("opened_at"),

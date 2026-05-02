@@ -156,7 +156,7 @@ export function BranchEditContent({ branchId }: { branchId: string }) {
   const [name, setName] = useState("");
   const [type, setType] = useState<UpdateOrganizationBranchInput["type"]>("retail");
   const [status, setStatus] = useState<UpdateOrganizationBranchInput["status"]>("draft");
-  const [licensedPharmacistCount, setLicensedPharmacistCount] = useState("1");
+  const [professionalStaffCount, setProfessionalStaffCount] = useState("1");
   const [addressLine1, setAddressLine1] = useState("");
   const [mapLat, setMapLat] = useState<number | null>(null);
   const [mapLng, setMapLng] = useState<number | null>(null);
@@ -168,7 +168,7 @@ export function BranchEditContent({ branchId }: { branchId: string }) {
     setName(branch.name);
     setType(branch.type);
     setStatus(branch.status);
-    setLicensedPharmacistCount(String(branch.licensedPharmacistCount));
+    setProfessionalStaffCount(String(branch.professionalStaffCount));
     setAddressLine1(branch.addressLine1);
     setMapLat(branch.latitude);
     setMapLng(branch.longitude);
@@ -195,13 +195,13 @@ export function BranchEditContent({ branchId }: { branchId: string }) {
     setError(null);
 
     try {
-      const count = Number.parseInt(licensedPharmacistCount, 10);
+      const count = Number.parseInt(professionalStaffCount, 10);
       await withLoading("dashboard-edit-branch", "Saving branch changes...", () =>
         updateMutation.mutateAsync({
           name,
           type,
           status,
-          licensedPharmacistCount: Number.isFinite(count) ? count : 1,
+          professionalStaffCount: Number.isFinite(count) ? count : 1,
           addressLine1,
           latitude: mapLat,
           longitude: mapLng,
@@ -319,14 +319,14 @@ export function BranchEditContent({ branchId }: { branchId: string }) {
                     <span className="material-symbols-outlined notranslate text-base text-[var(--app-text-muted)]">
                       groups
                     </span>
-                    Number of pharmacists
+                    On-site professional staff
                   </div>
                   <input
                     className={`${inputMuted} w-32 text-center`}
                     type="number"
                     min={1}
-                    value={licensedPharmacistCount}
-                    onChange={(e) => setLicensedPharmacistCount(e.target.value)}
+                    value={professionalStaffCount}
+                    onChange={(e) => setProfessionalStaffCount(e.target.value)}
                     required
                   />
                 </div>

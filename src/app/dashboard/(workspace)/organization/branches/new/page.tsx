@@ -6,7 +6,7 @@ import { ROUTES } from "@/lib/routes";
 
 export const metadata: Metadata = {
   title: "Organization · New Branch",
-  description: "Create a new pharmacy branch for your organization.",
+  description: "Create a new branch location for your organization.",
 };
 
 export default async function NewOrganizationBranchPage() {

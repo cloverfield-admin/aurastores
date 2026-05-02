@@ -72,7 +72,7 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not invite staff member.";
     const status =
-      message.includes("No AuraPharma account") ||
+      message.includes("No AuraStores account") ||
       message.includes("already") ||
       message.includes("member")
         ? 400

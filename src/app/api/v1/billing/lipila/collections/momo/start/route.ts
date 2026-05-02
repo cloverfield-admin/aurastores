@@ -7,6 +7,7 @@ import { createLipilaClient } from "@/lib/billing/lipila-client";
 import { startLipilaMomoCollectionSchema } from "@/lib/validation/billing";
 import { services } from "@/lib/di";
 import { getSiteUrl } from "@/lib/site-url";
+import { PAYMENT_REFERENCE_PREFIX } from "@/lib/brand";
 
 function maskValue(value: string, head = 6, tail = 4): string {
   if (!value) return "";
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
   const payload = {
     referenceId,
     amount: invoice.amountCents / 100,
-    narration: `AuraPharma subscription invoice ${invoice.identifier}`,
+    narration: `${PAYMENT_REFERENCE_PREFIX} subscription invoice ${invoice.identifier}`,
     accountNumber: parsed.data.msisdn,
     currency: invoice.currency,
     email: gate.context.user.email,

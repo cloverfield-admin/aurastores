@@ -14,6 +14,8 @@ import {
   users,
 } from "@/lib/db/schema";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
+import { resolveDashboardUtcRangeWindow } from "@/lib/dates/dashboard-range-window";
+import type { SalesDateRange } from "@/lib/repositories/sales/sales.repository";
 import { filterBranchesForContext } from "@/lib/rbac/branch-access";
 import type {
   NetworkBranchSummary,
@@ -38,10 +40,10 @@ async function listOrganizationBranches(organizationId: string) {
       name: branches.name,
       isPrimary: branches.isPrimary,
       status: branches.status,
-      leadPharmacistName: users.fullName,
+      leadStaffName: users.fullName,
     })
     .from(branches)
-    .leftJoin(users, eq(users.id, branches.leadPharmacistUserId))
+    .leftJoin(users, eq(users.id, branches.leadStaffUserId))
     .where(eq(branches.organizationId, organizationId))
     .orderBy(desc(branches.isPrimary), asc(branches.name));
 }
@@ -64,15 +66,12 @@ function numberByBranchId<T extends { branchId: string }>(
 }
 
 export class NetworkRepositoryImpl implements NetworkRepository {
-  async getDashboard(context: AuthContext): Promise<NetworkDashboardData> {
+  async getDashboard(context: AuthContext, range?: SalesDateRange): Promise<NetworkDashboardData> {
     const orgId = context.organization.id;
     const allBranchRows = await listOrganizationBranches(orgId);
     const branchRows = filterBranchesForContext(context, allBranchRows);
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 86_400_000);
-    const sixtyDaysAgo = new Date(now.getTime() - 60 * 86_400_000);
-    const thirtyDaysAgoIso = thirtyDaysAgo.toISOString();
-    const sixtyDaysAgoIso = sixtyDaysAgo.toISOString();
+    const w = resolveDashboardUtcRangeWindow(range);
+    const { startIso, endExclusiveIso, prevStartIso, prevEndExclusiveIso } = w;
     const todaySql = sql.raw(`'${toDateStringUtc(startOfTodayUtc())}'::date`);
     const branchProductStockSq = db.$with("branch_product_stock").as(
       db
@@ -113,23 +112,23 @@ export class NetworkRepositoryImpl implements NetworkRepository {
       db
         .select({
           totalRevenueCents30d:
-            sql<number>`coalesce(sum(${sales.totalCents}) filter (where ${sales.createdAt} >= ${thirtyDaysAgoIso}::timestamptz), 0)::int`,
+            sql<number>`coalesce(sum(${sales.totalCents}) filter (where ${sales.createdAt} >= ${startIso}::timestamptz and ${sales.createdAt} < ${endExclusiveIso}::timestamptz), 0)::int`,
           previousRevenueCents30d:
-            sql<number>`coalesce(sum(${sales.totalCents}) filter (where ${sales.createdAt} >= ${sixtyDaysAgoIso}::timestamptz and ${sales.createdAt} < ${thirtyDaysAgoIso}::timestamptz), 0)::int`,
+            sql<number>`coalesce(sum(${sales.totalCents}) filter (where ${sales.createdAt} >= ${prevStartIso}::timestamptz and ${sales.createdAt} < ${prevEndExclusiveIso}::timestamptz), 0)::int`,
         })
         .from(sales)
         .where(
           and(
             eq(sales.organizationId, orgId),
             eq(sales.status, "completed"),
-            sql`${sales.createdAt} >= ${sixtyDaysAgoIso}::timestamptz`,
+            sql`${sales.createdAt} >= ${prevStartIso}::timestamptz`,
             ...(branchScopeWhere(context, sales.branchId) ? [branchScopeWhere(context, sales.branchId)!] : []),
           ),
         ),
       db
         .select({
           totalCogsCents30d:
-            sql<number>`coalesce(sum(${saleItems.quantity} * ${inventoryBatches.unitOrderPriceCents}), 0)::int`,
+            sql<number>`coalesce(sum(${saleItems.quantity} * ${inventoryBatches.unitOrderPriceCents}) filter (where ${sales.createdAt} >= ${startIso}::timestamptz and ${sales.createdAt} < ${endExclusiveIso}::timestamptz), 0)::int`,
         })
         .from(saleItems)
         .innerJoin(sales, eq(saleItems.saleId, sales.id))
@@ -138,32 +137,34 @@ export class NetworkRepositoryImpl implements NetworkRepository {
           and(
             eq(sales.organizationId, orgId),
             eq(sales.status, "completed"),
-            sql`${sales.createdAt} >= ${thirtyDaysAgoIso}::timestamptz`,
+            sql`${sales.createdAt} >= ${prevStartIso}::timestamptz`,
             ...(branchScopeWhere(context, sales.branchId) ? [branchScopeWhere(context, sales.branchId)!] : []),
           ),
         ),
       db
         .select({
-          totalExpensesCents30d: sql<number>`coalesce(sum(${expenses.amountCents}), 0)::int`,
+          totalExpensesCents30d:
+            sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseDate} >= ${startIso}::timestamptz and ${expenses.expenseDate} < ${endExclusiveIso}::timestamptz), 0)::int`,
         })
         .from(expenses)
         .where(
           and(
             eq(expenses.organizationId, orgId),
-            sql`${expenses.expenseDate} >= ${thirtyDaysAgoIso}::timestamptz`,
+            sql`${expenses.expenseDate} >= ${prevStartIso}::timestamptz`,
             ...(branchScopeWhere(context, expenses.branchId) ? [branchScopeWhere(context, expenses.branchId)!] : []),
           ),
         ),
       db
         .select({
-          totalChargeExpensesCents30d: sql<number>`coalesce(sum(${expenses.amountCents}), 0)::int`,
+          totalChargeExpensesCents30d:
+            sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseType} = 'charge' and ${expenses.expenseDate} >= ${startIso}::timestamptz and ${expenses.expenseDate} < ${endExclusiveIso}::timestamptz), 0)::int`,
         })
         .from(expenses)
         .where(
           and(
             eq(expenses.organizationId, orgId),
             eq(expenses.expenseType, "charge"),
-            sql`${expenses.expenseDate} >= ${thirtyDaysAgoIso}::timestamptz`,
+            sql`${expenses.expenseDate} >= ${prevStartIso}::timestamptz`,
             ...(branchScopeWhere(context, expenses.branchId) ? [branchScopeWhere(context, expenses.branchId)!] : []),
           ),
         ),
@@ -196,14 +197,15 @@ export class NetworkRepositoryImpl implements NetworkRepository {
       db
         .select({
           branchId: sales.branchId,
-          revenueCents30d: sql<number>`coalesce(sum(${sales.totalCents}), 0)::int`,
+          revenueCents30d:
+            sql<number>`coalesce(sum(${sales.totalCents}) filter (where ${sales.createdAt} >= ${startIso}::timestamptz and ${sales.createdAt} < ${endExclusiveIso}::timestamptz), 0)::int`,
         })
         .from(sales)
         .where(
           and(
             eq(sales.organizationId, orgId),
             eq(sales.status, "completed"),
-            sql`${sales.createdAt} >= ${thirtyDaysAgoIso}::timestamptz`,
+            sql`${sales.createdAt} >= ${prevStartIso}::timestamptz`,
             ...(branchScopeWhere(context, sales.branchId) ? [branchScopeWhere(context, sales.branchId)!] : []),
           ),
         )
@@ -212,7 +214,7 @@ export class NetworkRepositoryImpl implements NetworkRepository {
         .select({
           branchId: sales.branchId,
           cogsCents30d:
-            sql<number>`coalesce(sum(${saleItems.quantity} * ${inventoryBatches.unitOrderPriceCents}), 0)::int`,
+            sql<number>`coalesce(sum(${saleItems.quantity} * ${inventoryBatches.unitOrderPriceCents}) filter (where ${sales.createdAt} >= ${startIso}::timestamptz and ${sales.createdAt} < ${endExclusiveIso}::timestamptz), 0)::int`,
         })
         .from(saleItems)
         .innerJoin(sales, eq(saleItems.saleId, sales.id))
@@ -221,7 +223,7 @@ export class NetworkRepositoryImpl implements NetworkRepository {
           and(
             eq(sales.organizationId, orgId),
             eq(sales.status, "completed"),
-            sql`${sales.createdAt} >= ${thirtyDaysAgoIso}::timestamptz`,
+            sql`${sales.createdAt} >= ${prevStartIso}::timestamptz`,
             ...(branchScopeWhere(context, sales.branchId) ? [branchScopeWhere(context, sales.branchId)!] : []),
           ),
         )
@@ -229,13 +231,14 @@ export class NetworkRepositoryImpl implements NetworkRepository {
       db
         .select({
           branchId: expenses.branchId,
-          expensesCents30d: sql<number>`coalesce(sum(${expenses.amountCents}), 0)::int`,
+          expensesCents30d:
+            sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseDate} >= ${startIso}::timestamptz and ${expenses.expenseDate} < ${endExclusiveIso}::timestamptz), 0)::int`,
         })
         .from(expenses)
         .where(
           and(
             eq(expenses.organizationId, orgId),
-            sql`${expenses.expenseDate} >= ${thirtyDaysAgoIso}::timestamptz`,
+            sql`${expenses.expenseDate} >= ${prevStartIso}::timestamptz`,
             ...(branchScopeWhere(context, expenses.branchId) ? [branchScopeWhere(context, expenses.branchId)!] : []),
           ),
         )
@@ -243,14 +246,15 @@ export class NetworkRepositoryImpl implements NetworkRepository {
       db
         .select({
           branchId: expenses.branchId,
-          chargeExpensesCents30d: sql<number>`coalesce(sum(${expenses.amountCents}), 0)::int`,
+          chargeExpensesCents30d:
+            sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseType} = 'charge' and ${expenses.expenseDate} >= ${startIso}::timestamptz and ${expenses.expenseDate} < ${endExclusiveIso}::timestamptz), 0)::int`,
         })
         .from(expenses)
         .where(
           and(
             eq(expenses.organizationId, orgId),
             eq(expenses.expenseType, "charge"),
-            sql`${expenses.expenseDate} >= ${thirtyDaysAgoIso}::timestamptz`,
+            sql`${expenses.expenseDate} >= ${prevStartIso}::timestamptz`,
             ...(branchScopeWhere(context, expenses.branchId) ? [branchScopeWhere(context, expenses.branchId)!] : []),
           ),
         )
@@ -258,14 +262,15 @@ export class NetworkRepositoryImpl implements NetworkRepository {
       db
         .select({
           branchId: inventoryTransactions.branchId,
-          unitsSold30d: sql<number>`coalesce(sum(abs(${inventoryTransactions.quantityDelta})), 0)::int`,
+          unitsSold30d:
+            sql<number>`coalesce(sum(abs(${inventoryTransactions.quantityDelta})) filter (where ${inventoryTransactions.occurredAt} >= ${startIso}::timestamptz and ${inventoryTransactions.occurredAt} < ${endExclusiveIso}::timestamptz), 0)::int`,
         })
         .from(inventoryTransactions)
         .where(
           and(
             eq(inventoryTransactions.organizationId, orgId),
             eq(inventoryTransactions.transactionType, "sale"),
-            sql`${inventoryTransactions.occurredAt} >= ${thirtyDaysAgoIso}::timestamptz`,
+            sql`${inventoryTransactions.occurredAt} >= ${prevStartIso}::timestamptz`,
             ...(branchScopeWhere(context, inventoryTransactions.branchId)
               ? [branchScopeWhere(context, inventoryTransactions.branchId)!]
               : []),
@@ -369,7 +374,7 @@ export class NetworkRepositoryImpl implements NetworkRepository {
         lowStockSkuCount: lowStockByBranchId.get(branch.id) ?? 0,
         healthyBatchRatio: healthByBranchId.get(branch.id)?.healthyBatchRatio ?? 0,
         unitsSold30d: unitsByBranchId.get(branch.id) ?? 0,
-        leadPharmacistName: branch.leadPharmacistName ?? null,
+        leadStaffName: branch.leadStaffName ?? null,
       };
     });
 
@@ -413,7 +418,7 @@ export class NetworkRepositoryImpl implements NetworkRepository {
         name: b.name,
         isPrimary: b.isPrimary,
         status: b.status,
-        leadPharmacistName: b.leadPharmacistName ?? null,
+        leadStaffName: b.leadStaffName ?? null,
       })),
       salesTax: {
         enabled: Boolean(orgRow.salesTaxEnabled),

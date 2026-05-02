@@ -280,8 +280,8 @@ export function ItemsNearExpiryContent() {
               Expiring Products
             </h1>
             <p className="max-w-3xl text-[15px] leading-6 text-[#5e6873]">
-              Monitor and manage inventory nearing clinical expiration. Proactive disposal
-              prevents medical protocol violations and financial waste.
+              Monitor and manage inventory nearing expiry. Proactive disposal reduces write-offs
+              and keeps sell-by dates under control.
               {stockQuery.data ? ` Last synced ${formatRelativeSync(stockQuery.data.lastSyncedAt)}.` : null}
             </p>
           </div>
@@ -354,7 +354,7 @@ export function ItemsNearExpiryContent() {
                         setSearch(event.target.value);
                         setPage(1);
                       }}
-                      placeholder="Search medication or product ref..."
+                      placeholder="Search product name or ref..."
                       className="w-full rounded-[18px] border border-white bg-[var(--app-surface)] py-3 pl-12 pr-4 text-sm text-[#171d23] shadow-sm outline-none placeholder:text-[#a0a9b2] focus:border-[#cfe9e7]"
                     />
                   </label>

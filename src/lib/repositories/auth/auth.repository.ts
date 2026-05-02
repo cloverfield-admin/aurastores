@@ -38,7 +38,9 @@ export type RegisteredUserParams = {
   authUserId: string;
   email: string;
   fullName: string;
-  pharmacyName: string;
+  businessName: string;
+  /** Defaults to pharmacy for existing signup flows. */
+  storeVertical?: "pharmacy" | "general_retail";
   isEmailVerified: boolean;
   /** Paid plan pre-selected from marketing (`?plan=`); stored on the organization until intro trial is granted. */
   selectedPlanCode?: "basic" | "pro" | "enterprise";

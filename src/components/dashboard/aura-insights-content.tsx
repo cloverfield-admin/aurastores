@@ -65,7 +65,7 @@ export function AuraInsightsContent() {
               Aura Insights
             </h1>
             <p className="max-w-2xl text-base leading-relaxed text-[var(--app-text-secondary)]">
-              Pharmacy trends, inventory risk signals, and upcoming AI summaries.
+              Store-wide trends, inventory risk signals, and upcoming AI summaries.
             </p>
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--app-text-faint)]">{subtitle}</p>
           </div>
@@ -112,10 +112,10 @@ export function AuraInsightsContent() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
               <h2 className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[var(--app-text)]">
-                Pharmacy trends
+                Store trends
               </h2>
               <p className="text-[11px] font-medium text-[var(--app-text-faint)]">
-                Quick signals across sales, inventory, dispensing, and operations.
+                Quick signals across sales, inventory, sell-through, and operations.
               </p>
             </div>
             <div className="inline-flex flex-wrap gap-2">
@@ -126,7 +126,7 @@ export function AuraInsightsContent() {
                 Inventory health
               </TabButton>
               <TabButton active={tab === "dispensing"} onClick={() => setTab("dispensing")}>
-                Dispensing
+                Sell-through
               </TabButton>
               <TabButton active={tab === "operations"} onClick={() => setTab("operations")}>
                 Operations
@@ -177,12 +177,12 @@ export function AuraInsightsContent() {
             ) : tab === "dispensing" ? (
               <div className="grid gap-4 lg:grid-cols-2">
                 <ListCard
-                  title="Top medications (30d)"
+                  title="Top products (30d)"
                   rows={data.dispensing.topMedications.map((m) => ({
                     label: m.name,
                     value: `${number.format(m.unitsSold)} units`,
                   }))}
-                  emptyLabel="No dispensing data yet."
+                  emptyLabel="No product movement data yet."
                 />
                 <ListCard
                   title="Top categories (30d)"
@@ -247,7 +247,7 @@ export function AuraInsightsContent() {
                 Forecast & reorder suggestions
               </h2>
               <p className="text-[11px] font-medium text-[var(--app-text-faint)]">
-                Based on the last {data?.forecast.assumptions.windowDays ?? 30} days of dispensing velocity and current on-hand units.
+                Based on the last {data?.forecast.assumptions.windowDays ?? 30} days of sales velocity and current on-hand units.
               </p>
             </div>
             {data ? (
@@ -424,7 +424,7 @@ export function AuraInsightsContent() {
               AI summaries
             </h2>
             <p className="text-[11px] font-medium text-[var(--app-text-faint)]">
-              Draft narratives based on your pharmacy trends (dummy data for now).
+              Draft narratives based on your store trends (dummy data for now).
             </p>
           </div>
 
@@ -453,7 +453,7 @@ export function AuraInsightsContent() {
                 AI summaries will be generated from live aggregates
               </p>
               <p className="mt-2 text-sm leading-relaxed text-[rgba(255,255,255,0.78)]">
-                We’ll automatically summarize pharmacy trends, outliers, and inventory risks once the model pipeline is connected.
+                We’ll automatically summarize sales trends, outliers, and inventory risks once the model pipeline is connected.
               </p>
             </div>
           </div>

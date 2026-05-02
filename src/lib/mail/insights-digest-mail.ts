@@ -1,3 +1,4 @@
+import { PRODUCT_TAGLINE } from "@/lib/brand";
 import { sendMailViaMailgunSmtp } from "@/lib/mail/mailgun-smtp";
 import type { InsightsOverviewData } from "@/lib/repositories/insights/insights.repository";
 
@@ -54,7 +55,7 @@ export async function sendInsightsSampleDigestEmail(params: {
     "",
     "Note: This is a sample email to validate delivery; scheduling is coming soon.",
     "",
-    "— AuraPharma",
+    "— AuraStores",
   ].join("\n");
 
   const topReordersHtml = topReorders.length
@@ -87,7 +88,7 @@ export async function sendInsightsSampleDigestEmail(params: {
 </head>
 <body style="margin:0;padding:0;background-color:#f7f9fb;-webkit-text-size-adjust:100%;">
   <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
-    AuraPharma Insights sample digest — ${org}
+    AuraStores Insights sample digest — ${org}
   </div>
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f7f9fb;">
     <tr>
@@ -105,14 +106,14 @@ export async function sendInsightsSampleDigestEmail(params: {
                       <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
                         <tr>
                           <td align="center" valign="middle" style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#0fb9b1,#6063ee);background-color:#0fb9b1;">
-                            <span style="font-size:22px;line-height:44px;color:#ffffff;">&#128138;</span>
+                            <span style="font-size:22px;line-height:44px;color:#ffffff;">&#128230;</span>
                           </td>
                           <td style="padding-left:12px;">
                             <div style="font-size:20px;font-weight:900;letter-spacing:-0.02em;line-height:1.1;">
-                              <span style="color:#0d9488;">Aura</span><span style="color:#4f46e5;">Pharma</span>
+                              <span style="color:#0d9488;">Aura</span><span style="color:#4f46e5;">Stores</span>
                             </div>
                             <div style="margin-top:4px;font-size:11px;font-weight:700;letter-spacing:0.10em;text-transform:uppercase;color:#475569;">
-                              Clinical Intelligence
+                              ${escapeHtml(PRODUCT_TAGLINE)}
                             </div>
                           </td>
                         </tr>
@@ -192,7 +193,7 @@ export async function sendInsightsSampleDigestEmail(params: {
           </tr>
           <tr>
             <td style="padding:18px 10px 0 10px;text-align:center;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:11px;color:#94a3b8;">
-              &copy; ${new Date().getFullYear()} AuraPharma · Pharmacy management with clarity
+              &copy; ${new Date().getFullYear()} AuraStores · Pharmacy management with clarity
             </td>
           </tr>
         </table>

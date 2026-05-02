@@ -428,7 +428,7 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
       notify({
         variant: "error",
         title: "Credentials required",
-        description: "Pharmacists must upload at least one license or credential file before continuing.",
+        description: "This role requires at least one license or credential file before continuing.",
       });
       scrollToStep(3);
       return;
@@ -527,7 +527,7 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
             </h1>
             <p className="text-base text-[var(--app-text-secondary)]">
               {variant === "add"
-                ? "Onboard a new professional to the AuraPharma clinical network."
+                ? "Onboard a new team member to your AuraStores workspace."
                 : "Update profile, role, branches, and credentials. Email cannot be changed."}
             </p>
           </div>
@@ -784,7 +784,7 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
                       onChange={(e) => setEmail(e.target.value)}
                       readOnly={variant === "edit"}
                       disabled={variant === "edit"}
-                      placeholder="s.jenkins@aurapharma.com"
+                      placeholder="s.jenkins@example.com"
                       className={`w-full rounded-lg border-0 bg-[var(--app-input-bg)] py-3.5 pl-11 pr-4 text-base outline-none focus:ring-2 focus:ring-[var(--app-brand)]/20 ${
                         variant === "edit"
                           ? "cursor-not-allowed text-[var(--app-text-muted)] opacity-90"
@@ -890,7 +890,7 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
                       disabled={credentialBusy || deleteCredentialDisabled}
                       title={
                         deleteCredentialDisabled
-                          ? "Pharmacists must keep at least one credential, or change role first."
+                          ? "This role must keep at least one credential on file, or change role first."
                           : undefined
                       }
                       onClick={() => void removeFile(file.id)}
@@ -913,8 +913,8 @@ export function StaffMemberForm(props: StaffMemberFormProps) {
                 <p className="text-sm font-medium text-[#00504c]">
                   {appRole === "pharmacist" && displayFiles.length === 0
                     ? variant === "add"
-                      ? "Pharmacist role requires at least one credential upload before review."
-                      : "Pharmacist role requires at least one credential on file before you can save."
+                      ? "This role requires at least one credential upload before review."
+                      : "This role requires at least one credential on file before you can save."
                     : variant === "add"
                       ? "Review each step, then save to continue to confirmation."
                       : "Review each step, then save changes to update this team member."}

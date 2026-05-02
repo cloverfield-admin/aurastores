@@ -1,4 +1,5 @@
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
+import type { SalesDateRange } from "@/lib/repositories/sales/sales.repository";
 
 export type NetworkBranchSummary = {
   id: string;
@@ -13,7 +14,7 @@ export type NetworkBranchSummary = {
   lowStockSkuCount: number;
   healthyBatchRatio: number;
   unitsSold30d: number;
-  leadPharmacistName: string | null;
+  leadStaffName: string | null;
 };
 
 export type NetworkDashboardData = {
@@ -39,7 +40,7 @@ export type OrganizationBranchOverview = {
   name: string;
   isPrimary: boolean;
   status: string;
-  leadPharmacistName: string | null;
+  leadStaffName: string | null;
 };
 
 export type OrganizationBranchesData = {
@@ -48,6 +49,6 @@ export type OrganizationBranchesData = {
 };
 
 export interface NetworkRepository {
-  getDashboard(context: AuthContext): Promise<NetworkDashboardData>;
+  getDashboard(context: AuthContext, range?: SalesDateRange): Promise<NetworkDashboardData>;
   getOrganizationBranches(context: AuthContext): Promise<OrganizationBranchesData>;
 }

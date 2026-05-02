@@ -84,7 +84,7 @@ export function AddNewBatchContent() {
   const [debouncedProductSearch, setDebouncedProductSearch] = useState("");
   const [productSuggestOpen, setProductSuggestOpen] = useState(false);
   const [productBarcode, setProductBarcode] = useState<string | null>(null);
-  /** True after a scan found no single product for this barcode; show dedicated Barcode row and require medication name separately. */
+  /** True after a scan found no single product for this barcode; show dedicated Barcode row and require product name separately. */
   const [barcodeLookupNeedsMedicationName, setBarcodeLookupNeedsMedicationName] = useState(false);
   const [isBarcodeLookupPending, setIsBarcodeLookupPending] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -197,7 +197,7 @@ export function AddNewBatchContent() {
             notify({
               variant: "info",
               title: "Barcode captured",
-              description: "Enter the medication name above. Short codes cannot be looked up until you add the product.",
+              description: "Enter the product name above. Short codes cannot be looked up until you add the product.",
             });
             return;
           }
@@ -230,8 +230,8 @@ export function AddNewBatchContent() {
               title: "Barcode captured",
               description:
                 exactByBarcode.length > 1
-                  ? "Enter the medication name above, or type a few letters to search and pick the right product."
-                  : "No product uses this barcode yet. Enter the medication name above, then save to create it with this barcode.",
+                  ? "Enter the product name above, or type a few letters to search and pick the right product."
+                  : "No product uses this barcode yet. Enter the product name above, then save to create it with this barcode.",
             });
           } catch {
             setProductName("");
@@ -240,7 +240,7 @@ export function AddNewBatchContent() {
             notify({
               variant: "warning",
               title: "Barcode captured",
-              description: "Could not look up this barcode. Enter the medication name above, then try again or save.",
+              description: "Could not look up this barcode. Enter the product name above, then try again or save.",
             });
           } finally {
             setIsBarcodeLookupPending(false);
@@ -287,7 +287,7 @@ export function AddNewBatchContent() {
                     variant: "error",
                     title: "Complete the required fields",
                     description:
-                      "Add the medication name, product ref, expiry date, quantity, order price, and selling price.",
+                      "Add the product name, product ref, expiry date, quantity, order price, and selling price.",
                   });
                   return;
                 }
@@ -373,7 +373,7 @@ export function AddNewBatchContent() {
               <div className="mb-8 flex items-center gap-3">
                 <div className="flex size-10 items-center justify-center rounded-lg bg-[rgba(0,106,101,0.1)]">
                   <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">
-                    medication
+                    inventory_2
                   </span>
                 </div>
                 <h2 className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[var(--app-text)]">
@@ -383,12 +383,12 @@ export function AddNewBatchContent() {
 
               <div className="space-y-6">
                 <div ref={productFieldRef}>
-                  <label className={fieldLabel} htmlFor="medication">
-                    Medication Name
+                  <label className={fieldLabel} htmlFor="product-name">
+                    Product name
                   </label>
                   <div className="relative">
                     <input
-                      id="medication"
+                      id="product-name"
                       type="text"
                       value={productName}
                       onChange={(e) => {
@@ -397,7 +397,7 @@ export function AddNewBatchContent() {
                       }}
                       onFocus={() => setProductSuggestOpen(true)}
                       onKeyDown={onProductNameKeyDown}
-                      placeholder="e.g. Amoxicillin 500mg Capsules"
+                      placeholder="e.g. Premium cocoa powder 500g"
                       className={`${inputClass} pr-40`}
                       autoComplete="off"
                       spellCheck={false}
@@ -451,7 +451,7 @@ export function AddNewBatchContent() {
                     </button>
                   </div>
                   <p className="mt-2 text-[11px] text-[#6c7a78]">
-                    Medication name is only the product label (never the barcode). Type at least two
+                    Product name is only the catalog label (never the barcode). Type at least two
                     characters to search, or use Scan to look up by barcode—if nothing matches, enter
                     the name above and save to attach this barcode to a new product.
                   </p>
@@ -482,7 +482,7 @@ export function AddNewBatchContent() {
                         aria-readonly="true"
                       />
                       <p className="text-[11px] leading-relaxed text-[var(--app-text-muted)]">
-                        No product uses this barcode yet. Enter the medication name in the field
+                        No product uses this barcode yet. Enter the product name in the field
                         above, then save to create the product with this barcode.
                       </p>
                     </div>

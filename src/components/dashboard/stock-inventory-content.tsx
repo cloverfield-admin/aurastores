@@ -1187,7 +1187,7 @@ export function StockInventoryContent() {
             <div className="relative">
               <div className="mb-6 flex size-12 items-center justify-center rounded-lg bg-[var(--app-surface)]/20">
                 <span className="material-symbols-outlined notranslate text-xl text-white">
-                  medication
+                  inventory_2
                 </span>
               </div>
               <h3 className="font-[family-name:var(--font-manrope)] text-xl font-bold text-white">
@@ -1260,8 +1260,8 @@ export function StockInventoryContent() {
 
         <footer className="flex flex-col gap-4 border-t border-[var(--app-surface-subtle)] pt-6 text-[11px] uppercase tracking-[0.1em] text-[var(--app-text-faint)] sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <span className="font-semibold text-[#cbd5e1]">AuraPharma v1.0.0</span>
-            <span>© {new Date().getFullYear()} Clinical Intelligence</span>
+            <span className="font-semibold text-[#cbd5e1]">AuraStores v1.0.0</span>
+            <span>© {new Date().getFullYear()} AuraStores</span>
           </div>
           <div className="flex flex-wrap gap-4">
             <Link href="#" className="underline decoration-[rgba(20,184,166,0.3)] hover:text-[var(--app-text-muted)]">

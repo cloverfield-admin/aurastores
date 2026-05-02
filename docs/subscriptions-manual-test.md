@@ -12,7 +12,7 @@
 - Change a price via the admin UI and confirm the landing page updates after revalidation (up to 5 minutes).
 
 ## Admin pricing management
-- Create a user whose `organization_memberships.role` is `aurapharma_admin`.
+- Create a user whose `organization_memberships.role` is `aurastores_admin`.
 - Visit `/dashboard/admin/pricing`.
 - Verify:
   - Current prices load.

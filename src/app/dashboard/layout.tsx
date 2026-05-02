@@ -34,6 +34,7 @@ export default async function DashboardLayout({
 
   const workspaceAccess: DashboardWorkspaceAccess = appContext
     ? {
+        storeVertical: appContext.organization.storeVertical,
         capabilities: appContext.capabilities,
         allowedBranchIds: appContext.allowedBranchIds,
         accessibleBranches: await loadAccessibleBranchTabs(appContext),
@@ -46,6 +47,7 @@ export default async function DashboardLayout({
         initialTheme,
       }
     : {
+        storeVertical: "pharmacy",
         capabilities: fullCapabilities(),
         allowedBranchIds: [],
         accessibleBranches: [],

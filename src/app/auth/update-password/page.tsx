@@ -8,7 +8,7 @@ import { UpdatePasswordForm } from "@/components/auth/update-password-form";
 
 export const metadata: Metadata = {
   title: "Set new password",
-  description: "Choose a new password for your AuraPharma account.",
+  description: "Choose a new password for your AuraStores account.",
 };
 
 export default function UpdatePasswordPage() {

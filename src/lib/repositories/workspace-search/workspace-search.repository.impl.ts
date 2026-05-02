@@ -7,10 +7,10 @@ import { filterBranchesForContext } from "@/lib/rbac/branch-access";
 import { hasCapability } from "@/lib/rbac/capabilities";
 import { staffRepository } from "@/lib/repositories/staff/staff.repository.impl";
 import type {
-  PharmacySearchHit,
-  PharmacySearchRepository,
-  PharmacySearchResult,
-} from "./pharmacy-search.repository";
+  WorkspaceSearchHit,
+  WorkspaceSearchRepository,
+  WorkspaceSearchResult,
+} from "./workspace-search.repository";
 
 const LIMIT = 6;
 
@@ -23,8 +23,8 @@ async function resolveDefaultStockBranchIdForContext(context: AuthContext): Prom
   return visible[0]?.id ?? null;
 }
 
-export class PharmacySearchRepositoryImpl implements PharmacySearchRepository {
-  async search(context: AuthContext, q: string): Promise<PharmacySearchResult> {
+export class WorkspaceSearchRepositoryImpl implements WorkspaceSearchRepository {
+  async search(context: AuthContext, q: string): Promise<WorkspaceSearchResult> {
     const trimmed = q.trim();
     if (trimmed.length < 2) {
       return { hits: [] };
@@ -73,7 +73,7 @@ export class PharmacySearchRepositoryImpl implements PharmacySearchRepository {
       branchRows as { id: string; name: string }[],
     );
 
-    const hits: PharmacySearchHit[] = [];
+    const hits: WorkspaceSearchHit[] = [];
 
     for (const b of branchRowsFiltered) {
       hits.push({
@@ -115,4 +115,4 @@ export class PharmacySearchRepositoryImpl implements PharmacySearchRepository {
   }
 }
 
-export const pharmacySearchRepository: PharmacySearchRepository = new PharmacySearchRepositoryImpl();
+export const workspaceSearchRepository: WorkspaceSearchRepository = new WorkspaceSearchRepositoryImpl();

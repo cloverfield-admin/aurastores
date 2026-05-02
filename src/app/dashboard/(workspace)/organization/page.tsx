@@ -8,7 +8,7 @@ import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 
 export const metadata: Metadata = {
   title: "Organization",
-  description: "Organization-wide settings and management for your pharmacy network.",
+  description: "Organization-wide settings and management for your store network.",
 };
 
 function organizationSnapshotFromContext(org: AuthContext["organization"]): OrganizationPageSnapshot {

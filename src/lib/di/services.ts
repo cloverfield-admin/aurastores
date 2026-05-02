@@ -5,7 +5,7 @@ import { branchesRepository } from "@/lib/repositories/branches/branches.reposit
 import { documentStorageRepository } from "@/lib/repositories/document-storage/document-storage.repository.impl";
 import { networkRepository } from "@/lib/repositories/network/network.repository.impl";
 import { insightsRepository } from "@/lib/repositories/insights/insights.repository.impl";
-import { pharmacySearchRepository } from "@/lib/repositories/pharmacy-search/pharmacy-search.repository.impl";
+import { workspaceSearchRepository } from "@/lib/repositories/workspace-search/workspace-search.repository.impl";
 import { onboardingRepository } from "@/lib/repositories/onboarding/onboarding.repository.impl";
 import { payRepository } from "@/lib/repositories/pay/pay.repository.impl";
 import { expensesRepository } from "@/lib/repositories/expenses/expenses.repository.impl";
@@ -19,7 +19,7 @@ import { BillingService } from "@/lib/services/billing/billing.service";
 import { BranchesService } from "@/lib/services/branches/branches.service";
 import { NetworkService } from "@/lib/services/network/network.service";
 import { InsightsService } from "@/lib/services/insights/insights.service";
-import { PharmacySearchService } from "@/lib/services/pharmacy-search/pharmacy-search.service";
+import { WorkspaceSearchService } from "@/lib/services/workspace-search/workspace-search.service";
 import { OnboardingService } from "@/lib/services/onboarding/onboarding.service";
 import { PayService } from "@/lib/services/pay/pay.service";
 import { ExpensesService } from "@/lib/services/expenses/expenses.service";
@@ -41,7 +41,7 @@ export type AppServices = {
   insights: InsightsService;
   pay: PayService;
   expenses: ExpensesService;
-  pharmacySearch: PharmacySearchService;
+  workspaceSearch: WorkspaceSearchService;
   productCategories: ProductCategoriesService;
   products: ProductsService;
 };
@@ -61,7 +61,7 @@ export const services: AppServices = {
   insights: new InsightsService({ insights: insightsRepository }),
   pay: new PayService({ pay: payRepository }),
   expenses: new ExpensesService({ expenses: expensesRepository }),
-  pharmacySearch: new PharmacySearchService({ pharmacySearch: pharmacySearchRepository }),
+  workspaceSearch: new WorkspaceSearchService({ workspaceSearch: workspaceSearchRepository }),
   productCategories: new ProductCategoriesService({ productCategories: productCategoriesRepository }),
   products: new ProductsService({ products: productsRepository }),
 };

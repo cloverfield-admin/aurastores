@@ -116,7 +116,7 @@ export function mapAuditActionToUiItem(params: {
         ...base,
         icon: "shield",
         title: "Account created",
-        description: "Your AuraPharma account was registered.",
+        description: "Your AuraStores account was registered.",
       };
     case "user_confirmation_requested":
       return {

@@ -44,7 +44,7 @@ export function ReviewPortalShell({
             </div>
             <div>
               <p className="font-[family-name:var(--font-manrope)] text-xl font-bold tracking-tight text-[var(--app-link-teal)]">
-                AuraPharma
+                AuraStores
               </p>
               <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--app-text-faint)]">
                 Onboarding Portal
@@ -133,7 +133,7 @@ export function ReviewPortalShell({
               />
             </div>
             <p className="mt-3 text-[11px] leading-relaxed text-[var(--app-text-muted)]">
-              Ready for deployment into the AuraPharma network.
+              Ready for deployment into the AuraStores network.
             </p>
           </div>
         </div>

@@ -259,7 +259,7 @@ export class AuthRepositoryImpl implements AuthRepository {
       ...subscriptionSlice,
     } satisfies Omit<AuthContext, "capabilities"> & { capabilities: AuthContext["capabilities"] };
 
-    const isBypassRole = membership.role === "aurapharma_admin";
+    const isBypassRole = membership.role === "aurastores_admin";
     const effectiveCapabilities = isBypassRole
       ? fullCapabilities()
       : intersectCapabilities(baseContext.capabilities, planCapabilities);
@@ -290,11 +290,12 @@ export class AuthRepositoryImpl implements AuthRepository {
       const [organization] = await tx
         .insert(organizations)
         .values({
-          slug: uniqueSlug(params.pharmacyName),
-          displayName: params.pharmacyName,
-          legalName: params.pharmacyName,
+          slug: uniqueSlug(params.businessName),
+          displayName: params.businessName,
+          legalName: params.businessName,
           primaryEmail: params.email,
           hqCountry: "ZM",
+          storeVertical: params.storeVertical ?? "pharmacy",
           signupSelectedPlanCode: params.selectedPlanCode ?? null,
         })
         .returning();

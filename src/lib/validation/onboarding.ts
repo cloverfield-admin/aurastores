@@ -21,7 +21,7 @@ export const weeklyHourEntrySchema = z.object({
   closesAt: z.string().regex(hhMmRegex).nullable(),
 });
 
-export const pharmacyDetailsSchema = z
+export const locationDetailsSchema = z
   .object({
     branchName: z.string().trim().min(2).max(160),
     pharmacistCount: z.coerce.number().int().min(1).max(1000),
@@ -95,5 +95,7 @@ export const pharmacyDetailsSchema = z
 
 export type IdentityInput = z.infer<typeof identitySchema>;
 export type WeeklyHourEntryInput = z.infer<typeof weeklyHourEntrySchema>;
-export type PharmacyDetailsInput = z.infer<typeof pharmacyDetailsSchema>;
+export type LocationDetailsInput = z.infer<typeof locationDetailsSchema>;
+/** @deprecated Use `LocationDetailsInput`. */
+export type PharmacyDetailsInput = LocationDetailsInput;
 export type HoursMode = z.infer<typeof hoursModeSchema>;

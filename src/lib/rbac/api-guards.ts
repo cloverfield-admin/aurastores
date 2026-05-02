@@ -18,7 +18,7 @@ export function assertApiCapability(
 }
 
 /** Search mixes products, branches, and staff — allow if any relevant capability is granted. */
-export function assertPharmacySearchCapability(context: AuthContext): NextResponse | null {
+export function assertWorkspaceSearchCapability(context: AuthContext): NextResponse | null {
   const ok =
     hasCapability(context.capabilities, "stock") ||
     hasCapability(context.capabilities, "staff") ||

@@ -4,7 +4,7 @@ import { NetworkOverviewContent } from "@/components/dashboard/network-overview-
 export const metadata: Metadata = {
   title: "Network Overview",
   description:
-    "Real-time clinical and operational pulse across all active branches.",
+    "Real-time operational pulse across inventory, sales, and staff for every active branch.",
 };
 
 export default function DashboardNetworkOverviewPage() {

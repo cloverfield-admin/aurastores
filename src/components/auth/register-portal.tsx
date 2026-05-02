@@ -9,6 +9,7 @@ import { AuraAvatar } from "@/components/ui/aura-avatar";
 import { AuraInlineAlert } from "@/components/ui/aura-inline-alert";
 import { useSignUpMutation } from "@/lib/queries/auth";
 import { ROUTES } from "@/lib/routes";
+import { PRODUCT_NAME } from "@/lib/brand";
 
 const REGISTER_SOCIAL_PROOF = ["Alex Morgan", "Jordan Lee", "Sam Rivera"] as const;
 
@@ -33,7 +34,7 @@ export function RegisterPortal() {
   const signUpMutation = useSignUpMutation();
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState("");
-  const [pharmacyName, setPharmacyName] = useState("");
+  const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -48,12 +49,16 @@ export function RegisterPortal() {
     const planParam = searchParams.get("plan")?.trim().toLowerCase();
     const selectedPlanCode =
       planParam === "basic" || planParam === "pro" || planParam === "enterprise" ? planParam : undefined;
+    const verticalParam = searchParams.get("vertical")?.trim().toLowerCase();
+    const storeVertical =
+      verticalParam === "general_retail" || verticalParam === "retail" ? "general_retail" : "pharmacy";
 
     try {
       const payload = await withLoading("auth-sign-up", "Creating your Aura workspace...", () =>
         signUpMutation.mutateAsync({
           fullName,
-          pharmacyName,
+          businessName,
+          storeVertical,
           email,
           password,
           ...(selectedPlanCode ? { selectedPlanCode } : {}),
@@ -76,7 +81,7 @@ export function RegisterPortal() {
 
       notify({
         variant: "success",
-        title: "Welcome to AuraPharma",
+        title: `Welcome to ${PRODUCT_NAME}`,
         description: "Your workspace is ready. Continue with onboarding to finish setup.",
       });
       router.push(payload.redirectTo ?? ROUTES.dashboard.onboarding.root);
@@ -110,7 +115,7 @@ export function RegisterPortal() {
       {/* Header */}
       <header className="fixed left-0 right-0 top-0 z-50 flex h-16 items-center justify-between border-b border-[rgba(20,184,166,0.1)] bg-[var(--app-surface)]/80 px-6 backdrop-blur-md sm:px-12">
         <Link href="/" className="bg-gradient-to-r from-[#14b8a6] to-[#6366f1] bg-clip-text text-2xl font-bold tracking-tight text-transparent">
-          AuraPharma
+          {PRODUCT_NAME}
         </Link>
         <div className="flex min-w-0 items-center gap-2 sm:gap-6">
           <span className="truncate text-xs font-medium uppercase tracking-[0.05em] text-[#6c7a78] sm:text-base">
@@ -149,8 +154,7 @@ export function RegisterPortal() {
                 </span>
               </h1>
               <p className="max-w-sm text-lg leading-relaxed text-[var(--app-text-secondary)]">
-                Join thousands of pharmacists using intelligent data to transform clinical
-                outcomes.
+                Join thousands of retailers using intelligent data to transform operations.
               </p>
             </div>
 
@@ -264,16 +268,16 @@ export function RegisterPortal() {
                   </div>
 
                   <div>
-                    <RegisterFieldLabel htmlFor="pharmacyName">Pharmacy name</RegisterFieldLabel>
+                    <RegisterFieldLabel htmlFor="businessName">Business or store name</RegisterFieldLabel>
                     <input
-                      id="pharmacyName"
-                      name="pharmacyName"
+                      id="businessName"
+                      name="businessName"
                       type="text"
                       autoComplete="organization"
                       placeholder="Aura Healthcare Ltd."
                       className={inputClass}
-                      value={pharmacyName}
-                      onChange={(event) => setPharmacyName(event.target.value)}
+                      value={businessName}
+                      onChange={(event) => setBusinessName(event.target.value)}
                       required
                     />
                   </div>
@@ -285,7 +289,7 @@ export function RegisterPortal() {
                       name="email"
                       type="email"
                       autoComplete="email"
-                      placeholder="sarah@aurapharma.com"
+                      placeholder="sarah@example.com"
                       className={inputClass}
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}

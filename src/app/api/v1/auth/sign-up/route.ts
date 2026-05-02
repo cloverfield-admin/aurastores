@@ -51,7 +51,8 @@ export async function POST(request: Request) {
         emailRedirectTo,
         data: {
           full_name: parsed.data.fullName,
-          pharmacy_name: parsed.data.pharmacyName,
+          business_name: parsed.data.businessName,
+          store_vertical: parsed.data.storeVertical,
         },
       },
     });
@@ -88,7 +89,8 @@ export async function POST(request: Request) {
     authUserId: data.user.id,
     email: parsed.data.email,
     fullName: parsed.data.fullName,
-    pharmacyName: parsed.data.pharmacyName,
+    businessName: parsed.data.businessName,
+    storeVertical: parsed.data.storeVertical,
     isEmailVerified: Boolean(data.user.email_confirmed_at),
     selectedPlanCode: parsed.data.selectedPlanCode,
   });

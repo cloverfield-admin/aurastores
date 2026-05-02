@@ -10,7 +10,8 @@ export const signInSchema = z.object({
 
 export const signUpSchema = z.object({
   fullName: z.string().trim().min(2).max(120),
-  pharmacyName: z.string().trim().min(2).max(160),
+  businessName: z.string().trim().min(2).max(160),
+  storeVertical: z.enum(["pharmacy", "general_retail"]).optional().default("pharmacy"),
   email: normalizedEmail,
   password: z.string().min(8).max(128),
   selectedPlanCode: z.enum(["basic", "pro", "enterprise"]).optional(),

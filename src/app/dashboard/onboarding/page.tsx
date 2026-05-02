@@ -4,7 +4,7 @@ import { IdentityStepForm } from "@/components/onboarding/steps/identity-step-fo
 
 export const metadata: Metadata = {
   title: "Onboarding — Business identity",
-  description: "Verify your pharmacy business identity for clinical compliance.",
+  description: "Verify your business identity for compliance and account security.",
 };
 
 export default function OnboardingIdentityPage() {

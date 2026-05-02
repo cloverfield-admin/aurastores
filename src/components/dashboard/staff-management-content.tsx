@@ -96,7 +96,7 @@ export function StaffManagementContent() {
               Staff Management
             </h1>
             <p className="text-sm text-[var(--app-text-muted)]">
-              Monitor, verify, and coordinate your clinical workforce across the network.
+              Monitor, verify, and coordinate your team across branches.
             </p>
           </div>
           <Link
@@ -230,7 +230,7 @@ export function StaffManagementContent() {
                           <Link href={ROUTES.dashboard.staffAdd} className="font-semibold text-[var(--app-link-teal)] underline">
                             Add New Staff
                           </Link>{" "}
-                          once they have an AuraPharma account.
+                          once they have an AuraStores account.
                         </td>
                       </tr>
                     ) : (

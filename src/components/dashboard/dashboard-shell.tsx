@@ -18,8 +18,9 @@ import type { DashboardWorkspaceAccess } from "@/components/dashboard/dashboard-
 import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { apiUrl } from "@/lib/api/version";
+import { PRODUCT_NAME, PRODUCT_TAGLINE } from "@/lib/brand";
 import { ROUTES } from "@/lib/routes";
-import { PharmacySearchField } from "@/components/dashboard/pharmacy-search-field";
+import { WorkspaceSearchField } from "@/components/dashboard/workspace-search-field";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
 import type { MembershipCapability } from "@/lib/rbac/capabilities";
 import { hasCapability, membershipCapabilityLabel } from "@/lib/rbac/capabilities";
@@ -107,7 +108,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
     [workspaceAccess.capabilities],
   );
 
-  const canUsePharmacySearch =
+  const canUseWorkspaceSearch =
     hasCapability(workspaceAccess.capabilities, "stock") ||
     hasCapability(workspaceAccess.capabilities, "staff") ||
     hasCapability(workspaceAccess.capabilities, "catalog");
@@ -254,12 +255,12 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
   const searchPlaceholder = isStock
     ? "Search inventory..."
     : isSales
-      ? "Search sales ID, patient, or drug..."
+      ? "Search sales, customer, or SKU..."
       : isInsights
         ? "Search insights..."
         : isStaff
-          ? "Search pharmacy network..."
-          : "Search clinical data...";
+          ? "Search workspace..."
+          : "Search workspace...";
   const topActionLabel = isStock ? "Aura Sync" : "Branch Toggle";
   const topActionIcon = isStock ? "sync" : "shuffle";
   const topActionVariant = isStock ? "outline" : "primary";
@@ -567,17 +568,17 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
           >
             <div className="aura-gradient flex size-10 items-center justify-center rounded-xl shadow-md">
               <span className="material-symbols-outlined notranslate text-xl text-white">
-                local_pharmacy
+                store
               </span>
             </div>
             <br />
             <br />
             <div>
               <p className="aura-gradient bg-clip-text font-[family-name:var(--font-manrope)] text-xl font-bold tracking-tight text-transparent">
-                AuraPharma
+                {PRODUCT_NAME}
               </p>
               <p className="text-[10px] font-medium uppercase tracking-[-0.05em] text-[var(--app-text-muted)]">
-                Clinical Intelligence
+                {PRODUCT_TAGLINE}
               </p>
             </div>
           </Link>
@@ -813,7 +814,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                   })}
                 </div>
               ) : isDashboardMain ? (
-                canUsePharmacySearch ? <PharmacySearchField /> : null
+                canUseWorkspaceSearch ? <WorkspaceSearchField /> : null
               ) : (
                 <div className="flex flex-col gap-4">
                   {!isStock && !isSettings && !isOrganization ? (
@@ -919,7 +920,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                 <>
                   {!isStock && !isSettings && !isOrganization ? (
                     isDashboardMain ? (
-                      canUsePharmacySearch ? <PharmacySearchField /> : null
+                      canUseWorkspaceSearch ? <WorkspaceSearchField /> : null
                     ) : (
                       <label className="relative block w-full sm:w-64">
                         <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[var(--app-text-faint)]">

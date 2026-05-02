@@ -23,7 +23,7 @@ export type BranchDetail = {
   addressLine1: string;
   latitude: number | null;
   longitude: number | null;
-  licensedPharmacistCount: number;
+  professionalStaffCount: number;
   operatingHours: BranchOperatingHour[];
 };
 

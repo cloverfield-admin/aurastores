@@ -25,7 +25,7 @@ export function AuraAuthBranding() {
         </span>
       </div>
       <h1 className="bg-gradient-to-r from-[#0d9488] to-[#4f46e5] bg-clip-text text-3xl font-extrabold tracking-tight text-transparent">
-        AuraPharma
+        AuraStores
       </h1>
       <p className="text-sm font-medium tracking-wide text-[var(--app-text-secondary)]">
         Clarity Around Every Prescription

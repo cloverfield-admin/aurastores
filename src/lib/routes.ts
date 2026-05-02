@@ -40,7 +40,7 @@ export const ROUTES = {
     },
     onboarding: {
       root: "/dashboard/onboarding",
-      pharmacyDetails: "/dashboard/onboarding/pharmacy-details",
+      locationDetails: "/dashboard/onboarding/location-details",
       license: "/dashboard/onboarding/license",
       review: "/dashboard/onboarding/review",
     },

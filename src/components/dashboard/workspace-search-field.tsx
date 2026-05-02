@@ -2,42 +2,42 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { usePharmacySearchQuery } from "@/lib/queries/pharmacy-search";
-import type { PharmacySearchHit } from "@/lib/repositories/pharmacy-search/pharmacy-search.repository";
+import { useWorkspaceSearchQuery } from "@/lib/queries/workspace-search";
+import type { WorkspaceSearchHit } from "@/lib/repositories/workspace-search/workspace-search.repository";
 
 const DEBOUNCE_MS = 350;
 
-function sectionTitle(kind: PharmacySearchHit["kind"]): string {
+function sectionTitle(kind: WorkspaceSearchHit["kind"]): string {
   switch (kind) {
     case "branch":
       return "Branches";
     case "staff":
       return "Team";
     case "product":
-      return "Medicines";
+      return "Products";
     default:
       return "";
   }
 }
 
-function kindIcon(kind: PharmacySearchHit["kind"]): string {
+function kindIcon(kind: WorkspaceSearchHit["kind"]): string {
   switch (kind) {
     case "branch":
       return "storefront";
     case "staff":
       return "person";
     case "product":
-      return "pill";
+      return "inventory_2";
     default:
       return "search";
   }
 }
 
-type PharmacySearchFieldProps = {
+type WorkspaceSearchFieldProps = {
   className?: string;
 };
 
-export function PharmacySearchField({ className }: PharmacySearchFieldProps) {
+export function WorkspaceSearchField({ className }: WorkspaceSearchFieldProps) {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -54,7 +54,7 @@ export function PharmacySearchField({ className }: PharmacySearchFieldProps) {
     return () => window.clearTimeout(timeout);
   }, [inputValue]);
 
-  const searchQuery = usePharmacySearchQuery(debouncedQuery);
+  const searchQuery = useWorkspaceSearchQuery(debouncedQuery);
   const hits = searchQuery.data?.hits ?? [];
   const showPanel = open && debouncedQuery.length >= 2;
 
@@ -66,7 +66,7 @@ export function PharmacySearchField({ className }: PharmacySearchFieldProps) {
         : Math.min(highlightedIndex, hits.length - 1);
 
   const selectHit = useCallback(
-    (hit: PharmacySearchHit) => {
+    (hit: WorkspaceSearchHit) => {
       router.push(hit.href);
       setInputValue("");
       setDebouncedQuery("");
@@ -151,12 +151,12 @@ export function PharmacySearchField({ className }: PharmacySearchFieldProps) {
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder="Search Pharmacy Data"
+          placeholder="Search workspace"
           autoComplete="off"
           spellCheck={false}
           role="combobox"
           aria-expanded={showPanel}
-          aria-controls="pharmacy-search-results"
+          aria-controls="workspace-search-results"
           aria-autocomplete="list"
           className="w-full rounded-full border-0 bg-[var(--app-input-bg)] py-2 pl-10 pr-4 text-sm text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] outline-none ring-1 ring-transparent transition focus:bg-[var(--app-surface)] focus:ring-[var(--app-link-teal)]/25"
         />
@@ -164,7 +164,7 @@ export function PharmacySearchField({ className }: PharmacySearchFieldProps) {
 
       {showPanel ? (
         <div
-          id="pharmacy-search-results"
+          id="workspace-search-results"
           role="listbox"
           className="aura-card-tint absolute left-0 right-0 top-full z-50 mt-2 max-h-80 overflow-auto rounded-xl border py-2 shadow-lg"
         >

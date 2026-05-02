@@ -57,7 +57,7 @@ export function HomePageHeaderClient({ isAuthenticated }: HomePageHeaderClientPr
       <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-4 sm:gap-4 sm:px-8">
         <Link href="/" className="min-w-0 shrink-0">
           <span className="bg-gradient-to-r from-[#0fb9b1] to-[#6366f1] bg-clip-text text-xl font-bold text-transparent sm:text-2xl">
-            AuraPharma
+            AuraStores
           </span>
         </Link>
 

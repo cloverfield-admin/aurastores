@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default async function AdminPricingPage() {
   const context = await requireAppContext();
-  if (context.membership.role !== "aurapharma_admin") {
+  if (context.membership.role !== "aurastores_admin") {
     redirect(ROUTES.dashboard.main);
   }
   return <AdminPricingContent />;

@@ -14,7 +14,7 @@ export function OnboardingHeader({ variant = "default" }: OnboardingHeaderProps)
             href="/"
             className="font-[family-name:var(--font-manrope)] text-xl font-bold tracking-tight text-[var(--app-link-teal)]"
           >
-            AuraPharma
+            AuraStores
           </Link>
           <div className="flex items-center gap-4">
             <button
@@ -34,7 +34,7 @@ export function OnboardingHeader({ variant = "default" }: OnboardingHeaderProps)
               </span>
             </button>
             <AuraAvatar
-              name="Clinical User"
+              name="You"
               className="size-8 rounded-full ring-2 ring-white text-xs"
               aria-label="Account"
             />
@@ -55,7 +55,7 @@ export function OnboardingHeader({ variant = "default" }: OnboardingHeaderProps)
           href="/"
           className="bg-gradient-to-r from-[#14b8a6] to-[#6366f1] bg-clip-text text-2xl font-semibold tracking-tight text-transparent"
         >
-          AuraPharma
+          AuraStores
         </Link>
         <div className="flex items-center gap-6">
           <Link
@@ -65,9 +65,9 @@ export function OnboardingHeader({ variant = "default" }: OnboardingHeaderProps)
             Support
           </Link>
           <AuraAvatar
-            name="Demo Pharmacy"
+            name="Demo Store"
             className="size-8 rounded-full ring-2 ring-white text-xs"
-            aria-label="Pharmacy"
+            aria-label="Account"
           />
         </div>
       </div>

@@ -86,7 +86,7 @@ export function OrganizationManagementContent({ organization }: { organization: 
     const links: QuickLink[] = [
       {
         label: "Add branch",
-        description: "Onboard a new pharmacy location",
+        description: "Onboard a new store location",
         href: ROUTES.dashboard.organizationBranches.new,
         icon: "add_business",
       },
@@ -156,7 +156,7 @@ export function OrganizationManagementContent({ organization }: { organization: 
     return branches.filter(
       (b) =>
         b.name.toLowerCase().includes(q) ||
-        (b.leadPharmacistName ?? "").toLowerCase().includes(q) ||
+        (b.leadStaffName ?? "").toLowerCase().includes(q) ||
         b.status.toLowerCase().includes(q),
     );
   }, [branches, branchSearch]);
@@ -364,7 +364,7 @@ export function OrganizationManagementContent({ organization }: { organization: 
                       </p>
                       <p className="mt-1 text-xs text-[var(--app-text-muted)]">
                         Lead:{" "}
-                        <span className="font-medium text-[var(--app-text)]">{b.leadPharmacistName ?? "—"}</span>
+                        <span className="font-medium text-[var(--app-text)]">{b.leadStaffName ?? "—"}</span>
                       </p>
                       <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--app-surface-subtle)] pt-4">
                         {canStock ? (
@@ -405,7 +405,7 @@ export function OrganizationManagementContent({ organization }: { organization: 
                           Status
                         </th>
                         <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
-                          Lead pharmacist
+                          Lead staff
                         </th>
                         <th className="px-4 py-3 text-right text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
                           Open
@@ -418,7 +418,7 @@ export function OrganizationManagementContent({ organization }: { organization: 
                           <td className="px-4 py-4 text-sm font-semibold text-[var(--app-text)]">{b.name}</td>
                           <td className="px-4 py-4 text-sm text-[var(--app-text-muted)]">{b.isPrimary ? "Yes" : "—"}</td>
                           <td className="px-4 py-4 text-sm text-[var(--app-text-muted)]">{formatLabel(b.status)}</td>
-                          <td className="px-4 py-4 text-sm text-[var(--app-text)]">{b.leadPharmacistName ?? "—"}</td>
+                          <td className="px-4 py-4 text-sm text-[var(--app-text)]">{b.leadStaffName ?? "—"}</td>
                           <td className="px-4 py-4 text-right">
                             <div className="flex flex-wrap justify-end gap-2">
                               {canStock ? (

@@ -4,7 +4,7 @@ import { AuraInsightsContent } from "@/components/dashboard/aura-insights-conten
 export const metadata: Metadata = {
   title: "Aura Insights",
   description:
-    "Pharmacy network dashboard — clinical trends, AI insights, inventory heatmap, and top medications.",
+    "Network dashboard — sales and stock trends, AI-style summaries, inventory signals, and top products.",
 };
 
 export default function AuraInsightsPage() {

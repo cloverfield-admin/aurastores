@@ -7,9 +7,9 @@ import { services } from "@/lib/di";
 import { ROUTES } from "@/lib/routes";
 import { getSiteUrl } from "@/lib/site-url";
 
-const homeTitle = "AuraPharma — Clarity around every prescription";
+const homeTitle = "AuraStores — Clarity across every sale";
 const homeDescription =
-  "A cloud-based pharmacy management platform for inventory, pricing, payments, and every branch.";
+  "A cloud-based store operations platform for inventory, pricing, payments, and every branch.";
 
 export const revalidate = 300;
 export const dynamic = "force-dynamic";
@@ -39,12 +39,12 @@ function HomeJsonLd() {
     "@graph": [
       {
         "@type": "Organization",
-        name: "AuraPharma",
+        name: "AuraStores",
         url: siteUrl,
       },
       {
         "@type": "WebSite",
-        name: "AuraPharma",
+        name: "AuraStores",
         url: siteUrl,
         description: homeDescription,
       },
@@ -139,18 +139,17 @@ export default async function HomePage() {
           />
           <div className="relative mx-auto flex max-w-7xl flex-col items-center gap-6 text-center">
             <div className="rounded-full bg-[rgba(0,106,101,0.1)] px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#006a65]">
-              The Intelligent Layer
+              Store operations, unified
             </div>
             <h1 className="max-w-4xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl md:text-6xl md:leading-[1.1] lg:text-7xl lg:leading-[72px]">
-              Clarity Around Every{" "}
+              Clarity across every{" "}
               <span className="bg-gradient-to-r from-[#0fb9b1] to-[#6366f1] bg-clip-text text-transparent">
-                Prescription
+                sale & branch
               </span>
             </h1>
             <p className="max-w-2xl text-lg leading-relaxed text-[#3c4948] sm:text-xl">
-              A cloud-based pharmacy management platform that gives pharmacies complete
-              visibility and control across inventory, pricing, and payments—across every
-              branch.
+              Run inventory, checkout, and payouts from one place—whether you operate a pharmacy,
+              a retail shop, or a growing multi-location chain.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
               <Link href={ROUTES.auth.register} className={gradientBtn}>
@@ -177,7 +176,7 @@ export default async function HomePage() {
                 <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-[#0f172a]">
                   <Image
                     src={AURA_ASSETS.heroDashboard}
-                    alt="AuraPharma dashboard preview with analytics and inventory"
+                    alt="AuraStores dashboard preview with analytics and inventory"
                     fill
                     className="object-cover object-top"
                     sizes="(max-width: 1280px) 100vw, 1280px"
@@ -204,7 +203,7 @@ export default async function HomePage() {
                 The Aura Ecosystem
               </h2>
               <p className="max-w-2xl text-base text-[#3c4948]">
-                Integrated modules designed for clinical excellence.
+                Integrated modules for day-to-day store operations and leadership visibility.
               </p>
             </div>
 
@@ -241,8 +240,8 @@ export default async function HomePage() {
                 </div>
                 <h3 className="mt-6 text-2xl font-bold">Aura Sales</h3>
                 <p className="mt-2 text-base leading-relaxed text-[#3c4948]">
-                  Real-time intelligence dashboards that decode drug performance and patient
-                  demand patterns.
+                  Real-time dashboards that highlight what sells, when it moves, and where margin
+                  is leaking—by branch, category, or payment channel.
                 </p>
               </div>
 
@@ -298,8 +297,8 @@ export default async function HomePage() {
                   <div>
                     <p className="text-lg font-bold">Product + Expiry Tracking</p>
                     <p className="mt-1 text-sm leading-relaxed text-[#3c4948]">
-                      Automated alerts for nearing expirations to reduce waste and ensure
-                      patient safety.
+                      Automated alerts for nearing expirations and slow movers so you cut waste
+                      and protect margin.
                     </p>
                   </div>
                 </li>
@@ -322,7 +321,7 @@ export default async function HomePage() {
                 <div className="relative aspect-[4/3] overflow-hidden rounded-xl shadow-lg">
                   <Image
                     src={AURA_ASSETS.featurePharmacy}
-                    alt="Organized pharmacy shelves with medicine inventory"
+                    alt="Organized retail shelves with tracked inventory"
                     fill
                     className="object-cover"
                     sizes="(max-width: 1024px) 100vw, 50vw"
@@ -354,17 +353,16 @@ export default async function HomePage() {
                 Aura Sales: Real-time Intelligence
               </h2>
               <p className="text-base leading-relaxed text-[#3c4948]">
-                Stop guessing what&apos;s selling. Our sales intelligence platform provides
-                deep-dive analytics into drug performance across different demographics and
-                times of day.
+                Stop guessing what&apos;s selling. Aura Sales surfaces velocity, basket mix, and
+                branch comparisons so you can act on trends—not spreadsheets.
               </p>
               <blockquote className="space-y-4 rounded-xl border-l-4 border-[#4648d4] bg-[#f2f4f6] py-6 pl-7 pr-6">
                 <p className="text-base font-medium text-[#191c1e]">
-                  &ldquo;We increased our margin by 14% in the first quarter just by
-                  optimizing our highest-moving drug categories with Aura Insights.&rdquo;
+                  &ldquo;We increased our margin by 14% in the first quarter by doubling down on
+                  the categories Aura Insights flagged as underpriced and overstocked.&rdquo;
                 </p>
                 <footer className="text-sm font-semibold text-[#6063ee]">
-                  — Zanele Tembo, Owner @ Health First Pharmacy
+                  — Zanele Tembo, Owner @ Brightline Stores
                 </footer>
               </blockquote>
             </div>
@@ -381,8 +379,8 @@ export default async function HomePage() {
               One Network. Complete Control.
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-white/80">
-              Whether you manage three branches or three hundred, Aura Sync ensures every
-              patient profile and every tablet is accounted for globally.
+              Whether you manage three branches or three hundred, Aura Sync keeps stock levels,
+              prices, and staff context aligned—so head office and the floor see the same truth.
             </p>
             <div className="mt-12 grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-8">
               {[
@@ -398,8 +396,8 @@ export default async function HomePage() {
                 },
                 {
                   icon: "shield_lock",
-                  title: "Medical Security",
-                  body: "HIPAA-compliant, end-to-end encryption for every data byte.",
+                  title: "Built-in security",
+                  body: "Encryption in transit and at rest, with role-based access for your team.",
                 },
               ].map((item) => (
                 <div key={item.title} className="flex flex-col items-center text-center">
@@ -429,10 +427,11 @@ export default async function HomePage() {
                 Pricing Plans
               </p>
               <h2 className="text-3xl font-extrabold md:text-4xl">
-                Scalable Clinical Intelligence
+                Scalable from first store to full chain
               </h2>
               <p className="mx-auto max-w-xl text-[#3c4948]">
-                Transparent pricing designed for every stage of your pharmacy&apos;s growth.
+                Transparent pricing for every stage of growth—from a single location to a
+                multi-branch operation.
               </p>
               <p className="mx-auto max-w-2xl text-sm font-medium text-[#006a65]">
                 Basic and Pro: 7-day free trial on your first paid plan, then regular billing.
@@ -485,7 +484,7 @@ export default async function HomePage() {
                             : plan.code === "basic"
                               ? "Built for small teams ready to scale."
                               : plan.code === "pro"
-                                ? "Advanced analytics for growing pharmacy networks."
+                                ? "Advanced analytics for growing multi-branch teams."
                                 : "Best for large networks and custom integrations."}
                         </p>
                         <p className={priceText}>
@@ -564,7 +563,7 @@ export default async function HomePage() {
               <span className="material-symbols-outlined notranslate text-[#006a65] text-lg">
                 lock
               </span>
-              All plans include 256-bit HIPAA compliant data encryption
+              All plans include strong encryption for data in transit and at rest
             </p>
             <p className="mx-auto max-w-2xl text-center text-sm leading-relaxed text-[#3c4948]">
               Basic and Pro include a <span className="font-semibold text-[#006a65]">7-day free trial</span> on your
@@ -577,11 +576,11 @@ export default async function HomePage() {
         <section className="px-4 py-20 sm:px-8 sm:py-32">
           <div className="mx-auto max-w-3xl space-y-8 text-center">
             <h2 className="text-3xl font-extrabold leading-tight sm:text-4xl sm:leading-tight md:text-5xl md:leading-[1.15]">
-              Ready to see your pharmacy in a new light?
+              Ready to run every store with less noise?
             </h2>
             <p className="text-lg text-[#3c4948]">
-              Join 1,200+ pharmacies using AuraPharma to bring clarity to their clinical and
-              financial operations.
+              Join teams using AuraStores to unify inventory, sales, and payouts—so operators and
+              owners stay on the same page.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
               <Link
@@ -600,9 +599,9 @@ export default async function HomePage() {
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-8">
           <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-5">
             <div className="lg:col-span-2">
-              <p className="text-xl font-bold text-[#0f172a]">AuraPharma</p>
+              <p className="text-xl font-bold text-[#0f172a]">AuraStores</p>
               <p className="mt-3 max-w-xs text-sm leading-relaxed text-[#64748b]">
-                Intelligence for the modern pharmacy.
+                One platform for pharmacies, retail, and multi-location chains.
               </p>
             </div>
             <div>
@@ -648,7 +647,7 @@ export default async function HomePage() {
         </div>
         <div className="border-t border-[#e2e8f0]">
           <p className="px-4 py-8 text-center text-xs text-[#64748b] sm:px-8">
-            © {year} AuraPharma Clinical Intelligence. All rights reserved.
+            © {year} AuraStores. All rights reserved.
           </p>
         </div>
       </footer>

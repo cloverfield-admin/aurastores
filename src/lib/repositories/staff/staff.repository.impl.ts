@@ -252,7 +252,7 @@ export class StaffRepositoryImpl implements StaffRepository {
 
     if (!user) {
       throw new Error(
-        "No AuraPharma account exists for this email. The team member must register first, then you can add them.",
+        "No AuraStores account exists for this email. The team member must register first, then you can add them.",
       );
     }
 

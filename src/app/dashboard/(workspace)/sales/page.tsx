@@ -4,7 +4,7 @@ import { SalesPerformanceContent } from "@/components/dashboard/sales-performanc
 export const metadata: Metadata = {
   title: "Aura Sales",
   description:
-    "Monthly sales performance, analytics, and financial tracking across pharmacy branches.",
+    "Monthly sales performance, analytics, and financial tracking across your branches.",
 };
 
 export default function AuraSalesPage() {
