@@ -12,7 +12,8 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getGoogleMapsApiKey, getGoogleMapsMapId } from "@/lib/google-maps-env";
 
-const US_CENTER = { lat: 39.8283, lng: -98.5795 };
+const LUSAKA_CENTER = { lat: -15.3875, lng: 28.3228 };
+const GEOLOCATION_TIMEOUT_MS = 8_000;
 
 export type BranchLocationPickerProps = {
   className?: string;
@@ -135,8 +136,58 @@ function LocationMap({
 
   const defaultCenter = hasInitial
     ? { lat: initialLatitude as number, lng: initialLongitude as number }
-    : US_CENTER;
+    : LUSAKA_CENTER;
   const defaultZoom = hasInitial ? 15 : 4;
+
+  const map = useMap();
+
+  useEffect(() => {
+    if (!hasInitial) {
+      return;
+    }
+    if (!map) {
+      return;
+    }
+    map.panTo({ lat: initialLatitude as number, lng: initialLongitude as number });
+    map.setZoom(15);
+  }, [hasInitial, initialLatitude, initialLongitude, map]);
+
+  useEffect(() => {
+    if (hasInitial) {
+      return;
+    }
+    if (!map) {
+      return;
+    }
+    if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
+      return;
+    }
+
+    let cancelled = false;
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (cancelled) return;
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        map.panTo({ lat, lng });
+        map.setZoom(15);
+      },
+      () => {
+        // Ignore errors (permission denied/unavailable/timeout); keep Lusaka fallback.
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: GEOLOCATION_TIMEOUT_MS,
+        maximumAge: 5 * 60_000,
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasInitial, map]);
 
   const handleSearchPick = useCallback(
     (lat: number, lng: number, formattedAddress?: string) => {
@@ -183,7 +234,7 @@ function LocationMap({
           <button
             type="button"
             onClick={() => setSatellite((v) => !v)}
-            className="pointer-events-auto flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-[#006a65] shadow-md ring-1 ring-black/10 transition hover:bg-[#f8fafc] sm:min-w-[7.5rem]"
+            className="pointer-events-auto flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-[var(--app-brand)] shadow-md ring-1 ring-black/10 transition hover:bg-[var(--app-surface-muted)] sm:min-w-[7.5rem]"
           >
             <span className="material-symbols-outlined notranslate text-lg" aria-hidden>
               {satellite ? "map" : "satellite_alt"}
@@ -266,9 +317,9 @@ export function BranchLocationMapPreview({
   if (!hasCoords) {
     return (
       <div
-        className={`flex items-center justify-center gap-2 px-4 text-center text-sm text-[#64748b] ${wrapperClass}`}
+        className={`flex items-center justify-center gap-2 px-4 text-center text-sm text-[var(--app-text-muted)] ${wrapperClass}`}
       >
-        <span className="material-symbols-outlined notranslate text-2xl text-[#94a3b8]" aria-hidden>
+        <span className="material-symbols-outlined notranslate text-2xl text-[var(--app-text-faint)]" aria-hidden>
           location_off
         </span>
         <span>Set a map pin in pharmacy details to preview the location here.</span>
@@ -286,13 +337,13 @@ export function BranchLocationMapPreview({
         href={mapsUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className={`flex flex-col items-center justify-center gap-2 px-4 text-center transition hover:bg-[#e2e8f0] ${wrapperClass}`}
+        className={`flex flex-col items-center justify-center gap-2 px-4 text-center transition hover:bg-[var(--app-cancel-hover)] ${wrapperClass}`}
       >
-        <span className="material-symbols-outlined notranslate text-2xl text-[#006a65]" aria-hidden>
+        <span className="material-symbols-outlined notranslate text-2xl text-[var(--app-brand)]" aria-hidden>
           map
         </span>
-        <span className="text-sm font-semibold text-[#006a65]">Open location in Google Maps</span>
-        <span className="font-mono text-xs text-[#64748b]">
+        <span className="text-sm font-semibold text-[var(--app-brand)]">Open location in Google Maps</span>
+        <span className="font-mono text-xs text-[var(--app-text-muted)]">
           {lat.toFixed(5)}, {lng.toFixed(5)}
         </span>
       </a>
@@ -325,16 +376,16 @@ export function BranchLocationPicker({
   if (!apiKey) {
     return (
       <div
-        className={`flex items-center justify-center bg-[#e2e8f0] px-4 py-8 text-center text-sm text-[#64748b] ${className ?? ""}`}
+        className={`flex items-center justify-center bg-[#e2e8f0] px-4 py-8 text-center text-sm text-[var(--app-text-muted)] ${className ?? ""}`}
       >
         <p>
           Set{" "}
-          <span className="rounded bg-white/80 px-1.5 py-0.5 font-mono text-xs text-[#334155]">
+          <span className="rounded bg-[var(--app-surface)]/80 px-1.5 py-0.5 font-mono text-xs text-[#334155]">
             NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
           </span>{" "}
           in <span className="font-mono text-xs">.env.local</span> to load the map and search. For
           pins and styling, add{" "}
-          <span className="rounded bg-white/80 px-1.5 py-0.5 font-mono text-xs text-[#334155]">
+          <span className="rounded bg-[var(--app-surface)]/80 px-1.5 py-0.5 font-mono text-xs text-[#334155]">
             NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID
           </span>
           .

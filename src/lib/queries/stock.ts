@@ -13,11 +13,14 @@ import type { StockAdjustmentInput } from "@/lib/validation/stock";
 export const stockDashboardQueryKey = ["stock", "dashboard"] as const;
 export const stockCatalogQueryKey = ["stock", "catalog"] as const;
 export const stockProductSuggestQueryKey = ["stock", "products", "suggest"] as const;
+export const stockProductDetailQueryKey = ["stock", "products", "detail"] as const;
+export const stockProductBatchesQueryKey = ["stock", "products", "batches"] as const;
 export const stockBranchesQueryKey = ["stock", "branches"] as const;
 export const stockBatchDetailQueryKey = ["stock", "batch"] as const;
 
 export type StockBatchDetailResponse = {
   id: string;
+  productId: string;
   batchNumber: string;
   purchaseOrderNumber: string | null;
   productName: string;
@@ -66,6 +69,7 @@ export type StockDashboardResponse = {
   filters: {
     search: string;
     view: "all" | "expiring";
+    inventoryStatus: "all" | "out_of_stock" | "reorder_attention";
   };
   pagination: {
     page: number;
@@ -88,8 +92,10 @@ export type StockDashboardResponse = {
   };
   inventory: Array<{
     id: string;
+    productId: string;
     productName: string;
     sku: string;
+    branchName: string;
     categoryName: string;
     supplierName: string | null;
     batchNumber: string;
@@ -175,8 +181,10 @@ type StockDashboardQueryOptions = {
   branchId?: string;
   search: string;
   view: "all" | "expiring";
+  inventoryStatus: "all" | "out_of_stock" | "reorder_attention";
   page: number;
   pageSize?: number;
+  enabled?: boolean;
 };
 
 type StockCatalogQueryOptions = {
@@ -190,6 +198,17 @@ export type StockProductSuggestResponse = {
   products: StockCatalogResponse["products"];
 };
 
+export type StockProductDetailResponse = {
+  id: string;
+  name: string;
+  sku: string;
+  barcode: string | null;
+  categoryId: string | null;
+  categoryName: string;
+  defaultSellingPriceCents: number;
+  status: "active" | "discontinued";
+};
+
 export type StockBranchesResponse = {
   branch: {
     id: string;
@@ -198,20 +217,47 @@ export type StockBranchesResponse = {
   branches: StockBranch[];
 };
 
+export type StockProductBatchesResponse = {
+  branchId: string;
+  batches: Array<{
+    id: string;
+    batchNumber: string;
+    expiresAt: string;
+    status: "active" | "expiring_soon" | "expired" | "disposed" | "depleted";
+    quantityAvailable: number;
+    receivedAt: string;
+  }>;
+};
+
+export type UpdateStockBatchPayload = {
+  branchId?: string;
+  expiresAt?: string;
+  batchNumber?: string;
+  purchaseOrderNumber?: string | null;
+  manufacturedAt?: string | null;
+  unitOrderPrice?: number;
+  unitSellingPrice?: number;
+  notes?: string | null;
+  status?: "draft" | "active" | "quarantined" | "expired" | "disposed" | "depleted";
+};
+
 export function useStockDashboardQuery({
   branchId,
   search,
   view,
+  inventoryStatus,
   page,
   pageSize = 10,
+  enabled = true,
 }: StockDashboardQueryOptions) {
   return useQuery({
-    queryKey: [...stockDashboardQueryKey, { branchId, search, view, page, pageSize }],
+    queryKey: [...stockDashboardQueryKey, { branchId, search, view, inventoryStatus, page, pageSize }],
     queryFn: () =>
       fetchJson<StockDashboardResponse>(
-        `${apiUrl("/stock")}?branch=${encodeURIComponent(branchId ?? "")}&search=${encodeURIComponent(search)}&view=${encodeURIComponent(view)}&page=${page}&pageSize=${pageSize}`,
+        `${apiUrl("/stock")}?branch=${encodeURIComponent(branchId ?? "")}&search=${encodeURIComponent(search)}&view=${encodeURIComponent(view)}&inventoryStatus=${encodeURIComponent(inventoryStatus)}&page=${page}&pageSize=${pageSize}`,
         { method: "GET" },
       ),
+    enabled,
     placeholderData: (previousData) => previousData,
     meta: {
       suppressGlobalLoading: true,
@@ -262,6 +308,114 @@ export function useStockProductSuggestQuery(q: string) {
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     placeholderData: (previousData) => previousData,
+    meta: {
+      suppressGlobalLoading: true,
+    },
+  });
+}
+
+export function useStockProductQuery(productId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: [...stockProductDetailQueryKey, productId],
+    queryFn: () =>
+      fetchJson<StockProductDetailResponse>(`${apiUrl("/stock/products")}/${productId}`, {
+        method: "GET",
+      }),
+    enabled: Boolean(productId) && enabled,
+    staleTime: 30_000,
+    meta: {
+      suppressGlobalLoading: true,
+    },
+  });
+}
+
+export function useStockProductBatchesQuery(productId: string | null, branchId?: string, enabled = true) {
+  return useQuery({
+    queryKey: [...stockProductBatchesQueryKey, { productId, branchId }],
+    queryFn: () =>
+      fetchJson<StockProductBatchesResponse>(
+        `${apiUrl("/stock/products")}/${productId}/batches?branch=${encodeURIComponent(branchId ?? "")}`,
+        { method: "GET" },
+      ),
+    enabled: Boolean(productId) && enabled,
+    staleTime: 30_000,
+    meta: {
+      suppressGlobalLoading: true,
+    },
+  });
+}
+
+export function useUpdateStockProductMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      productId,
+      payload,
+    }: {
+      productId: string;
+      payload: {
+        name?: string;
+        categoryName?: string | null;
+        barcode?: string | null;
+        defaultSellingPrice?: number;
+        status?: "active" | "discontinued";
+      };
+    }) =>
+      fetchJson<StockProductDetailResponse>(`${apiUrl("/stock/products")}/${productId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: async (_data, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: stockDashboardQueryKey }),
+        queryClient.invalidateQueries({ queryKey: stockCatalogQueryKey, refetchType: "none" }),
+        queryClient.invalidateQueries({ queryKey: stockProductSuggestQueryKey, refetchType: "none" }),
+        queryClient.invalidateQueries({ queryKey: stockBatchDetailQueryKey }),
+        queryClient.invalidateQueries({
+          queryKey: [...stockProductDetailQueryKey, variables.productId],
+          refetchType: "none",
+        }),
+      ]);
+    },
+    meta: {
+      suppressGlobalLoading: true,
+    },
+  });
+}
+
+export function useUpdateStockBatchMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      batchId,
+      payload,
+    }: {
+      batchId: string;
+      payload: UpdateStockBatchPayload;
+    }) =>
+      fetchJson<{ id: string; batchNumber: string; productName: string; expiresAt: string }>(
+        `${apiUrl("/stock/batches")}/${batchId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+      ),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: stockDashboardQueryKey }),
+        queryClient.invalidateQueries({ queryKey: stockCatalogQueryKey, refetchType: "none" }),
+        queryClient.invalidateQueries({ queryKey: stockBatchDetailQueryKey }),
+        queryClient.invalidateQueries({ queryKey: stockProductBatchesQueryKey }),
+      ]);
+    },
     meta: {
       suppressGlobalLoading: true,
     },

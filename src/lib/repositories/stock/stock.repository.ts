@@ -3,6 +3,7 @@ import type {
   CreateStockBatchInput,
   CreateStockBatchesInput,
   StockAdjustmentInput,
+  UpdateStockBatchInput,
 } from "@/lib/validation/stock";
 
 type StockBranchContext = {
@@ -21,6 +22,7 @@ export type StockDashboardData = {
   filters: {
     search: string;
     view: "all" | "expiring";
+    inventoryStatus: "all" | "out_of_stock" | "reorder_attention";
   };
   pagination: {
     page: number;
@@ -43,8 +45,10 @@ export type StockDashboardData = {
   };
   inventory: Array<{
     id: string;
+    productId: string;
     productName: string;
     sku: string;
+    branchName: string;
     categoryName: string;
     supplierName: string | null;
     batchNumber: string;
@@ -96,6 +100,7 @@ export type StockGetDashboardOptions = {
   page?: number;
   pageSize?: number;
   view?: "all" | "expiring";
+  inventoryStatus?: "all" | "out_of_stock" | "reorder_attention";
 };
 
 export type StockGetCatalogOptions = {
@@ -106,6 +111,7 @@ export type StockGetCatalogOptions = {
 
 export type StockBatchDetail = {
   id: string;
+  productId: string;
   batchNumber: string;
   purchaseOrderNumber: string | null;
   productName: string;
@@ -155,6 +161,15 @@ export type StockCreateBatchesResult =
   | { ok: true; data: StockCreateBatchResult }
   | { ok: false; error: string };
 
+export type StockProductBatchOption = {
+  id: string;
+  batchNumber: string;
+  expiresAt: string;
+  status: "active" | "expiring_soon" | "expired" | "disposed" | "depleted";
+  quantityAvailable: number;
+  receivedAt: string;
+};
+
 export interface StockRepository {
   getDashboard(
     context: AuthContext,
@@ -178,7 +193,17 @@ export interface StockRepository {
     context: AuthContext,
     inputs: CreateStockBatchesInput,
   ): Promise<StockCreateBatchesResult[]>;
+  listProductBatches(
+    context: AuthContext,
+    productId: string,
+    preferredBranchId?: string,
+  ): Promise<{ branchId: string; batches: StockProductBatchOption[] }>;
   getBatchById(context: AuthContext, batchId: string): Promise<StockBatchDetail | null>;
+  updateBatch(
+    context: AuthContext,
+    batchId: string,
+    input: UpdateStockBatchInput,
+  ): Promise<{ id: string; batchNumber: string; productName: string; expiresAt: string }>;
   disposeBatch(
     context: AuthContext,
     batchId: string,

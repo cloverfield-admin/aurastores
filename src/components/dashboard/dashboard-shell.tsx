@@ -2,43 +2,85 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
+import type { DashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
+import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
-import { useStockBranchesQuery } from "@/lib/queries/stock";
+import { apiUrl } from "@/lib/api/version";
+import { PRODUCT_TAGLINE } from "@/lib/brand";
 import { ROUTES } from "@/lib/routes";
-import { PharmacySearchField } from "@/components/dashboard/pharmacy-search-field";
+import { WorkspaceSearchField } from "@/components/dashboard/workspace-search-field";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
+import { AppLogo } from "@/components/ui/app-logo";
+import type { MembershipCapability } from "@/lib/rbac/capabilities";
+import { hasCapability, membershipCapabilityLabel } from "@/lib/rbac/capabilities";
+import { dashboardModuleCapabilityForPath } from "@/lib/rbac/dashboard-path-capability";
+import { isOrganizationOwnerOrAdmin } from "@/lib/membership-display";
+import { createQueryIdbPersister } from "@/lib/query-idb-persister";
 
 /** Breathing room between fixed header and main scroll area (px). */
 const MAIN_BELOW_HEADER_GAP_PX = 8;
 
-const MODULE_NAV: { label: string; icon: string; href: string }[] = [
-  { label: "Aura Stock", icon: "inventory_2", href: ROUTES.dashboard.stock },
-  { label: "Aura Sales", icon: "trending_up", href: ROUTES.dashboard.sales },
-  { label: "Aura Pay", icon: "payments", href: ROUTES.dashboard.pay },
-  { label: "Aura Insights", icon: "insights", href: ROUTES.dashboard.insights },
-  { label: "Product Categories", icon: "category", href: ROUTES.dashboard.productCategories },
-  { label: "Staff", icon: "groups", href: ROUTES.dashboard.staff },
+const MODULE_NAV: { label: string; icon: string; href: string; capability: MembershipCapability }[] = [
+  { label: "Aura Stock", icon: "inventory_2", href: ROUTES.dashboard.stock, capability: "stock" },
+  { label: "Aura Sales", icon: "trending_up", href: ROUTES.dashboard.sales, capability: "sales" },
+  { label: "Aura Pay", icon: "payments", href: ROUTES.dashboard.pay, capability: "pay" },
+  { label: "Expenses", icon: "receipt_long", href: ROUTES.dashboard.expenses, capability: "pay" },
+  { label: "Aura Insights", icon: "insights", href: ROUTES.dashboard.insights, capability: "insights" },
+  {
+    label: "Product Categories",
+    icon: "category",
+    href: ROUTES.dashboard.productCategories,
+    capability: "catalog",
+  },
+  { label: "Staff", icon: "groups", href: ROUTES.dashboard.staff, capability: "staff" },
 ];
 
 type DashboardShellProps = {
   children: ReactNode;
+  workspaceAccess: DashboardWorkspaceAccess;
 };
 
-export function DashboardShell({ children }: DashboardShellProps) {
+export function DashboardShell({ children, workspaceAccess }: DashboardShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const { withLoading, notify } = useAuraFeedback();
   const [localSearch, setLocalSearch] = useState("");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const [userMenuAnchor, setUserMenuAnchor] = useState<null | "mobile" | "desktop">(null);
+  const [lockedFeature, setLockedFeature] = useState<{
+    capability: MembershipCapability;
+    label: string;
+    moduleLabel: string;
+  } | null>(null);
+  const [supportOpen, setSupportOpen] = useState(false);
   const [headerHeightPx, setHeaderHeightPx] = useState<number | null>(null);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileNavCloseRef = useRef<HTMLButtonElement>(null);
   const mobileToolsToggleRef = useRef<HTMLButtonElement>(null);
   const mobileToolsPanelRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLElement>(null);
+  const userMenuRootMobileRef = useRef<HTMLDivElement>(null);
+  const userMenuRootDesktopRef = useRef<HTMLDivElement>(null);
+  const userMenuTriggerMobileRef = useRef<HTMLButtonElement>(null);
+  const userMenuTriggerDesktopRef = useRef<HTMLButtonElement>(null);
+  const userMenuBaseId = useId();
+  const userMenuPanelMobileId = `${userMenuBaseId}-account-panel-mobile`;
+  const userMenuPanelDesktopId = `${userMenuBaseId}-account-panel-desktop`;
 
   const closeMobileNav = useCallback(() => {
     setMobileNavOpen(false);
@@ -48,13 +90,39 @@ export function DashboardShell({ children }: DashboardShellProps) {
     setMobileToolsOpen(false);
   }, []);
 
+  const closeSupport = useCallback(() => {
+    setSupportOpen(false);
+  }, []);
+
+  const userMenuOpen = userMenuAnchor != null;
+
+  const closeUserMenu = useCallback(() => {
+    setUserMenuAnchor(null);
+  }, []);
+
+  const moduleNavItems = useMemo(
+    () =>
+      MODULE_NAV.map((item) => ({
+        ...item,
+        locked: !hasCapability(workspaceAccess.capabilities, item.capability),
+      })),
+    [workspaceAccess.capabilities],
+  );
+
+  const canUseWorkspaceSearch =
+    hasCapability(workspaceAccess.capabilities, "stock") ||
+    hasCapability(workspaceAccess.capabilities, "staff") ||
+    hasCapability(workspaceAccess.capabilities, "catalog");
+
   useEffect(() => {
     const id = requestAnimationFrame(() => {
       closeMobileNav();
       closeMobileTools();
+      closeUserMenu();
+      closeSupport();
     });
     return () => cancelAnimationFrame(id);
-  }, [pathname, closeMobileNav, closeMobileTools]);
+  }, [pathname, closeMobileNav, closeMobileTools, closeUserMenu, closeSupport]);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 1024px)");
@@ -62,11 +130,12 @@ export function DashboardShell({ children }: DashboardShellProps) {
       if (mq.matches) {
         closeMobileNav();
         closeMobileTools();
+        closeUserMenu();
       }
     };
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
-  }, [closeMobileNav, closeMobileTools]);
+  }, [closeMobileNav, closeMobileTools, closeUserMenu]);
 
   useEffect(() => {
     if (!mobileNavOpen) {
@@ -87,6 +156,40 @@ export function DashboardShell({ children }: DashboardShellProps) {
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [mobileNavOpen, closeMobileNav]);
+
+  useEffect(() => {
+    if (!userMenuOpen) {
+      return;
+    }
+    const onPointerDown = (event: PointerEvent) => {
+      const mobileRoot = userMenuRootMobileRef.current;
+      const desktopRoot = userMenuRootDesktopRef.current;
+      const target = event.target;
+      if (target instanceof Node) {
+        if (mobileRoot?.contains(target) || desktopRoot?.contains(target)) {
+          return;
+        }
+      }
+      closeUserMenu();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeUserMenu();
+        if (userMenuAnchor === "mobile") {
+          userMenuTriggerMobileRef.current?.focus();
+        } else if (userMenuAnchor === "desktop") {
+          userMenuTriggerDesktopRef.current?.focus();
+        }
+      }
+    };
+    window.addEventListener("pointerdown", onPointerDown, true);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown, true);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [userMenuOpen, userMenuAnchor, closeUserMenu]);
 
   useEffect(() => {
     if (!mobileToolsOpen) {
@@ -133,39 +236,55 @@ export function DashboardShell({ children }: DashboardShellProps) {
       ro.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [pathname, mobileNavOpen, mobileToolsOpen]);
+  }, [pathname, mobileNavOpen, mobileToolsOpen, userMenuOpen]);
 
   const isStock = pathname === ROUTES.dashboard.stock || pathname.startsWith(`${ROUTES.dashboard.stock}/`);
   const isSales = pathname === ROUTES.dashboard.sales || pathname.startsWith(`${ROUTES.dashboard.sales}/`);
+  const isPay = pathname === ROUTES.dashboard.pay || pathname.startsWith(`${ROUTES.dashboard.pay}/`);
   const isInsights =
     pathname === ROUTES.dashboard.insights || pathname.startsWith(`${ROUTES.dashboard.insights}/`);
   const isProductCategories =
     pathname === ROUTES.dashboard.productCategories ||
     pathname.startsWith(`${ROUTES.dashboard.productCategories}/`);
-  const isSettings = pathname === ROUTES.settings;
+  const isSettings = pathname === ROUTES.settings || pathname.startsWith(`${ROUTES.settings}/`);
+  const isOrganization =
+    pathname === ROUTES.dashboard.organization
+    || pathname.startsWith(`${ROUTES.dashboard.organization}/`);
   const isStaff = pathname === ROUTES.dashboard.staff || pathname.startsWith(`${ROUTES.dashboard.staff}/`);
   const isStaffAdd = pathname === ROUTES.dashboard.staffAdd;
   const isDashboardMain = pathname === ROUTES.dashboard.main;
   const searchPlaceholder = isStock
     ? "Search inventory..."
     : isSales
-      ? "Search sales ID, patient, or drug..."
+      ? "Search sales, customer, or SKU..."
       : isInsights
         ? "Search insights..."
         : isStaff
-          ? "Search pharmacy network..."
-          : "Search clinical data...";
+          ? "Search workspace..."
+          : "Search workspace...";
   const topActionLabel = isStock ? "Aura Sync" : "Branch Toggle";
   const topActionIcon = isStock ? "sync" : "shuffle";
   const topActionVariant = isStock ? "outline" : "primary";
-  const stockBranchId = isStock ? searchParams.get("branch") ?? undefined : undefined;
-  const salesBranchId = isSales ? searchParams.get("branch") ?? undefined : undefined;
-  const insightsBranchId = isInsights ? searchParams.get("branch") ?? undefined : undefined;
-  const staffBranchId = isStaff ? searchParams.get("branch") ?? undefined : undefined;
-  const sectionBranchId = isStock ? stockBranchId : isSales ? salesBranchId : isInsights ? insightsBranchId : isStaff ? staffBranchId : undefined;
-  const branchesQuery = useStockBranchesQuery(sectionBranchId, !isDashboardMain);
-  const sectionBranchTabs = branchesQuery.data?.branches ?? [];
-  const activeSectionBranchId = branchesQuery.data?.branch.id ?? sectionBranchId;
+  const sectionBranchTabs = workspaceAccess.accessibleBranches;
+  const branchParam = searchParams.get("branch");
+  const activeSectionBranchId =
+    branchParam && sectionBranchTabs.some((t) => t.id === branchParam)
+      ? branchParam
+      : sectionBranchTabs[0]?.id;
+
+  useEffect(() => {
+    if (!branchParam || sectionBranchTabs.length === 0) {
+      return;
+    }
+    if (sectionBranchTabs.some((t) => t.id === branchParam)) {
+      return;
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("branch", sectionBranchTabs[0]!.id);
+    params.delete("page");
+    const next = params.toString();
+    router.replace(next ? `${pathname}?${next}` : pathname);
+  }, [branchParam, pathname, router, searchParams, sectionBranchTabs]);
 
   function replaceBranchInUrl(branchId: string, opts?: { resetPage?: boolean }) {
     const params = new URLSearchParams(searchParams.toString());
@@ -185,6 +304,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
   const hasMobileToolsPanel =
     !isSettings
+    && !isOrganization
     && !isStaffAdd
     && !isProductCategories
     && (isStaff
@@ -196,6 +316,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
   const mobileHeaderTitle = isSettings
     ? "Profile & Settings"
+    : isOrganization
+      ? "Organization"
     : isStaffAdd
       ? "Add New Staff"
       : isProductCategories
@@ -215,29 +337,61 @@ export function DashboardShell({ children }: DashboardShellProps) {
                   : "Dashboard";
 
   function branchSwitcherNav(opts: { ariaLabel: string; onSelectBranch: (branchId: string) => void }) {
-    if (branchesQuery.isPending) {
-      return (
-        <nav
-          className="flex min-w-0 max-w-full flex-wrap items-center gap-x-4 gap-y-2 overflow-x-auto overscroll-x-contain sm:gap-x-6"
-          aria-label={opts.ariaLabel}
-        >
-          <span className="text-sm text-[#94a3b8]">Loading branches…</span>
-        </nav>
-      );
-    }
     if (sectionBranchTabs.length === 0) {
+      const moduleCap = dashboardModuleCapabilityForPath(pathname);
+      if (moduleCap && !hasCapability(workspaceAccess.capabilities, moduleCap)) {
+        return <MissingCapabilityNotice capability={moduleCap} variant="inline" />;
+      }
+      const canOpenBranchSetup = hasCapability(workspaceAccess.capabilities, "organization");
       return (
-        <div className="flex flex-wrap items-center gap-2 text-sm text-[#64748b]">
-          <span>No branches yet.</span>
-          <Link
-            href={ROUTES.dashboard.onboarding.pharmacyDetails}
-            className="font-semibold text-[#0d9488] underline decoration-[rgba(20,184,166,0.35)]"
-          >
-            Finish branch setup
-          </Link>
+        <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--app-text-muted)]">
+          <span>No branches available for your account.</span>
+          {canOpenBranchSetup ? (
+            <Link
+              href={ROUTES.dashboard.organizationBranches.new}
+              className="font-semibold text-[var(--app-link-teal)] underline decoration-[rgba(20,184,166,0.35)]"
+            >
+              Branch setup
+            </Link>
+          ) : (
+            <span className="text-[var(--app-text-faint)]">
+              Ask an organization admin to assign you to a branch or complete branch setup.
+            </span>
+          )}
         </div>
       );
     }
+
+    if (sectionBranchTabs.length > 3) {
+      return (
+        <div className="flex min-w-0 items-center gap-3" aria-label={opts.ariaLabel}>
+          <label className="sr-only" htmlFor="dashboard-branch-selector">
+            Branch
+          </label>
+          <div className="relative">
+            <select
+              id="dashboard-branch-selector"
+              value={activeSectionBranchId ?? ""}
+              onChange={(e) => opts.onSelectBranch(e.target.value)}
+              className="appearance-none rounded-full border border-[var(--app-border-ui)] bg-[var(--app-surface)] px-4 py-2 pr-10 text-sm font-semibold text-[var(--app-text)] shadow-sm outline-none transition focus:ring-2 focus:ring-[rgba(20,184,166,0.25)]"
+            >
+              {sectionBranchTabs.map((tab) => (
+                <option key={tab.id} value={tab.id}>
+                  {tab.name}
+                </option>
+              ))}
+            </select>
+            <span className="material-symbols-outlined notranslate pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-lg text-[var(--app-text-faint)]">
+              expand_more
+            </span>
+          </div>
+          <span className="hidden text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--app-text-faint)] sm:inline">
+            Branch
+          </span>
+        </div>
+      );
+    }
+
     return (
       <nav
         className="flex min-w-0 max-w-full flex-wrap items-center gap-x-4 gap-y-2 overflow-x-auto overscroll-x-contain sm:gap-x-6"
@@ -247,8 +401,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
           const active = tab.id === activeSectionBranchId;
           const className = `pb-1.5 pt-1 font-[family-name:var(--font-manrope)] text-sm ${
             active
-              ? "border-b-2 border-[#14b8a6] font-semibold text-[#0d9488]"
-              : "font-normal text-[#64748b] hover:text-[#0f172a]"
+              ? "border-b-2 border-[var(--app-branch-active-border)] font-semibold text-[var(--app-link-teal)]"
+              : "font-normal text-[var(--app-text-muted)] hover:text-[var(--app-header-title)]"
           }`;
           return (
             <button
@@ -265,8 +419,119 @@ export function DashboardShell({ children }: DashboardShellProps) {
     );
   }
 
+  function accountUserMenu(opts: {
+    anchor: "mobile" | "desktop";
+    rootRef: RefObject<HTMLDivElement | null>;
+    triggerRef: RefObject<HTMLButtonElement | null>;
+    panelId: string;
+    /** Narrower popover on small header; roomier on lg+ */
+    variant: "compact" | "comfortable";
+  }) {
+    const { anchor, rootRef, triggerRef, panelId, variant } = opts;
+    const panelWidthClass =
+      variant === "compact"
+        ? "w-[min(18rem,calc(100vw-2rem))]"
+        : "w-[min(20rem,calc(100vw-2rem))]";
+    const isThisAnchor = userMenuAnchor === anchor;
+
+    return (
+      <div ref={rootRef} className="relative shrink-0">
+        <button
+          ref={triggerRef}
+          type="button"
+          className="inline-flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full shadow-[0_0_0_2px_rgba(20,184,166,0.2)] transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-link-teal)]"
+          aria-label="Account menu"
+          aria-haspopup="menu"
+          aria-expanded={isThisAnchor}
+          aria-controls={isThisAnchor ? panelId : undefined}
+          onClick={() => {
+            closeMobileNav();
+            closeMobileTools();
+            setUserMenuAnchor((current) => (current === anchor ? null : anchor));
+          }}
+        >
+          <AuraAvatar
+            name={workspaceAccess.userDisplayName}
+            photoUrl={workspaceAccess.userAvatarUrl}
+            decorative
+            className="size-full min-h-0 min-w-0 rounded-full text-[11px]"
+          />
+        </button>
+        {isThisAnchor ? (
+          <div
+            id={panelId}
+            role="menu"
+            aria-label="Account"
+            className={`absolute right-0 top-[calc(100%+0.5rem)] z-[130] ${panelWidthClass} origin-top-right rounded-2xl border border-[var(--app-border-ui-soft)] bg-[var(--app-surface)]/95 p-1 shadow-[var(--app-shadow-card)] backdrop-blur-md`}
+          >
+            <div className="rounded-xl bg-[var(--app-surface-subtle)]/70 p-3">
+              <div className="flex items-center gap-3">
+                <AuraAvatar
+                  name={workspaceAccess.userDisplayName}
+                  photoUrl={workspaceAccess.userAvatarUrl}
+                  decorative
+                  className="size-11 shrink-0 rounded-full text-sm ring-2 ring-[var(--app-surface)]"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-[family-name:var(--font-manrope)] text-sm font-extrabold text-[var(--app-text)]">
+                    {workspaceAccess.userDisplayName}
+                  </p>
+                  <p className="truncate text-xs font-medium text-[var(--app-text-muted)]">
+                    {workspaceAccess.membershipRoleLabel}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="p-1 pt-2">
+              <Link
+                href={ROUTES.settings}
+                role="menuitem"
+                onClick={closeUserMenu}
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition hover:bg-[var(--app-surface-subtle)]/90 ${
+                  isSettings ? "text-[var(--app-link-teal)]" : "text-[var(--app-text)]"
+                }`}
+              >
+                <span
+                  className={`material-symbols-outlined notranslate text-xl ${
+                    isSettings ? "text-[var(--app-link-teal)]" : "text-[var(--app-text-muted)]"
+                  }`}
+                >
+                  person
+                </span>
+                <span className="min-w-0 flex-1 text-left">Profile</span>
+                <span className="material-symbols-outlined notranslate text-lg text-[var(--app-text-faint)]">
+                  chevron_right
+                </span>
+              </Link>
+              <Link
+                href={ROUTES.dashboard.organization}
+                role="menuitem"
+                onClick={closeUserMenu}
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition hover:bg-[var(--app-surface-subtle)]/90 ${
+                  isOrganization ? "text-[var(--app-link-teal)]" : "text-[var(--app-text)]"
+                }`}
+              >
+                <span
+                  className={`material-symbols-outlined notranslate text-xl ${
+                    isOrganization ? "text-[var(--app-link-teal)]" : "text-[var(--app-text-muted)]"
+                  }`}
+                >
+                  domain
+                </span>
+                <span className="min-w-0 flex-1 text-left">Organization</span>
+                <span className="material-symbols-outlined notranslate text-lg text-[var(--app-text-faint)]">
+                  chevron_right
+                </span>
+              </Link>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
-    <div className="aura-landing min-h-dvh bg-[#f7f9fb] text-[#191c1e]">
+    <div className="aura-dashboard-root aura-landing min-h-dvh text-[var(--app-text)]">
       {mobileNavOpen ? (
         <button
           type="button"
@@ -279,19 +544,19 @@ export function DashboardShell({ children }: DashboardShellProps) {
       {/* Sidebar: off-canvas below lg */}
       <aside
         id="dashboard-mobile-nav"
-        className={`fixed left-0 top-0 z-[100] flex h-dvh w-64 max-w-[min(100vw,20rem)] flex-col border-r border-[#f1f5f9] bg-[#f8fafc] px-4 pb-4 pt-2 shadow-[4px_0_24px_rgba(15,23,42,0.08)] transition-transform duration-200 ease-out motion-reduce:transition-none lg:z-40 lg:max-w-none lg:translate-x-0 lg:p-4 lg:shadow-none ${
+        className={`fixed left-0 top-0 z-[100] flex h-dvh w-64 max-w-[min(100vw,20rem)] flex-col border-r border-[var(--aura-tint-border)] bg-[var(--app-surface)]/95 px-4 pb-4 pt-2 shadow-[4px_0_24px_rgba(15,23,42,0.08)] backdrop-blur-md transition-transform duration-200 ease-out motion-reduce:transition-none dark:shadow-[4px_0_24px_rgba(0,0,0,0.45)] lg:z-40 lg:max-w-none lg:translate-x-0 lg:p-4 lg:shadow-none ${
           mobileNavOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#e2e8f0]/80 pb-2 lg:hidden">
-          <span className="text-xs font-semibold uppercase tracking-wider text-[#64748b]">Menu</span>
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--app-border-ui-soft)] pb-2 lg:hidden">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[var(--app-text-muted)]">Menu</span>
           <button
             ref={mobileNavCloseRef}
             type="button"
             data-mobile-nav-close
             aria-label="Close navigation menu"
             onClick={closeMobileNav}
-            className="rounded-lg p-2 text-[#64748b] hover:bg-slate-100"
+            className="rounded-lg p-2 text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]"
           >
             <span className="material-symbols-outlined notranslate text-xl">close</span>
           </button>
@@ -300,33 +565,16 @@ export function DashboardShell({ children }: DashboardShellProps) {
           <Link
             href={ROUTES.dashboard.main}
             onClick={closeMobileNav}
-            className="flex items-center gap-3 px-2 pb-4 pt-0 lg:pb-8 lg:pt-2"
+            className="flex flex-col items-center gap-2 px-2 pb-4 pt-0 lg:pb-8 lg:pt-2"
           >
-            <div
-              className="flex size-10 items-center justify-center rounded-xl shadow-md"
-              style={{
-                background:
-                  "linear-gradient(135deg, rgb(15, 185, 177) 0%, rgb(99, 102, 241) 100%)",
-              }}
-            >
-              <span className="material-symbols-outlined notranslate text-xl text-white">
-                local_pharmacy
-              </span>
-            </div>
-            <br />
-            <br />
-            <div>
-              <p className="bg-gradient-to-r from-[#14b8a6] to-[#6366f1] bg-clip-text font-[family-name:var(--font-manrope)] text-xl font-bold tracking-tight text-transparent">
-                AuraPharma
-              </p>
-              <p className="text-[10px] font-medium uppercase tracking-[-0.05em] text-[#64748b]">
-                Clinical Intelligence
-              </p>
-            </div>
+            <AppLogo variant="sidebar" className="!h-20 sm:!h-14 lg:!h-16" />
+            <p className="text-center text-[10px] font-medium uppercase tracking-[-0.05em] text-[var(--app-text-muted)]">
+              {PRODUCT_TAGLINE}
+            </p>
           </Link>
 
           <nav className="flex flex-col gap-1" aria-label="Product modules">
-            {MODULE_NAV.map((item) => {
+            {moduleNavItems.map((item) => {
               const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
               const href =
                 item.href === ROUTES.dashboard.stock ||
@@ -336,6 +584,38 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 item.href === ROUTES.dashboard.productCategories
                   ? navHref(item.href)
                   : item.href;
+
+              if (item.locked) {
+                const label = membershipCapabilityLabel(item.capability);
+                return (
+                  <button
+                    key={item.href}
+                    type="button"
+                    title={`Locked feature: ${label}. Click to learn more.`}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-[var(--app-text-faint)] opacity-70 transition hover:bg-[var(--app-surface-subtle)]/80 hover:text-[var(--app-text-muted)]"
+                    onClick={() => {
+                      closeMobileNav();
+                      setLockedFeature({
+                        capability: item.capability,
+                        label,
+                        moduleLabel: item.label,
+                      });
+                      notify({
+                        variant: "info",
+                        title: "Feature locked",
+                        description: `“${item.label}” is locked on your plan. See the upgrade options to unlock.`,
+                      });
+                    }}
+                  >
+                    <span className="material-symbols-outlined notranslate text-xl">lock</span>
+                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--app-text-faint)]">
+                      Upgrade
+                    </span>
+                  </button>
+                );
+              }
+
               return (
                 <Link
                   key={item.href}
@@ -343,12 +623,12 @@ export function DashboardShell({ children }: DashboardShellProps) {
                   onClick={closeMobileNav}
                   className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
                     active
-                      ? "bg-white text-[#0d9488] shadow-sm"
-                      : "text-[#64748b] hover:bg-slate-100/80"
+                      ? "aura-panel-tint text-[var(--aura-tint-text)] shadow-sm"
+                      : "text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]/80 hover:text-[var(--app-text)]"
                   }`}
                 >
                   <span
-                    className={`material-symbols-outlined notranslate text-xl ${active ? "text-[#0d9488]" : ""}`}
+                    className={`material-symbols-outlined notranslate text-xl ${active ? "text-[var(--app-link-teal)]" : ""}`}
                   >
                     {item.icon}
                   </span>
@@ -359,59 +639,77 @@ export function DashboardShell({ children }: DashboardShellProps) {
           </nav>
         </div>
 
-        <div className="mt-auto shrink-0 border-t border-[rgba(226,232,240,0.5)] pt-4">
+        <div className="mt-auto shrink-0 border-t border-[var(--app-border-ui-soft)] pt-4">
           <nav className="flex flex-col gap-1" aria-label="Account">
             <Link
-              href={ROUTES.settings}
-              onClick={closeMobileNav}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                isSettings
-                  ? "bg-white text-[#0d9488] shadow-sm"
-                  : "text-[#64748b] hover:bg-slate-100/80"
-              }`}
-            >
-              <span
-                className={`material-symbols-outlined notranslate text-xl ${isSettings ? "text-[#0d9488]" : ""}`}
-              >
-                settings
-              </span>
-              Settings
-            </Link>
-            <Link
-              href={ROUTES.features}
-              onClick={closeMobileNav}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#64748b] hover:bg-slate-100/80"
+              href="#"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]/80"
+              role="button"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  closeMobileNav();
+                  setSupportOpen(true);
+                }
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                closeMobileNav();
+                setSupportOpen(true);
+              }}
             >
               <span className="material-symbols-outlined notranslate text-xl">support_agent</span>
               Support
             </Link>
+            <button
+              type="button"
+              onClick={async () => {
+                closeMobileNav();
+                closeMobileTools();
+                closeUserMenu();
+                await withLoading("auth:sign-out", "Signing you out...", async () => {
+                  // 1) Sign out on the server (clears auth cookies/session).
+                  await fetch(apiUrl("/auth/sign-out"), { method: "POST" }).catch(() => null);
+
+                  // 2) Cancel + clear all in-memory React Query state.
+                  await queryClient.cancelQueries();
+                  queryClient.clear();
+
+                  // 3) Remove persisted query cache (IDB) so the next user session starts clean.
+                  await Promise.resolve(createQueryIdbPersister().removeClient()).catch(() => null);
+                });
+                router.push(ROUTES.auth.signIn);
+                router.refresh();
+              }}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface-subtle)]/80 hover:text-[#dc2626]"
+            >
+              <span className="material-symbols-outlined notranslate text-xl">logout</span>
+              Log out
+            </button>
           </nav>
-          <Link
-            href={ROUTES.settings}
-            onClick={closeMobileNav}
-            className="mt-3 block rounded-xl bg-[#f1f5f9] p-3 transition hover:bg-[#e2e8f0]"
-          >
+          <div className="aura-panel-tint mt-3 rounded-xl border p-3">
             <div className="flex items-center gap-3">
               <AuraAvatar
-                name="Pharmacy Manager"
+                name={workspaceAccess.userDisplayName}
+                photoUrl={workspaceAccess.userAvatarUrl}
                 decorative
-                className="size-8 shrink-0 rounded-full text-[11px] ring-2 ring-white"
+                className="size-8 shrink-0 rounded-full text-[11px] ring-2 ring-[var(--app-surface)]"
               />
               <div className="min-w-0">
-                <p className="truncate font-[family-name:var(--font-manrope)] text-xs font-bold text-[#191c1e]">
-                  Pharmacy Manager
+                <p className="truncate font-[family-name:var(--font-manrope)] text-xs font-bold text-[var(--app-text)]">
+                  {workspaceAccess.userDisplayName}
                 </p>
-                <p className="text-[10px] font-medium text-[#64748b]">Admin Access</p>
+                <p className="text-[10px] font-medium text-[var(--app-text-muted)]">{workspaceAccess.membershipRoleLabel}</p>
               </div>
             </div>
-          </Link>
+          </div>
         </div>
       </aside>
 
       {/* Top bar */}
       <header
         ref={headerRef}
-        className="fixed left-0 right-0 top-0 z-[110] border-b border-[#f1f5f9] bg-white/80 shadow-[0_1px_2px_0_rgba(226,232,240,0.5)] backdrop-blur-md lg:left-64 lg:z-30"
+        className="fixed left-0 right-0 top-0 z-[110] border-b border-[var(--aura-tint-border)] bg-[var(--app-surface)]/88 shadow-[var(--app-shadow-card)] backdrop-blur-md lg:left-64 lg:z-30"
       >
         <div className="lg:hidden">
           <div className="mx-auto max-w-[1280px] px-4 py-3">
@@ -419,11 +717,12 @@ export function DashboardShell({ children }: DashboardShellProps) {
               <button
                 ref={mobileMenuButtonRef}
                 type="button"
-                className="shrink-0 rounded-lg p-2 text-[#64748b] hover:bg-slate-100"
+                className="shrink-0 rounded-lg p-2 text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]"
                 aria-expanded={mobileNavOpen}
                 aria-controls="dashboard-mobile-nav"
                 onClick={() => {
                   closeMobileTools();
+                  closeUserMenu();
                   setMobileNavOpen((open) => !open);
                 }}
               >
@@ -431,18 +730,19 @@ export function DashboardShell({ children }: DashboardShellProps) {
                   {mobileNavOpen ? "close" : "menu"}
                 </span>
               </button>
-              <p className="min-w-0 flex-1 truncate font-[family-name:var(--font-manrope)] text-base font-bold leading-tight text-[#0f172a]">
+              <p className="min-w-0 flex-1 truncate font-[family-name:var(--font-manrope)] text-base font-bold leading-tight text-[var(--app-header-title)]">
                 {mobileHeaderTitle}
               </p>
               {hasMobileToolsPanel ? (
                 <button
                   ref={mobileToolsToggleRef}
                   type="button"
-                  className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#e2e8f0] bg-white px-2.5 py-2 text-[#64748b] hover:bg-slate-50"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--app-border-ui)] bg-[var(--app-surface)] px-2.5 py-2 text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]"
                   aria-expanded={mobileToolsOpen}
                   aria-controls="dashboard-mobile-tools"
                   onClick={() => {
                     closeMobileNav();
+                    closeUserMenu();
                     setMobileToolsOpen((open) => !open);
                   }}
                 >
@@ -450,27 +750,23 @@ export function DashboardShell({ children }: DashboardShellProps) {
                   <span className="sr-only">Search and branches</span>
                 </button>
               ) : null}
-              <div className="flex shrink-0 items-center gap-2 border-l border-[#f1f5f9] pl-3">
+              <div className="flex shrink-0 items-center gap-2 border-l border-[var(--app-surface-subtle)] pl-3">
                 <button
                   type="button"
-                  className="rounded-lg p-1.5 text-[#64748b] hover:bg-slate-100"
+                  className="rounded-lg p-1.5 text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]"
                   aria-label="Notifications"
                 >
                   <span className="material-symbols-outlined notranslate text-xl">
                     notifications
                   </span>
                 </button>
-                <Link
-                  href={ROUTES.settings}
-                  className="block shadow-[0_0_0_2px_rgba(20,184,166,0.2)] transition hover:opacity-90"
-                  aria-label="Profile and settings"
-                >
-                  <AuraAvatar
-                    name="Pharmacy Manager"
-                    decorative
-                    className="size-8 rounded-full text-[11px]"
-                  />
-                </Link>
+                {accountUserMenu({
+                  anchor: "mobile",
+                  rootRef: userMenuRootMobileRef,
+                  triggerRef: userMenuTriggerMobileRef,
+                  panelId: userMenuPanelMobileId,
+                  variant: "compact",
+                })}
               </div>
             </div>
           </div>
@@ -481,18 +777,18 @@ export function DashboardShell({ children }: DashboardShellProps) {
               role="region"
               aria-label="Search and branch filters"
               hidden={!mobileToolsOpen}
-              className="border-t border-[#f1f5f9] px-4 py-3"
+              className="border-t border-[var(--app-surface-subtle)] px-4 py-3"
             >
-              {isStaff || isInsights ? (
+              {isStaff ? (
                 <div className="flex flex-col gap-4">
                   <label className="relative block w-full min-w-0">
-                    <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
+                    <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[var(--app-text-faint)]">
                       search
                     </span>
                     <input
                       type="search"
                       placeholder={searchPlaceholder}
-                      className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
+                      className="w-full rounded-full border-0 bg-[var(--app-input-bg)] py-2 pl-10 pr-4 text-sm text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] outline-none ring-1 ring-transparent focus:ring-[var(--app-link-teal)]/25"
                     />
                   </label>
                   {branchSwitcherNav({
@@ -500,30 +796,20 @@ export function DashboardShell({ children }: DashboardShellProps) {
                     onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
                   })}
                 </div>
-              ) : isSales ? (
+              ) : isSales || isInsights || isPay ? (
                 <div className="flex flex-col gap-4">
                   {branchSwitcherNav({
                     ariaLabel: "Active branch context",
                     onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
                   })}
-                  <label className="relative block w-full min-w-0">
-                    <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
-                      search
-                    </span>
-                    <input
-                      type="search"
-                      placeholder={searchPlaceholder}
-                      className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none"
-                    />
-                  </label>
                 </div>
               ) : isDashboardMain ? (
-                <PharmacySearchField />
+                canUseWorkspaceSearch ? <WorkspaceSearchField /> : null
               ) : (
                 <div className="flex flex-col gap-4">
-                  {!isStock && !isSettings ? (
+                  {!isStock && !isSettings && !isOrganization ? (
                     <label className="relative block w-full min-w-0">
-                      <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
+                      <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[var(--app-text-faint)]">
                         search
                       </span>
                       <input
@@ -533,7 +819,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
                         onChange={(event) => {
                           setLocalSearch(event.target.value);
                         }}
-                        className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
+                        className="w-full rounded-full border-0 bg-[var(--app-input-bg)] py-2 pl-10 pr-4 text-sm text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] outline-none ring-1 ring-transparent focus:ring-[var(--app-link-teal)]/25"
                       />
                     </label>
                   ) : null}
@@ -544,7 +830,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
                           replaceBranchInUrl(branchId, { resetPage: isStock }),
                       })
                     : null}
-                  {!isSales && !isInsights && !isSettings && !isStaff && !isStaffAdd && !isDashboardMain ? (
+                  {!isSales && !isInsights && !isSettings && !isOrganization && !isStaff && !isStaffAdd && !isDashboardMain ? (
                     <button
                       type="button"
                       onClick={async () => {
@@ -563,8 +849,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
                       }}
                       className={`inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 font-[family-name:var(--font-manrope)] text-sm ${
                         topActionVariant === "primary"
-                          ? "bg-[#0fb9b1] font-bold text-[#004340]"
-                          : "bg-[#f2f4f6] font-medium text-[#191c1e]"
+                          ? "aura-primary-button font-bold"
+                          : "bg-[var(--app-input-bg)] font-medium text-[var(--app-text)]"
                       }`}
                     >
                       <span className="material-symbols-outlined notranslate text-lg">{topActionIcon}</span>
@@ -581,27 +867,31 @@ export function DashboardShell({ children }: DashboardShellProps) {
           <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
             <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
               {isSettings ? (
-                <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#0f172a] sm:text-lg">
+                <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[var(--app-header-title)] sm:text-lg">
                   Profile & Settings
                 </h1>
+              ) : isOrganization ? (
+                <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[var(--app-header-title)] sm:text-lg">
+                  Organization
+                </h1>
               ) : isProductCategories ? (
-                <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#0f172a] sm:text-lg">
+                <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[var(--app-header-title)] sm:text-lg">
                   Product Categories
                 </h1>
               ) : isStaffAdd ? (
-                <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[#0f172a] sm:text-lg">
+                <h1 className="font-[family-name:var(--font-manrope)] text-lg font-bold leading-tight text-[var(--app-header-title)] sm:text-lg">
                   Add New Staff
                 </h1>
-              ) : isStaff || isInsights ? (
+              ) : isStaff ? (
                 <>
                   <label className="relative hidden w-full min-w-0 sm:block sm:w-64">
-                    <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
+                    <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[var(--app-text-faint)]">
                       search
                     </span>
                     <input
                       type="search"
                       placeholder={searchPlaceholder}
-                      className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
+                      className="w-full rounded-full border-0 bg-[var(--app-input-bg)] py-2 pl-10 pr-4 text-sm text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] outline-none ring-1 ring-transparent focus:ring-[var(--app-link-teal)]/25"
                     />
                   </label>
                   {branchSwitcherNav({
@@ -609,7 +899,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
                     onSelectBranch: (branchId) => replaceBranchInUrl(branchId),
                   })}
                 </>
-              ) : isSales ? (
+              ) : isSales || isInsights || isPay ? (
                 <>
                   {branchSwitcherNav({
                     ariaLabel: "Active branch context",
@@ -618,12 +908,12 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 </>
               ) : (
                 <>
-                  {!isStock && !isSettings ? (
+                  {!isStock && !isSettings && !isOrganization ? (
                     isDashboardMain ? (
-                      <PharmacySearchField />
+                      canUseWorkspaceSearch ? <WorkspaceSearchField /> : null
                     ) : (
                       <label className="relative block w-full sm:w-64">
-                        <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
+                        <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[var(--app-text-faint)]">
                           search
                         </span>
                         <input
@@ -633,7 +923,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
                           onChange={(event) => {
                             setLocalSearch(event.target.value);
                           }}
-                          className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none ring-1 ring-transparent focus:ring-[#14b8a6]/25"
+                          className="w-full rounded-full border-0 bg-[var(--app-input-bg)] py-2 pl-10 pr-4 text-sm text-[var(--app-text)] placeholder:text-[var(--app-text-faint)] outline-none ring-1 ring-transparent focus:ring-[var(--app-link-teal)]/25"
                         />
                       </label>
                     )
@@ -651,7 +941,9 @@ export function DashboardShell({ children }: DashboardShellProps) {
             <div className="flex flex-wrap items-center justify-end gap-3 border-t border-transparent pt-2 sm:border-t-0 sm:pt-0">
               {!isSales &&
                 !isInsights &&
+                !isPay &&
                 !isSettings &&
+                !isOrganization &&
                 !isProductCategories &&
                 !isStaff &&
                 !isStaffAdd &&
@@ -674,47 +966,31 @@ export function DashboardShell({ children }: DashboardShellProps) {
                   }}
                   className={`inline-flex items-center gap-2 rounded-lg px-4 py-1.5 font-[family-name:var(--font-manrope)] text-sm ${
                     topActionVariant === "primary"
-                      ? "bg-[#0fb9b1] font-bold text-[#004340]"
-                      : "bg-[#f2f4f6] font-medium text-[#191c1e]"
+                      ? "aura-primary-button font-bold"
+                      : "bg-[var(--app-input-bg)] font-medium text-[var(--app-text)]"
                   }`}
                 >
                   <span className="material-symbols-outlined notranslate text-lg">{topActionIcon}</span>
                   {topActionLabel}
                 </button>
               )}
-              {isSales && (
-                <label className="relative hidden w-64 sm:block">
-                  <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[#94a3b8]">
-                    search
-                  </span>
-                  <input
-                    type="search"
-                    placeholder={searchPlaceholder}
-                    className="w-full rounded-full border-0 bg-[#f2f4f6] py-2 pl-10 pr-4 text-sm text-[#191c1e] placeholder:text-[#94a3b8] outline-none"
-                  />
-                </label>
-              )}
-              <div className="flex items-center gap-2 border-l border-[#f1f5f9] pl-4">
+              <div className="flex items-center gap-2 border-l border-[var(--app-surface-subtle)] pl-4">
                 <button
                   type="button"
-                  className="rounded-lg p-1.5 text-[#64748b] hover:bg-slate-100"
+                  className="rounded-lg p-1.5 text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]"
                   aria-label="Notifications"
                 >
                   <span className="material-symbols-outlined notranslate text-xl">
                     notifications
                   </span>
                 </button>
-                <Link
-                  href={ROUTES.settings}
-                  className="block shadow-[0_0_0_2px_rgba(20,184,166,0.2)] transition hover:opacity-90"
-                  aria-label="Profile and settings"
-                >
-                  <AuraAvatar
-                    name="Pharmacy Manager"
-                    decorative
-                    className="size-8 rounded-full text-[11px]"
-                  />
-                </Link>
+                {accountUserMenu({
+                  anchor: "desktop",
+                  rootRef: userMenuRootDesktopRef,
+                  triggerRef: userMenuTriggerDesktopRef,
+                  panelId: userMenuPanelDesktopId,
+                  variant: "comfortable",
+                })}
               </div>
             </div>
           </div>
@@ -730,9 +1006,151 @@ export function DashboardShell({ children }: DashboardShellProps) {
                 : `calc(max(5.5rem, env(safe-area-inset-top, 0px)) + ${MAIN_BELOW_HEADER_GAP_PX}px)`,
           }}
         >
-          {children}
+          <div className="app-shell-content">{children}</div>
         </div>
       </div>
+
+      {lockedFeature ? (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Locked feature"
+          onClick={() => setLockedFeature(null)}
+        >
+          <div
+            className="aura-card-tint w-full max-w-lg rounded-2xl border p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="aura-icon flex size-10 shrink-0 items-center justify-center rounded-xl">
+                <span className="material-symbols-outlined notranslate text-xl">lock</span>
+              </div>
+              <div className="min-w-0">
+                <p className="font-[family-name:var(--font-manrope)] text-lg font-extrabold text-[var(--app-text)]">
+                  {lockedFeature.moduleLabel} is locked
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-[var(--app-text-secondary)]">
+                  Your current plan doesn’t include{" "}
+                  <span className="font-semibold text-[var(--app-text)]">{lockedFeature.label}</span>. Upgrade to unlock this
+                  module, or ask an organization admin to enable access for your account.
+                </p>
+                <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    {workspaceAccess.membershipRole === "owner" ? (
+                      <Link
+                        href={ROUTES.billingPortal}
+                        prefetch={false}
+                        onClick={() => setLockedFeature(null)}
+                        className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-95"
+                      >
+                        <span className="material-symbols-outlined notranslate text-base">payments</span>
+                        Billing
+                      </Link>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => setLockedFeature(null)}
+                      className="rounded-xl bg-[var(--app-input-bg)] px-4 py-2 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-input-focus-bg)]"
+                    >
+                      Not now
+                    </button>
+                  </div>
+                  {workspaceAccess.membershipRole !== "owner" ? (
+                    <a
+                      href={ROUTES.marketing.pricing}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() => setLockedFeature(null)}
+                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-95"
+                    >
+                      <span className="material-symbols-outlined notranslate text-base">upgrade</span>
+                      View plans
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {supportOpen ? (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Support options"
+          onClick={closeSupport}
+        >
+          <div
+            className="aura-card-tint w-full max-w-lg rounded-2xl border p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="aura-icon flex size-10 shrink-0 items-center justify-center rounded-xl">
+                <span className="material-symbols-outlined notranslate text-xl">
+                  support_agent
+                </span>
+              </div>
+              <div className="min-w-0">
+                <p className="font-[family-name:var(--font-manrope)] text-lg font-extrabold text-[var(--app-text)]">
+                  Support
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-[var(--app-text-secondary)]">
+                  Choose a WhatsApp option below. The channel is for announcements; tech support is for help and troubleshooting.
+                </p>
+
+                <div className="mt-5 grid gap-3">
+                  <a
+                    href="https://whatsapp.com/channel/0029Vb7eng71yT2EJz7AKy24"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-start justify-between gap-3 rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-input-bg)] px-4 py-3 transition hover:bg-[var(--app-input-focus-bg)]"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-extrabold text-[var(--app-text)]">Channel</p>
+                      <p className="mt-1 text-xs text-[var(--app-text-secondary)]">
+                        Product updates, announcements, and tips.
+                      </p>
+                    </div>
+                    <span className="material-symbols-outlined notranslate text-lg text-[var(--app-text-faint)]">
+                      open_in_new
+                    </span>
+                  </a>
+
+                  <a
+                    href="https://chat.whatsapp.com/I2wUAyQsqsGECKvheNWgC8?mode=gi_t"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-start justify-between gap-3 rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-input-bg)] px-4 py-3 transition hover:bg-[var(--app-input-focus-bg)]"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-extrabold text-[var(--app-text)]">Tech support</p>
+                      <p className="mt-1 text-xs text-[var(--app-text-secondary)]">
+                        Get help with bugs, onboarding, and setup.
+                      </p>
+                    </div>
+                    <span className="material-symbols-outlined notranslate text-lg text-[var(--app-text-faint)]">
+                      open_in_new
+                    </span>
+                  </a>
+                </div>
+
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={closeSupport}
+                    className="rounded-xl bg-[var(--app-input-bg)] px-4 py-2 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-input-focus-bg)]"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

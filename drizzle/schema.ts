@@ -1,20 +1,21 @@
 import { pgTable, uniqueIndex, uuid, varchar, text, timestamp, index, foreignKey, boolean, doublePrecision, integer, date, smallint, time, jsonb, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
-export const appRole = pgEnum("app_role", ['owner', 'admin', 'manager', 'pharmacist', 'cashier', 'analyst'])
+export const appRole = pgEnum("app_role", ['owner', 'admin', 'aurastores_admin', 'manager', 'pharmacist', 'cashier', 'analyst'])
 export const batchStatus = pgEnum("batch_status", ['draft', 'active', 'quarantined', 'expired', 'disposed', 'depleted'])
 export const branchStaffStatus = pgEnum("branch_staff_status", ['active', 'inactive'])
 export const branchStatus = pgEnum("branch_status", ['draft', 'active', 'inactive', 'syncing'])
 export const branchType = pgEnum("branch_type", ['main', 'retail', 'warehouse'])
 export const documentStatus = pgEnum("document_status", ['uploaded', 'under_review', 'approved', 'rejected', 'expired'])
-export const documentType = pgEnum("document_type", ['pharmacy_operation_license', 'pharmacist_in_charge_certificate', 'dea_registration', 'state_board_license', 'liability_insurance', 'other'])
+export const documentType = pgEnum("document_type", ['pharmacy_operation_license', 'pharmacist_in_charge_certificate', 'dea_registration', 'state_board_license', 'liability_insurance', 'business_registration', 'trade_license', 'other'])
 export const inventoryTransactionType = pgEnum("inventory_transaction_type", ['receipt', 'sale', 'adjustment', 'transfer_in', 'transfer_out', 'return', 'disposal', 'expiry_write_off'])
 export const legalEntityType = pgEnum("legal_entity_type", ['sole_proprietorship', 'llc', 'corporation', 'partnership', 'nonprofit', 'other'])
 export const loyaltyTier = pgEnum("loyalty_tier", ['bronze', 'silver', 'gold', 'platinum'])
 export const membershipStatus = pgEnum("membership_status", ['invited', 'active', 'suspended', 'removed'])
 export const onboardingStatus = pgEnum("onboarding_status", ['draft', 'in_review', 'approved', 'rejected'])
-export const onboardingStep = pgEnum("onboarding_step", ['identity', 'pharmacy_details', 'license', 'review'])
+export const onboardingStep = pgEnum("onboarding_step", ['identity', 'location_details', 'license', 'review'])
 export const organizationStatus = pgEnum("organization_status", ['trial', 'active', 'suspended', 'archived'])
+export const storeVertical = pgEnum("store_vertical", ['pharmacy', 'general_retail'])
 export const patientGender = pgEnum("patient_gender", ['unknown', 'female', 'male', 'other'])
 export const paymentMethod = pgEnum("payment_method", ['aura_pay_wallet', 'card', 'cash', 'insurance', 'bank_transfer'])
 export const paymentStatus = pgEnum("payment_status", ['pending', 'paid', 'partially_paid', 'failed', 'refunded'])
@@ -40,6 +41,9 @@ export const organizations = pgTable("organizations", {
 	hqState: varchar("hq_state", { length: 128 }),
 	hqPostalCode: varchar("hq_postal_code", { length: 32 }),
 	hqCountry: varchar("hq_country", { length: 2 }).default('US').notNull(),
+	storeVertical: storeVertical("store_vertical").default('pharmacy').notNull(),
+	salesTaxEnabled: boolean("sales_tax_enabled").default(false).notNull(),
+	salesTaxRateBps: integer("sales_tax_rate_bps").default(0).notNull(),
 	status: organizationStatus().default('trial').notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
@@ -55,6 +59,7 @@ export const organizationMemberships = pgTable("organization_memberships", {
 	role: appRole().default('pharmacist').notNull(),
 	status: membershipStatus().default('active').notNull(),
 	jobTitle: varchar("job_title", { length: 128 }),
+	staffEmployeeCode: varchar("staff_employee_code", { length: 32 }),
 	isDefault: boolean("is_default").default(false).notNull(),
 	invitedAt: timestamp("invited_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	joinedAt: timestamp("joined_at", { withTimezone: true, mode: 'string' }),
@@ -63,6 +68,7 @@ export const organizationMemberships = pgTable("organization_memberships", {
 }, (table) => [
 	index("organization_memberships_org_idx").using("btree", table.organizationId.asc().nullsLast().op("uuid_ops")),
 	uniqueIndex("organization_memberships_org_user_unique").using("btree", table.organizationId.asc().nullsLast().op("uuid_ops"), table.userId.asc().nullsLast().op("uuid_ops")),
+	uniqueIndex("organization_memberships_org_staff_code_unique").using("btree", table.organizationId.asc().nullsLast().op("uuid_ops"), table.staffEmployeeCode.asc().nullsLast().op("text_ops")).where(sql`${table.staffEmployeeCode} IS NOT NULL`),
 	index("organization_memberships_user_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
 			columns: [table.organizationId],
@@ -109,8 +115,8 @@ export const branches = pgTable("branches", {
 	latitude: doublePrecision(),
 	longitude: doublePrecision(),
 	timezone: varchar({ length: 64 }).default('UTC').notNull(),
-	licensedPharmacistCount: integer("licensed_pharmacist_count").default(1).notNull(),
-	leadPharmacistUserId: uuid("lead_pharmacist_user_id"),
+	professionalStaffCount: integer("professional_staff_count").default(1).notNull(),
+	leadStaffUserId: uuid("lead_staff_user_id"),
 	openedAt: date("opened_at"),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
@@ -120,9 +126,9 @@ export const branches = pgTable("branches", {
 	uniqueIndex("branches_org_name_unique").using("btree", table.organizationId.asc().nullsLast().op("text_ops"), table.name.asc().nullsLast().op("text_ops")),
 	index("branches_status_idx").using("btree", table.status.asc().nullsLast().op("enum_ops")),
 	foreignKey({
-			columns: [table.leadPharmacistUserId],
+			columns: [table.leadStaffUserId],
 			foreignColumns: [users.id],
-			name: "branches_lead_pharmacist_user_id_users_id_fk"
+			name: "branches_lead_staff_user_id_users_id_fk"
 		}).onDelete("set null"),
 	foreignKey({
 			columns: [table.organizationId],

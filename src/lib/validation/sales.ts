@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { zambiaLipilaMsisdnSchema } from "@/lib/validation/lipila";
 
 const optionalText = (max: number) =>
   z
@@ -26,7 +27,7 @@ export const createSaleSchema = z.object({
   customerName: optionalText(160),
   patientCode: optionalText(32),
   mobile: optionalText(32),
-  paymentMethod: z.enum(["aura-pay", "card", "cash", "insurance", "bank-transfer"]).default("cash"),
+  paymentMethod: z.enum(["aura-pay", "card", "mobile-money", "cash", "insurance", "bank-transfer"]).default("cash"),
   paymentReference: optionalText(128),
   discountCode: optionalText(64),
   notes: optionalText(1_000),
@@ -35,3 +36,14 @@ export const createSaleSchema = z.object({
 });
 
 export type CreateSaleInput = z.infer<typeof createSaleSchema>;
+
+export const startSaleMobileMoneySchema = z.object({
+  sale: createSaleSchema.omit({ status: true, paymentMethod: true, paymentReference: true }).extend({
+    status: z.literal("completed").optional(),
+    paymentMethod: z.literal("mobile-money").optional(),
+  }),
+  mobileMoneyNumber: zambiaLipilaMsisdnSchema,
+  customerPaysLipilaFee: z.boolean().optional().default(false),
+});
+
+export type StartSaleMobileMoneyInput = z.infer<typeof startSaleMobileMoneySchema>;

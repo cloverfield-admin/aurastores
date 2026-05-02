@@ -14,4 +14,8 @@ export class NetworkService {
   getDashboard(...args: Parameters<NetworkRepository["getDashboard"]>) {
     return this.network.getDashboard(...args);
   }
+
+  getOrganizationBranches(...args: Parameters<NetworkRepository["getOrganizationBranches"]>) {
+    return this.network.getOrganizationBranches(...args);
+  }
 }

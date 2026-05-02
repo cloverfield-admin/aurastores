@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
+import { useRouter } from "next/navigation";
 import {
   useAdjustStockMutation,
   useBatchDetailQuery,
@@ -79,11 +80,11 @@ function formatStatusTone(
   }
 
   return {
-    badge: "bg-[rgba(15,185,177,0.1)] text-[#006a65]",
+    badge: "bg-[rgba(15,185,177,0.1)] text-[var(--app-brand)]",
     label: "Stable",
     dot: "bg-[#0fb9b1]",
     progress: "#0fb9b1",
-    text: "text-[#191c1e]",
+    text: "text-[var(--app-text)]",
   };
 }
 
@@ -144,8 +145,8 @@ function mapTransactionToDisplay(
     ? `+ ${tx.quantityDelta.toLocaleString()} Units`
     : `- ${Math.abs(tx.quantityDelta).toLocaleString()} Units`;
   const tone = isAddition
-    ? "bg-[rgba(15,185,177,0.1)] text-[#006a65]"
-    : "bg-[#f8fafc] text-[#475569]";
+    ? "bg-[rgba(15,185,177,0.1)] text-[var(--app-brand)]"
+    : "bg-[var(--app-surface-muted)] text-[#475569]";
   const actor = tx.performedByName ?? tx.transactionType.replace(/_/g, " ");
   const initials = (tx.performedByName ?? "SYS")
     .split(/\s+/)
@@ -166,13 +167,14 @@ function mapTransactionToDisplay(
   return { id: tx.id, time: timeStr, quantity: quantityStr, tone, actor, initials, ref };
 }
 
-const labelClass = "text-[10px] font-medium uppercase tracking-[0.1em] text-[#94a3b8]";
+const labelClass = "text-[10px] font-medium uppercase tracking-[0.1em] text-[var(--app-text-faint)]";
 
 type BatchDetailContentProps = {
   batchId: string;
 };
 
 export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
+  const router = useRouter();
   const { withLoading, notify } = useAuraFeedback();
   const batchQuery = useBatchDetailQuery(batchId);
   const disposeMutation = useDisposeStockBatchMutation();
@@ -184,7 +186,7 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
   if (batchQuery.isLoading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center px-4">
-        <p className="text-sm text-[#64748b]">Loading product details...</p>
+        <p className="text-sm text-[var(--app-text-muted)]">Loading product details...</p>
       </div>
     );
   }
@@ -195,7 +197,7 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
         <div className="mx-auto max-w-[1280px]">
           <Link
             href={ROUTES.dashboard.stock}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-[#006a65] hover:text-[#00504c]"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--app-brand)] hover:text-[var(--app-link-teal)]"
           >
             <span className="material-symbols-outlined notranslate text-lg">arrow_back</span>
             Back to Stock
@@ -204,10 +206,10 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
             <span className="material-symbols-outlined notranslate text-4xl text-[#dc2626]">
               error
             </span>
-            <h2 className="mt-4 font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]">
+            <h2 className="mt-4 font-[family-name:var(--font-manrope)] text-xl font-bold text-[var(--app-text)]">
               Product not found
             </h2>
-            <p className="mt-2 text-sm text-[#64748b]">
+            <p className="mt-2 text-sm text-[var(--app-text-muted)]">
               This product may have been removed or you may not have access to it.
             </p>
           </div>
@@ -302,8 +304,8 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
     <div className="px-4 pb-16 pt-5 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-[1280px] space-y-8">
         <div className="space-y-6">
-          <nav className="flex flex-wrap items-center gap-2 text-[12px] uppercase tracking-[0.12em] text-[#94a3b8]">
-            <Link href={ROUTES.dashboard.stock} className="hover:text-[#006a65]">
+          <nav className="flex flex-wrap items-center gap-2 text-[12px] uppercase tracking-[0.12em] text-[var(--app-text-faint)]">
+            <Link href={ROUTES.dashboard.stock} className="hover:text-[var(--app-brand)]">
               Inventory
             </Link>
             <span className="material-symbols-outlined notranslate text-sm text-[#cbd5e1]">
@@ -313,13 +315,13 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
             <span className="material-symbols-outlined notranslate text-sm text-[#cbd5e1]">
               chevron_right
             </span>
-            <span className="text-[#191c1e]">Product details</span>
+            <span className="text-[var(--app-text)]">Product details</span>
           </nav>
 
           <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-3">
-                <h1 className="font-[family-name:var(--font-manrope)] text-[30px] font-extrabold tracking-[-0.75px] text-[#191c1e]">
+                <h1 className="font-[family-name:var(--font-manrope)] text-[30px] font-extrabold tracking-[-0.75px] text-[var(--app-text)]">
                   {batch.productName}
                 </h1>
                 <span
@@ -329,7 +331,7 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
                   {statusTone.label}
                 </span>
               </div>
-              <div className="flex flex-wrap items-center gap-3 text-base text-[#64748b]">
+              <div className="flex flex-wrap items-center gap-3 text-base text-[var(--app-text-muted)]">
                 <span className="font-medium">#{batch.batchNumber}</span>
                 <span className="size-1 rounded-full bg-[#cbd5e1]" />
                 <span>{dosageForm}</span>
@@ -340,21 +342,22 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#e0e3e5] px-5 py-2.5 text-sm font-semibold text-[#191c1e] transition hover:bg-[#d5dade]"
+                className="inline-flex items-center gap-2 rounded-xl bg-[var(--app-cancel-bg)] px-5 py-2.5 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[#d5dade]"
               >
                 <span className="material-symbols-outlined notranslate text-[18px]">print</span>
                 Print Label
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  notify({
-                    variant: "info",
-                    title: "Edit product details",
-                    description: "Product editing is not wired yet in this dashboard flow.",
-                  })
-                }
-                className="inline-flex items-center gap-2 rounded-xl bg-[#e0e3e5] px-5 py-2.5 text-sm font-semibold text-[#191c1e] transition hover:bg-[#d5dade]"
+                onClick={() => {
+                  const params = new URLSearchParams(window.location.search);
+                  const branchParam = params.get("branch");
+                  const href = branchParam
+                    ? `${ROUTES.dashboard.stockProductEdit(batch.productId)}?branch=${encodeURIComponent(branchParam)}`
+                    : ROUTES.dashboard.stockProductEdit(batch.productId);
+                  router.push(href);
+                }}
+                className="inline-flex items-center gap-2 rounded-xl bg-[var(--app-cancel-bg)] px-5 py-2.5 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[#d5dade]"
               >
                 <span className="material-symbols-outlined notranslate text-[18px]">edit</span>
                 Edit Product Details
@@ -396,12 +399,12 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          <section className="rounded-xl border border-[rgba(241,245,249,0.8)] bg-white p-6 shadow-[0px_1px_2px_rgba(0,0,0,0.05)] lg:col-span-4">
+          <section className="rounded-xl border border-[rgba(241,245,249,0.8)] bg-[var(--app-surface)] p-6 shadow-[0px_1px_2px_rgba(0,0,0,0.05)] lg:col-span-4">
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="font-[family-name:var(--font-manrope)] text-[22px] font-bold text-[#191c1e]">
+              <h2 className="font-[family-name:var(--font-manrope)] text-[22px] font-bold text-[var(--app-text)]">
                 Product Identity
               </h2>
-              <span className="material-symbols-outlined notranslate text-[#94a3b8]">info</span>
+              <span className="material-symbols-outlined notranslate text-[var(--app-text-faint)]">info</span>
             </div>
 
             <div className="space-y-5">
@@ -420,7 +423,7 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
 
               <div className="space-y-1">
                 <p className={labelClass}>Manufacturing Date</p>
-                <p className="text-base font-semibold text-[#191c1e]">
+                <p className="text-base font-semibold text-[var(--app-text)]">
                   {batch.manufacturedAt
                     ? dateFormatter.format(new Date(batch.manufacturedAt))
                     : "Not recorded"}
@@ -429,30 +432,30 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
 
               <div className="space-y-1">
                 <p className={labelClass}>Supplier</p>
-                <p className="text-base font-semibold text-[#191c1e]">
+                <p className="text-base font-semibold text-[var(--app-text)]">
                   {batch.supplierName ?? "No supplier assigned"}
                 </p>
               </div>
 
               <div className="space-y-1">
                 <p className={labelClass}>Origin</p>
-                <p className="text-base font-semibold text-[#191c1e]">{originLabel}</p>
+                <p className="text-base font-semibold text-[var(--app-text)]">{originLabel}</p>
               </div>
             </div>
           </section>
 
-          <section className="rounded-xl border border-[rgba(241,245,249,0.8)] bg-white p-6 shadow-[0px_1px_2px_rgba(0,0,0,0.05)] lg:col-span-8">
+          <section className="rounded-xl border border-[rgba(241,245,249,0.8)] bg-[var(--app-surface)] p-6 shadow-[0px_1px_2px_rgba(0,0,0,0.05)] lg:col-span-8">
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h2 className="font-[family-name:var(--font-manrope)] text-[22px] font-bold text-[#191c1e]">
+                <h2 className="font-[family-name:var(--font-manrope)] text-[22px] font-bold text-[var(--app-text)]">
                   Stock Management
                 </h2>
-                <p className="mt-1 text-sm text-[#64748b]">
+                <p className="mt-1 text-sm text-[var(--app-text-muted)]">
                   Real-time depletion tracking for {batch.branchName}
                 </p>
               </div>
-              <div className="inline-flex items-center gap-2 rounded-xl bg-[#f8fafc] px-3 py-2 text-sm font-semibold text-[#191c1e]">
-                <span className="material-symbols-outlined notranslate text-[18px] text-[#0d9488]">
+              <div className="inline-flex items-center gap-2 rounded-xl bg-[var(--app-surface-muted)] px-3 py-2 text-sm font-semibold text-[var(--app-text)]">
+                <span className="material-symbols-outlined notranslate text-[18px] text-[var(--app-link-teal)]">
                   location_on
                 </span>
                 {shelfLabel}
@@ -464,17 +467,17 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
                 <div>
                   <p className={labelClass}>Current Quantity</p>
                   <div className="mt-2 flex flex-wrap items-end gap-2">
-                    <span className="text-[52px] font-semibold leading-none tracking-[-0.03em] text-[#191c1e]">
+                    <span className="text-[52px] font-semibold leading-none tracking-[-0.03em] text-[var(--app-text)]">
                       {batch.quantityAvailable.toLocaleString()}
                     </span>
-                    <span className="pb-1 text-[32px] font-medium text-[#94a3b8]">
+                    <span className="pb-1 text-[32px] font-medium text-[var(--app-text-faint)]">
                       / {batch.quantityReceived.toLocaleString()} units
                     </span>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.1em] text-[#94a3b8]">
+                  <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.1em] text-[var(--app-text-faint)]">
                     <span>Depletion Progress</span>
                     <span>Critical Threshold: 500 Units</span>
                   </div>
@@ -491,14 +494,14 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
                 </div>
               </div>
 
-              <div className="mx-auto flex size-[104px] items-center justify-center rounded-full bg-[#f8fafc]">
+              <div className="mx-auto flex size-[104px] items-center justify-center rounded-full bg-[var(--app-surface-muted)]">
                 <div
                   className="flex size-[86px] items-center justify-center rounded-full"
                   style={{
                     background: `conic-gradient(#0fb9b1 0 ${circleValue}%, #e6edf5 ${circleValue}% 100%)`,
                   }}
                 >
-                  <div className="flex size-[62px] items-center justify-center rounded-full bg-white text-[31px] font-semibold text-[#191c1e]">
+                  <div className="flex size-[62px] items-center justify-center rounded-full bg-[var(--app-surface)] text-[31px] font-semibold text-[var(--app-text)]">
                     {circleValue}%
                   </div>
                 </div>
@@ -506,21 +509,21 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
             </div>
           </section>
 
-          <section className="rounded-xl border border-[rgba(241,245,249,0.8)] bg-white p-6 shadow-[0px_1px_2px_rgba(0,0,0,0.05)] lg:col-span-5">
-            <h2 className="font-[family-name:var(--font-manrope)] text-[22px] font-bold text-[#191c1e]">
+          <section className="rounded-xl border border-[rgba(241,245,249,0.8)] bg-[var(--app-surface)] p-6 shadow-[0px_1px_2px_rgba(0,0,0,0.05)] lg:col-span-5">
+            <h2 className="font-[family-name:var(--font-manrope)] text-[22px] font-bold text-[var(--app-text)]">
               Storage & Handling
             </h2>
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <div className="rounded-xl border border-[rgba(15,185,177,0.12)] bg-[rgba(15,185,177,0.04)] p-4">
                 <p className={labelClass}>Temperature</p>
-                <p className="mt-3 text-[34px] font-semibold leading-none text-[#191c1e]">2 - 8°C</p>
-                <p className="mt-2 text-xs text-[#94a3b8]">Refrigerated Storage</p>
+                <p className="mt-3 text-[34px] font-semibold leading-none text-[var(--app-text)]">2 - 8°C</p>
+                <p className="mt-2 text-xs text-[var(--app-text-faint)]">Refrigerated Storage</p>
               </div>
               <div className="rounded-xl border border-[rgba(99,102,241,0.12)] bg-[rgba(99,102,241,0.04)] p-4">
                 <p className={labelClass}>Humidity</p>
-                <p className="mt-3 text-[34px] font-semibold leading-none text-[#191c1e]">Max 60%</p>
-                <p className="mt-2 text-xs text-[#94a3b8]">Relative Humidity</p>
+                <p className="mt-3 text-[34px] font-semibold leading-none text-[var(--app-text)]">Max 60%</p>
+                <p className="mt-2 text-xs text-[var(--app-text-faint)]">Relative Humidity</p>
               </div>
             </div>
 
@@ -530,8 +533,8 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
                   wb_sunny
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-[#191c1e]">Light Sensitivity</p>
-                  <p className="text-sm leading-relaxed text-[#64748b]">
+                  <p className="text-sm font-semibold text-[var(--app-text)]">Light Sensitivity</p>
+                  <p className="text-sm leading-relaxed text-[var(--app-text-muted)]">
                     Store in original opaque container. Protect from direct sunlight.
                   </p>
                 </div>
@@ -541,8 +544,8 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
                   experiment
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-[#191c1e]">Special Handling</p>
-                  <p className="text-sm leading-relaxed text-[#64748b]">
+                  <p className="text-sm font-semibold text-[var(--app-text)]">Special Handling</p>
+                  <p className="text-sm leading-relaxed text-[var(--app-text-muted)]">
                     Handle with clean, dry hands. Avoid excessive agitation during dispensing.
                   </p>
                 </div>
@@ -550,9 +553,9 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
             </div>
           </section>
 
-          <section className="rounded-xl border border-[rgba(241,245,249,0.8)] bg-white p-6 shadow-[0px_1px_2px_rgba(0,0,0,0.05)] lg:col-span-7">
+          <section className="rounded-xl border border-[rgba(241,245,249,0.8)] bg-[var(--app-surface)] p-6 shadow-[0px_1px_2px_rgba(0,0,0,0.05)] lg:col-span-7">
             <div className="flex items-center justify-between gap-4">
-              <h2 className="font-[family-name:var(--font-manrope)] text-[22px] font-bold text-[#191c1e]">
+              <h2 className="font-[family-name:var(--font-manrope)] text-[22px] font-bold text-[var(--app-text)]">
                 Dispensing History
               </h2>
               {dispensingHistory.length > 0 ? (
@@ -565,7 +568,7 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
                       description: `Showing latest ${dispensingHistory.length} transactions. Full export coming soon.`,
                     })
                   }
-                  className="text-sm font-semibold text-[#006a65] hover:underline"
+                  className="text-sm font-semibold text-[var(--app-brand)] hover:underline"
                 >
                   View Full Log
                 </button>
@@ -574,31 +577,31 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
 
             <div className="mt-6 min-w-0 overflow-x-auto overscroll-x-contain">
               {dispensingHistory.length === 0 ? (
-                <p className="py-8 text-center text-sm text-[#94a3b8]">
+                <p className="py-8 text-center text-sm text-[var(--app-text-faint)]">
                   No transactions recorded for this product yet.
                 </p>
               ) : (
               <table className="min-w-full">
                 <thead>
                   <tr className="text-left">
-                    <th className="pb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#94a3b8]">
+                    <th className="pb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--app-text-faint)]">
                       Date & Time
                     </th>
-                    <th className="pb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#94a3b8]">
+                    <th className="pb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--app-text-faint)]">
                       Quantity
                     </th>
-                    <th className="pb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#94a3b8]">
+                    <th className="pb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--app-text-faint)]">
                       Action By
                     </th>
-                    <th className="pb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#94a3b8]">
+                    <th className="pb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--app-text-faint)]">
                       Reference
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {dispensingHistory.map((entry) => (
-                    <tr key={entry.id} className="border-t border-[#f1f5f9]">
-                      <td className="py-4 text-sm text-[#191c1e]">{entry.time}</td>
+                    <tr key={entry.id} className="border-t border-[var(--app-surface-subtle)]">
+                      <td className="py-4 text-sm text-[var(--app-text)]">{entry.time}</td>
                       <td className="py-4">
                         <span className={`inline-flex rounded-md px-2 py-1 text-xs font-semibold ${entry.tone}`}>
                           {entry.quantity}
@@ -606,13 +609,13 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
                       </td>
                       <td className="py-4">
                         <div className="flex items-center gap-2">
-                          <span className="inline-flex size-6 items-center justify-center rounded-full bg-[rgba(15,185,177,0.12)] text-[10px] font-semibold text-[#006a65]">
+                          <span className="inline-flex size-6 items-center justify-center rounded-full bg-[rgba(15,185,177,0.12)] text-[10px] font-semibold text-[var(--app-brand)]">
                             {entry.initials}
                           </span>
-                          <span className="text-sm text-[#191c1e]">{entry.actor}</span>
+                          <span className="text-sm text-[var(--app-text)]">{entry.actor}</span>
                         </div>
                       </td>
-                      <td className="py-4 text-sm text-[#94a3b8]">{entry.ref}</td>
+                      <td className="py-4 text-sm text-[var(--app-text-faint)]">{entry.ref}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -647,7 +650,7 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
                       description: "Stability report downloads are not connected yet.",
                     })
                   }
-                  className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-[#2d3e93] transition hover:bg-white/90"
+                  className="rounded-xl bg-[var(--app-surface)] px-5 py-3 text-sm font-semibold text-[#2d3e93] transition hover:bg-[var(--app-surface)]/90"
                 >
                   Download Stability Report
                 </button>
@@ -663,11 +666,11 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
           </section>
 
           {batch.notes ? (
-            <section className="rounded-xl border border-[rgba(241,245,249,0.8)] bg-white p-6 shadow-[0px_1px_2px_rgba(0,0,0,0.05)] lg:col-span-12">
-              <h2 className="font-[family-name:var(--font-manrope)] text-lg font-bold text-[#191c1e]">
+            <section className="rounded-xl border border-[rgba(241,245,249,0.8)] bg-[var(--app-surface)] p-6 shadow-[0px_1px_2px_rgba(0,0,0,0.05)] lg:col-span-12">
+              <h2 className="font-[family-name:var(--font-manrope)] text-lg font-bold text-[var(--app-text)]">
                 Internal Notes
               </h2>
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[#64748b]">
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[var(--app-text-muted)]">
                 {batch.notes}
               </p>
             </section>
@@ -680,7 +683,7 @@ export function BatchDetailContent({ batchId }: BatchDetailContentProps) {
 
 function MetricCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/6 p-4 backdrop-blur-sm">
+    <div className="rounded-2xl border border-white/10 bg-[var(--app-surface)]/6 p-4 backdrop-blur-sm">
       <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-white/60">{label}</p>
       <p className="mt-3 text-[18px] font-bold text-white sm:text-[38px] sm:leading-none">{value}</p>
     </div>

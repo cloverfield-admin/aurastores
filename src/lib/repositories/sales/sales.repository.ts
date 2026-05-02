@@ -18,24 +18,24 @@ export type SalesDashboardData = {
     previousRevenueCents: number;
     totalCogsCents: number;
     previousCogsCents: number;
+    totalExpensesCents: number;
+    previousExpensesCents: number;
+    totalChargeExpensesCents: number;
+    previousChargeExpensesCents: number;
+    grossProfitBeforeExpensesCents: number;
+    previousGrossProfitBeforeExpensesCents: number;
     grossProfitCents: number;
     previousGrossProfitCents: number;
     totalSalesCount: number;
     averageOrderValueCents: number;
     unitsSoldLast30Days: number;
+    previousUnitsSoldLast30Days: number;
   };
   topProducts: Array<{
     productId: string;
     name: string;
     amountCents: number;
     pct: number;
-  }>;
-  recentSales: Array<{
-    id: string;
-    saleNumber: string;
-    patientName: string | null;
-    createdAt: string;
-    totalCents: number;
   }>;
   branchDistribution: Array<{
     branchId: string;
@@ -48,6 +48,19 @@ export type SalesDashboardData = {
     revenueCents: number;
     unitsSold: number;
   }>;
+};
+
+export type SalesRecentSalesData = Array<{
+  id: string;
+  saleNumber: string;
+  patientName: string | null;
+  createdAt: string;
+  totalCents: number;
+}>;
+
+export type SalesDateRange = {
+  start: Date;
+  end: Date;
 };
 
 export type SalesCatalogData = {
@@ -77,7 +90,8 @@ export type CreateSaleResult = {
 };
 
 export interface SalesRepository {
-  getDashboard(context: AuthContext, branchId?: string): Promise<SalesDashboardData>;
-  getCatalog(context: AuthContext, branchId?: string): Promise<SalesCatalogData>;
+  getDashboard(context: AuthContext, branchId?: string, range?: SalesDateRange): Promise<SalesDashboardData>;
+  getRecentSales(context: AuthContext, branchId?: string): Promise<SalesRecentSalesData>;
+  getCatalog(context: AuthContext, branchId?: string, q?: string): Promise<SalesCatalogData>;
   createSale(context: AuthContext, input: CreateSaleInput): Promise<CreateSaleResult>;
 }

@@ -27,7 +27,7 @@ export function VerifyEmailPanel() {
   useEffect(() => {
     const fromQuery = searchParams.get("email")?.trim();
     if (fromQuery) {
-      setEmail(fromQuery);
+      queueMicrotask(() => setEmail(fromQuery));
     }
   }, [searchParams]);
 
@@ -66,8 +66,8 @@ export function VerifyEmailPanel() {
   return (
     <AuraAuthCard>
       <div className="space-y-3 text-center">
-        <h2 className="text-xl font-bold text-[#191c1e]">Verify your email</h2>
-        <p className="text-sm leading-relaxed text-[#3c4948]">
+        <h2 className="text-xl font-bold text-[var(--app-text)]">Verify your email</h2>
+        <p className="text-sm leading-relaxed text-[var(--app-text-secondary)]">
           We sent a confirmation link to your inbox. Open it on this device to activate your account,
           then you can sign in and continue onboarding.
         </p>
@@ -111,10 +111,10 @@ export function VerifyEmailPanel() {
       </form>
 
       <div className="mt-8 border-t border-[rgba(187,201,199,0.35)] pt-6 text-center text-sm">
-        <span className="font-medium text-[#3c4948]">Already verified? </span>
+        <span className="font-medium text-[var(--app-text-secondary)]">Already verified? </span>
         <Link
           href={ROUTES.auth.signIn}
-          className={`font-semibold text-[#006a65] hover:underline ${isBusy ? "pointer-events-none opacity-60" : ""}`}
+          className={`font-semibold text-[var(--app-brand)] hover:underline ${isBusy ? "pointer-events-none opacity-60" : ""}`}
         >
           Sign in
         </Link>

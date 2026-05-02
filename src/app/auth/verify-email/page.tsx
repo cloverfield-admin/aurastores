@@ -9,7 +9,7 @@ import { VerifyEmailPanel } from "@/components/auth/verify-email-panel";
 
 export const metadata: Metadata = {
   title: "Verify your email",
-  description: "Confirm your email address to continue with AuraPharma onboarding.",
+  description: "Confirm your email address to continue with AuraStores onboarding.",
 };
 
 export default function VerifyEmailPage() {

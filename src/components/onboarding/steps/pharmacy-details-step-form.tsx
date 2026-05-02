@@ -8,7 +8,7 @@ import type { OnboardingDraft } from "@/components/onboarding/types";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { useOnboardingProgress } from "@/components/onboarding/onboarding-progress-provider";
 import { AuraInlineAlert } from "@/components/ui/aura-inline-alert";
-import { useSavePharmacyDetailsMutation } from "@/lib/queries/onboarding";
+import { useSaveLocationDetailsMutation } from "@/lib/queries/onboarding";
 import { ROUTES } from "@/lib/routes";
 
 const BranchLocationPicker = dynamic(
@@ -17,7 +17,7 @@ const BranchLocationPicker = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="absolute inset-0 flex items-center justify-center bg-[#e2e8f0] text-sm text-[#64748b]">
+      <div className="absolute inset-0 flex items-center justify-center bg-[#e2e8f0] text-sm text-[var(--app-text-muted)]">
         Loading map…
       </div>
     ),
@@ -48,6 +48,26 @@ type WeeklyRowState = {
   opensAt: string;
   closesAt: string;
 };
+
+type FieldErrors = Record<string, string[]>;
+
+function fieldError(fieldErrors: FieldErrors | null, key: string): string | null {
+  const values = fieldErrors?.[key];
+  return values && values.length ? values[0]! : null;
+}
+
+function RequiredMark() {
+  return (
+    <span className="ml-1 text-[#ba1a1a]" aria-hidden="true">
+      *
+    </span>
+  );
+}
+
+function FieldErrorText({ message }: { message: string | null }) {
+  if (!message) return null;
+  return <p className="mt-2 text-xs font-semibold text-[#ba1a1a]">{message}</p>;
+}
 
 function coordFromDraft(value: number | null | undefined): number | null {
   if (value == null || typeof value !== "number" || !Number.isFinite(value)) {
@@ -180,7 +200,7 @@ export function PharmacyDetailsStepForm() {
   const { draft, loading } = useOnboardingProgress();
 
   if (loading && !draft) {
-    return <div className="py-12 text-sm text-[#64748b]">Loading onboarding details...</div>;
+    return <div className="py-12 text-sm text-[var(--app-text-muted)]">Loading onboarding details...</div>;
   }
 
   if (!draft) {
@@ -216,7 +236,7 @@ function PharmacyDetailsStepFormFields({
 }) {
   const router = useRouter();
   const { notify, withLoading, isLoading } = useAuraFeedback();
-  const savePharmacyDetailsMutation = useSavePharmacyDetailsMutation();
+  const saveLocationDetailsMutation = useSaveLocationDetailsMutation();
   const [hoursMode, setHoursMode] = useState<HoursMode>(draft.mainBranch?.hoursMode ?? "custom");
   const [branchName, setBranchName] = useState(draft.mainBranch?.branchName ?? "");
   const [pharmacistCount, setPharmacistCount] = useState(
@@ -233,8 +253,9 @@ function PharmacyDetailsStepFormFields({
     weeklyRowsFromOperatingHours(draft.mainBranch?.operatingHours),
   );
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors | null>(null);
   const [mapExpanded, setMapExpanded] = useState(false);
-  const isBusy = isLoading("onboarding-pharmacy-details");
+  const isBusy = isLoading("onboarding-location-details");
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -261,10 +282,11 @@ function PharmacyDetailsStepFormFields({
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setFieldErrors(null);
 
     try {
-      await withLoading("onboarding-pharmacy-details", "Saving your main branch details...", () =>
-        savePharmacyDetailsMutation.mutateAsync({
+      await withLoading("onboarding-location-details", "Saving your main branch details...", () =>
+        saveLocationDetailsMutation.mutateAsync({
           branchName,
           pharmacistCount,
           branchLocation,
@@ -290,8 +312,17 @@ function PharmacyDetailsStepFormFields({
       });
       router.push(ROUTES.dashboard.onboarding.license);
     } catch (submitError) {
-      const message =
-        submitError instanceof Error ? submitError.message : "Could not save branch details.";
+      const message = submitError instanceof Error ? submitError.message : "Could not save branch details.";
+
+      const payload = (submitError as any)?.payload as
+        | { issues?: { fieldErrors?: Record<string, string[]> } }
+        | null
+        | undefined;
+      const nextFieldErrors = payload?.issues?.fieldErrors ?? null;
+      if (nextFieldErrors && typeof nextFieldErrors === "object") {
+        setFieldErrors(nextFieldErrors);
+      }
+
       setError(message);
       notify({
         variant: "error",
@@ -353,10 +384,11 @@ function PharmacyDetailsStepFormFields({
           <div className="flex flex-1 flex-col gap-6">
             <div className="flex flex-col gap-4 rounded-[20px] bg-[#f2f4f6] p-6">
               <div className={labelRow}>
-                <span className="material-symbols-outlined notranslate text-base text-[#64748b]">
+                <span className="material-symbols-outlined notranslate text-base text-[var(--app-text-muted)]">
                   store
                 </span>
                 Branch name
+                <RequiredMark />
               </div>
               <input
                 name="branchName"
@@ -367,13 +399,15 @@ function PharmacyDetailsStepFormFields({
                 onChange={(event) => setBranchName(event.target.value)}
                 required
               />
+              <FieldErrorText message={fieldError(fieldErrors, "branchName")} />
             </div>
             <div className="flex flex-col gap-4 rounded-[20px] bg-[#f2f4f6] p-6">
               <div className={labelRow}>
-                <span className="material-symbols-outlined notranslate text-base text-[#64748b]">
+                <span className="material-symbols-outlined notranslate text-base text-[var(--app-text-muted)]">
                   groups
                 </span>
                 Number of pharmacists
+                <RequiredMark />
               </div>
               <div className="flex flex-wrap items-center gap-4">
                 <input
@@ -387,6 +421,7 @@ function PharmacyDetailsStepFormFields({
                 />
                 <span className="text-sm text-[#3c4948]">Licensed personnel on site</span>
               </div>
+              <FieldErrorText message={fieldError(fieldErrors, "pharmacistCount")} />
             </div>
           </div>
 
@@ -397,7 +432,7 @@ function PharmacyDetailsStepFormFields({
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className={labelRow}>
-                <span className="material-symbols-outlined notranslate text-base text-[#64748b]">
+                <span className="material-symbols-outlined notranslate text-base text-[var(--app-text-muted)]">
                   location_on
                 </span>
                 Branch location
@@ -415,7 +450,7 @@ function PharmacyDetailsStepFormFields({
                 </button>
               </div>
             </div>
-            <p className="mt-2 text-xs leading-relaxed text-[#64748b]">
+            <p className="mt-2 text-xs leading-relaxed text-[var(--app-text-muted)]">
               Use the map search or click to set a pin. Enter the full street address in the field
               under the map—both save with this branch when you continue.
             </p>
@@ -430,12 +465,15 @@ function PharmacyDetailsStepFormFields({
                     setMapLat(null);
                     setMapLng(null);
                   }}
-                  className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-semibold text-[#64748b] shadow-sm ring-1 ring-black/5 hover:bg-white"
+                  className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-semibold text-[var(--app-text-muted)] shadow-sm ring-1 ring-black/5 hover:bg-white"
                 >
                   Clear pin
                 </button>
               </div>
             ) : null}
+            <FieldErrorText
+              message={fieldError(fieldErrors, "latitude") ?? fieldError(fieldErrors, "longitude")}
+            />
             <div
               className={`relative mt-3 flex-1 overflow-visible rounded-2xl bg-[#e2e8f0] transition-[min-height] duration-300 ease-out ${
                 mapExpanded
@@ -458,12 +496,13 @@ function PharmacyDetailsStepFormFields({
                 onResolvedAddress={(formatted) => setBranchLocation(formatted)}
               />
             </div>
-            {/* <div className="mt-4 flex flex-col gap-2">
+            <div className="mt-4 flex flex-col gap-2">
               <label className={labelRow} htmlFor="branchLocation">
-                <span className="material-symbols-outlined notranslate text-base text-[#64748b]">
+                <span className="material-symbols-outlined notranslate text-base text-[var(--app-text-muted)]">
                   signpost
                 </span>
                 Physical address
+                <RequiredMark />
               </label>
               <input
                 id="branchLocation"
@@ -475,7 +514,8 @@ function PharmacyDetailsStepFormFields({
                 onChange={(event) => setBranchLocation(event.target.value)}
                 required
               />
-            </div> */}
+              <FieldErrorText message={fieldError(fieldErrors, "branchLocation")} />
+            </div>
           </div>
         </div>
 
@@ -491,6 +531,7 @@ function PharmacyDetailsStepFormFields({
               <p className="text-sm text-[#3c4948]">
                 When will this branch be active for Aura Sync?
               </p>
+              <FieldErrorText message={fieldError(fieldErrors, "weeklyHours")} />
             </div>
             <div className="flex shrink-0 gap-3">
               <button
@@ -602,7 +643,7 @@ function PharmacyDetailsStepFormFields({
             type="submit"
             className="inline-flex items-center justify-center gap-3 rounded-2xl bg-[#006a65] px-10 py-4 text-base font-semibold text-white shadow-[0_10px_15px_-3px_rgba(0,106,101,0.2),0_4px_6px_-4px_rgba(0,106,101,0.2)] transition hover:bg-[#005850] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {savePharmacyDetailsMutation.isPending ? "Saving..." : "Next: License Upload"}
+            {saveLocationDetailsMutation.isPending ? "Saving..." : "Next: License Upload"}
             <span className="material-symbols-outlined notranslate text-base">arrow_forward</span>
           </button>
         </div>

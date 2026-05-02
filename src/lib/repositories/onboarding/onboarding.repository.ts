@@ -1,8 +1,12 @@
 import { branchOperatingHours } from "@/lib/db/schema";
-import type { IdentityInput, PharmacyDetailsInput } from "@/lib/validation/onboarding";
+import type { IdentityInput, LocationDetailsInput } from "@/lib/validation/onboarding";
 
 export type OnboardingComplianceDocumentPayload = {
-  documentType: "pharmacy_operation_license" | "pharmacist_in_charge_certificate";
+  documentType:
+    | "pharmacy_operation_license"
+    | "pharmacist_in_charge_certificate"
+    | "business_registration"
+    | "trade_license";
   fileName: string;
   storageKey: string;
   mimeType: string;
@@ -26,6 +30,7 @@ export type OnboardingSnapshot = {
     city: string;
     state: string;
     zip: string;
+    storeVertical: "pharmacy" | "general_retail";
   };
   onboarding: {
     status: string;
@@ -54,7 +59,7 @@ export type OnboardingSnapshot = {
 export interface OnboardingRepository {
   getCurrent(authUserId: string): Promise<OnboardingSnapshot | null>;
   saveIdentity(authUserId: string, input: IdentityInput): Promise<OnboardingSnapshot>;
-  savePharmacyDetails(authUserId: string, input: PharmacyDetailsInput): Promise<OnboardingSnapshot>;
+  saveLocationDetails(authUserId: string, input: LocationDetailsInput): Promise<OnboardingSnapshot>;
   saveComplianceDocuments(
     authUserId: string,
     docs: OnboardingComplianceDocumentPayload[],

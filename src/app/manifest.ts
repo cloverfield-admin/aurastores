@@ -5,8 +5,8 @@ const BG = "#fafafa";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "AuraPharma — Pharmacy management platform",
-    short_name: "AuraPharma",
+    name: "AuraStores — Pharmacy management platform",
+    short_name: "AuraStores",
     description:
       "Cloud-based pharmacy management with inventory, sales intelligence, and multi-branch sync.",
     start_url: "/",

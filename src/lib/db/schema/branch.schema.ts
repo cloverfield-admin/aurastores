@@ -41,12 +41,12 @@ export const branches = pgTable(
     city: varchar("city", { length: 128 }),
     state: varchar("state", { length: 128 }),
     postalCode: varchar("postal_code", { length: 32 }),
-    country: varchar("country", { length: 2 }).notNull().default("US"),
+    country: varchar("country", { length: 2 }).notNull().default("ZM"),
     latitude: doublePrecision("latitude"),
     longitude: doublePrecision("longitude"),
     timezone: varchar("timezone", { length: 64 }).notNull().default("UTC"),
-    licensedPharmacistCount: integer("licensed_pharmacist_count").notNull().default(1),
-    leadPharmacistUserId: uuid("lead_pharmacist_user_id").references(() => users.id, {
+    professionalStaffCount: integer("professional_staff_count").notNull().default(1),
+    leadStaffUserId: uuid("lead_staff_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
     openedAt: date("opened_at"),

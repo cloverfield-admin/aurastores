@@ -25,7 +25,7 @@ export function OnboardingShell({
   showScorePanel = true,
 }: OnboardingShellProps) {
   return (
-    <div className="aura-landing min-h-dvh bg-[#f7f9fb] text-[#191c1e]">
+    <div className="aura-landing min-h-dvh bg-[var(--app-canvas)] text-[var(--app-text)]">
       <OnboardingHeader variant={variant === "clinical" ? "clinical" : "default"} />
       <div className="mx-auto flex max-w-[1600px] flex-col pt-16 lg:flex-row">
         <OnboardingSidebar

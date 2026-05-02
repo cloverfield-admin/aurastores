@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
+import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
+import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
+import { LockedCapabilityTease } from "@/components/dashboard/locked-capability-tease";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import {
   useAdjustStockMutation,
@@ -11,6 +14,7 @@ import {
 } from "@/lib/queries/stock";
 import type { StockDashboardResponse } from "@/lib/queries/stock";
 import { ROUTES } from "@/lib/routes";
+import { hasCapability } from "@/lib/rbac/capabilities";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -113,6 +117,9 @@ function formatExpiryDate(expiresAt: string) {
 export function ItemsNearExpiryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const workspace = useDashboardWorkspaceAccess();
+  const canStock = hasCapability(workspace.capabilities, "stock");
+  const locked = !canStock;
   const { withLoading, notify } = useAuraFeedback();
   const branchId = searchParams.get("branch") ?? undefined;
   const [search, setSearch] = useState("");
@@ -125,8 +132,10 @@ export function ItemsNearExpiryContent() {
     branchId,
     search: "",
     view: "all",
+    inventoryStatus: "all",
     page: 1,
     pageSize: 100,
+    enabled: canStock,
   });
 
   const adjustStockMutation = useAdjustStockMutation();
@@ -255,7 +264,7 @@ export function ItemsNearExpiryContent() {
     });
   }
 
-  return (
+  const content = (
     <div className="px-4 pb-14 pt-3 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1240px]">
         <div className="space-y-6">
@@ -271,14 +280,14 @@ export function ItemsNearExpiryContent() {
               Expiring Products
             </h1>
             <p className="max-w-3xl text-[15px] leading-6 text-[#5e6873]">
-              Monitor and manage inventory nearing clinical expiration. Proactive disposal
-              prevents medical protocol violations and financial waste.
+              Monitor and manage inventory nearing expiry. Proactive disposal reduces write-offs
+              and keeps sell-by dates under control.
               {stockQuery.data ? ` Last synced ${formatRelativeSync(stockQuery.data.lastSyncedAt)}.` : null}
             </p>
           </div>
 
           <div className="grid gap-5 lg:grid-cols-3">
-            <article className="relative overflow-hidden rounded-[26px] bg-white px-6 py-5 shadow-[0_18px_40px_rgba(14,30,37,0.06)] before:absolute before:inset-y-0 before:left-0 before:w-1.5 before:rounded-l-[26px] before:bg-[#c62828]">
+            <article className="relative overflow-hidden rounded-[26px] bg-[var(--app-surface)] px-6 py-5 shadow-[0_18px_40px_rgba(14,30,37,0.06)] before:absolute before:inset-y-0 before:left-0 before:w-1.5 before:rounded-l-[26px] before:bg-[#c62828]">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#818b97]">
@@ -295,7 +304,7 @@ export function ItemsNearExpiryContent() {
               </div>
             </article>
 
-            <article className="relative overflow-hidden rounded-[26px] bg-white px-6 py-5 shadow-[0_18px_40px_rgba(14,30,37,0.06)] before:absolute before:inset-y-0 before:left-0 before:w-1.5 before:rounded-l-[26px] before:bg-[#ef8f57]">
+            <article className="relative overflow-hidden rounded-[26px] bg-[var(--app-surface)] px-6 py-5 shadow-[0_18px_40px_rgba(14,30,37,0.06)] before:absolute before:inset-y-0 before:left-0 before:w-1.5 before:rounded-l-[26px] before:bg-[#ef8f57]">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#818b97]">
@@ -312,7 +321,7 @@ export function ItemsNearExpiryContent() {
               </div>
             </article>
 
-            <article className="relative overflow-hidden rounded-[26px] bg-white px-6 py-5 shadow-[0_18px_40px_rgba(14,30,37,0.06)] before:absolute before:inset-y-0 before:left-0 before:w-1.5 before:rounded-l-[26px] before:bg-[#11c5be]">
+            <article className="relative overflow-hidden rounded-[26px] bg-[var(--app-surface)] px-6 py-5 shadow-[0_18px_40px_rgba(14,30,37,0.06)] before:absolute before:inset-y-0 before:left-0 before:w-1.5 before:rounded-l-[26px] before:bg-[#11c5be]">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#818b97]">
@@ -345,8 +354,8 @@ export function ItemsNearExpiryContent() {
                         setSearch(event.target.value);
                         setPage(1);
                       }}
-                      placeholder="Search medication or product ref..."
-                      className="w-full rounded-[18px] border border-white bg-white py-3 pl-12 pr-4 text-sm text-[#171d23] shadow-sm outline-none placeholder:text-[#a0a9b2] focus:border-[#cfe9e7]"
+                      placeholder="Search product name or ref..."
+                      className="w-full rounded-[18px] border border-white bg-[var(--app-surface)] py-3 pl-12 pr-4 text-sm text-[#171d23] shadow-sm outline-none placeholder:text-[#a0a9b2] focus:border-[#cfe9e7]"
                     />
                   </label>
 
@@ -356,7 +365,7 @@ export function ItemsNearExpiryContent() {
                       setStatusFilter(event.target.value);
                       setPage(1);
                     }}
-                    className="h-12 rounded-[14px] border border-white bg-white px-4 text-sm text-[#171d23] shadow-sm outline-none"
+                    className="h-12 rounded-[14px] border border-white bg-[var(--app-surface)] px-4 text-sm text-[#171d23] shadow-sm outline-none"
                   >
                     <option value="all">All Status</option>
                     <option value="critical">Critical</option>
@@ -370,7 +379,7 @@ export function ItemsNearExpiryContent() {
                       setCategoryFilter(event.target.value);
                       setPage(1);
                     }}
-                    className="h-12 rounded-[14px] border border-white bg-white px-4 text-sm text-[#171d23] shadow-sm outline-none"
+                    className="h-12 rounded-[14px] border border-white bg-[var(--app-surface)] px-4 text-sm text-[#171d23] shadow-sm outline-none"
                   >
                     <option value="all">Category: All</option>
                     {categories.map((category) => (
@@ -388,7 +397,7 @@ export function ItemsNearExpiryContent() {
                       setSortBy(event.target.value);
                       setPage(1);
                     }}
-                    className="h-10 rounded-full border border-white bg-white px-4 text-sm text-[#171d23] shadow-sm outline-none"
+                    className="h-10 rounded-full border border-white bg-[var(--app-surface)] px-4 text-sm text-[#171d23] shadow-sm outline-none"
                   >
                     <option value="date-asc">Sort: Date (Soonest)</option>
                     <option value="qty-desc">Sort: Quantity (Highest)</option>
@@ -398,7 +407,7 @@ export function ItemsNearExpiryContent() {
                 </div>
               </section>
 
-              <section className="overflow-hidden rounded-[26px] bg-white shadow-[0_20px_50px_rgba(14,30,37,0.05)]">
+              <section className="overflow-hidden rounded-[26px] bg-[var(--app-surface)] shadow-[0_20px_50px_rgba(14,30,37,0.05)]">
                 {stockQuery.isError ? (
                   <div className="px-6 py-10 text-sm text-[#b42318]">
                     {stockQuery.error instanceof Error
@@ -425,7 +434,7 @@ export function ItemsNearExpiryContent() {
                     <div className="overflow-x-auto overscroll-x-contain">
                       <table className="w-full min-w-[740px]">
                         <thead>
-                          <tr className="border-b border-[#eef2f4] bg-white">
+                          <tr className="border-b border-[#eef2f4] bg-[var(--app-surface)]">
                             <th className="px-5 py-4 text-left text-[10px] font-semibold uppercase tracking-[0.18em] text-[#7f8a96]">
                               Medication Name
                             </th>
@@ -458,7 +467,7 @@ export function ItemsNearExpiryContent() {
                                     href={ROUTES.dashboard.stockBatch(row.id)}
                                     className="block group"
                                   >
-                                    <p className="font-[family-name:var(--font-manrope)] text-[18px] font-extrabold leading-6 text-[#171d23] group-hover:text-[#006a65] transition">
+                                    <p className="font-[family-name:var(--font-manrope)] text-[18px] font-extrabold leading-6 text-[#171d23] group-hover:text-[var(--app-brand)] transition">
                                       {row.productName}
                                     </p>
                                     <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#98a2ad]">
@@ -469,7 +478,7 @@ export function ItemsNearExpiryContent() {
                                 <td className="px-5 py-5">
                                   <Link
                                     href={ROUTES.dashboard.stockBatch(row.id)}
-                                    className="font-mono text-sm text-[#5d6873] hover:text-[#006a65] transition"
+                                    className="font-mono text-sm text-[#5d6873] hover:text-[var(--app-brand)] transition"
                                   >
                                     #{row.batchNumber}
                                   </Link>
@@ -506,7 +515,7 @@ export function ItemsNearExpiryContent() {
                                       onClick={async () => {
                                         await runAdjustment(row.id, row.productName);
                                       }}
-                                      className="rounded-full border border-[#d8e0e6] px-3 py-1.5 text-[11px] font-semibold text-[#4d5b67] transition hover:bg-[#f7f9fb]"
+                                      className="rounded-full border border-[#d8e0e6] px-3 py-1.5 text-[11px] font-semibold text-[#4d5b67] transition hover:bg-[var(--app-canvas)]"
                                     >
                                       Adjust
                                     </button>
@@ -563,7 +572,7 @@ export function ItemsNearExpiryContent() {
                           type="button"
                           disabled={pagination.page <= 1}
                           onClick={() => setPage((current) => Math.max(1, current - 1))}
-                          className="rounded-md border border-[#e4e8ec] bg-white px-3 py-1.5 text-sm font-medium text-[#5c6974] disabled:opacity-40"
+                          className="rounded-md border border-[#e4e8ec] bg-[var(--app-surface)] px-3 py-1.5 text-sm font-medium text-[#5c6974] disabled:opacity-40"
                         >
                           Prev
                         </button>
@@ -579,7 +588,7 @@ export function ItemsNearExpiryContent() {
                           onClick={() =>
                             setPage((current) => Math.min(pagination.totalPages, current + 1))
                           }
-                          className="rounded-md border border-[#e4e8ec] bg-white px-3 py-1.5 text-sm font-medium text-[#5c6974] disabled:opacity-40"
+                          className="rounded-md border border-[#e4e8ec] bg-[var(--app-surface)] px-3 py-1.5 text-sm font-medium text-[#5c6974] disabled:opacity-40"
                         >
                           Next
                         </button>
@@ -625,7 +634,7 @@ export function ItemsNearExpiryContent() {
                 </ul>
               </aside>
 
-              <aside className="rounded-[24px] bg-white p-6 shadow-[0_18px_40px_rgba(14,30,37,0.05)]">
+              <aside className="rounded-[24px] bg-[var(--app-surface)] p-6 shadow-[0_18px_40px_rgba(14,30,37,0.05)]">
                 <h2 className="font-[family-name:var(--font-manrope)] text-[22px] font-bold text-[#171d23]">
                   Recently Processed
                 </h2>
@@ -668,5 +677,18 @@ export function ItemsNearExpiryContent() {
         </div>
       </div>
     </div>
+  );
+
+  if (!locked) {
+    return content;
+  }
+
+  return (
+    <LockedCapabilityTease capability="stock">
+      <div className="mx-auto max-w-[1240px] space-y-6 px-4 pb-2 pt-4 sm:px-6 lg:px-8">
+        <MissingCapabilityNotice capability="stock" variant="inline" className="max-w-3xl" />
+      </div>
+      {content}
+    </LockedCapabilityTease>
   );
 }

@@ -9,6 +9,12 @@ export class SalesService {
     return this.repos.sales.getDashboard(...args);
   }
 
+  getRecentSales(
+    ...args: Parameters<SalesRepository["getRecentSales"]>
+  ): ReturnType<SalesRepository["getRecentSales"]> {
+    return this.repos.sales.getRecentSales(...args);
+  }
+
   getCatalog(
     ...args: Parameters<SalesRepository["getCatalog"]>
   ): ReturnType<SalesRepository["getCatalog"]> {

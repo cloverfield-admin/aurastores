@@ -3,7 +3,7 @@
  * Set `NEXT_PUBLIC_SITE_URL` in production (e.g. https://example.com).
  */
 export function getSiteUrl(): string {
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  const explicit = process.env.NEXT_PUBLIC_APP_URL?.trim();
   if (explicit) {
     return explicit.replace(/\/$/, "");
   }

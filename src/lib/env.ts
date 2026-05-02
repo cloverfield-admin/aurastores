@@ -8,6 +8,8 @@ function requireEnv(name: string): string {
 
 export const env = {
   databaseUrl: requireEnv("DATABASE_URL"),
-  supabaseUrl: requireEnv("SUPABASE_URL"),
-  supabaseAnonKey: requireEnv("SUPABASE_ANON_KEY"),
+  supabaseUrl: requireEnv("NEXT_PUBLIC_SUPABASE_URL"),
+  supabaseAnonKey: requireEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
+  /** Service role: server-only (e.g. staff invites). Never expose to the client. */
+  supabaseServiceRoleKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
 } as const;

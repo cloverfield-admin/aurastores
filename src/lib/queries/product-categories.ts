@@ -5,6 +5,7 @@ import { fetchJson } from "@/lib/api/client";
 import { apiUrl } from "@/lib/api/version";
 
 export const productCategoriesQueryKey = ["product-categories"] as const;
+export const allProductCategoriesQueryKey = [...productCategoriesQueryKey, "all"] as const;
 
 export type ProductCategoryDto = {
   id: string;
@@ -39,6 +40,7 @@ export function useProductCategoriesQuery(options?: {
   includeArchived?: boolean;
   page?: number;
   pageSize?: number;
+  enabled?: boolean;
 }) {
   const includeArchived = options?.includeArchived ?? false;
   const page = Math.max(1, Math.floor(options?.page ?? 1));
@@ -50,6 +52,39 @@ export function useProductCategoriesQuery(options?: {
       fetchJson<ListProductCategoriesResponse>(`${apiUrl("/product-categories")}?${queryString}`, {
         method: "GET",
       }),
+    enabled: options?.enabled ?? true,
+  });
+}
+
+async function fetchAllProductCategories(includeArchived: boolean) {
+  const pageSize = 50;
+  const categories: ProductCategoryDto[] = [];
+  let page = 1;
+
+  while (true) {
+    const queryString = `includeArchived=${includeArchived ? "1" : "0"}&page=${page}&pageSize=${pageSize}`;
+    const res = await fetchJson<ListProductCategoriesResponse>(
+      `${apiUrl("/product-categories")}?${queryString}`,
+      { method: "GET" },
+    );
+    categories.push(...res.categories);
+
+    if (res.pagination.totalPages <= page) {
+      break;
+    }
+    page += 1;
+  }
+
+  return { categories };
+}
+
+export function useAllProductCategoriesQuery(options?: { includeArchived?: boolean; enabled?: boolean }) {
+  const includeArchived = options?.includeArchived ?? false;
+  return useQuery({
+    queryKey: [...allProductCategoriesQueryKey, { includeArchived }] as const,
+    queryFn: () => fetchAllProductCategories(includeArchived),
+    enabled: options?.enabled ?? true,
+    staleTime: 30_000,
   });
 }
 

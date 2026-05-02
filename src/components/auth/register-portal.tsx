@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { PasswordRevealButton } from "@/components/auth/password-reveal-button";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
+import { AppLogo } from "@/components/ui/app-logo";
 import { AuraInlineAlert } from "@/components/ui/aura-inline-alert";
 import { useSignUpMutation } from "@/lib/queries/auth";
 import { ROUTES } from "@/lib/routes";
+import { PRODUCT_NAME } from "@/lib/brand";
 
 const REGISTER_SOCIAL_PROOF = ["Alex Morgan", "Jordan Lee", "Sam Rivera"] as const;
 
@@ -23,15 +26,16 @@ function RegisterFieldLabel({ htmlFor, children }: { htmlFor: string; children: 
 }
 
 const inputClass =
-  "w-full rounded-lg border border-transparent bg-[#f2f4f6] p-4 text-base font-medium text-[#191c1e] outline-none placeholder:text-[rgba(108,122,120,0.5)] focus:border-[#006a65]/20 focus:ring-2 focus:ring-[#006a65]/20";
+  "w-full rounded-lg border border-transparent bg-[var(--app-input-bg)] p-4 text-base font-medium text-[var(--app-text)] outline-none placeholder:text-[rgba(108,122,120,0.5)] focus:border-[#006a65]/20 focus:ring-2 focus:ring-[#006a65]/20";
 
 export function RegisterPortal() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { notify, withLoading, isLoading } = useAuraFeedback();
   const signUpMutation = useSignUpMutation();
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState("");
-  const [pharmacyName, setPharmacyName] = useState("");
+  const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -43,13 +47,22 @@ export function RegisterPortal() {
     setError(null);
     setInfo(null);
 
+    const planParam = searchParams.get("plan")?.trim().toLowerCase();
+    const selectedPlanCode =
+      planParam === "basic" || planParam === "pro" || planParam === "enterprise" ? planParam : undefined;
+    const verticalParam = searchParams.get("vertical")?.trim().toLowerCase();
+    const storeVertical =
+      verticalParam === "general_retail" || verticalParam === "retail" ? "general_retail" : "pharmacy";
+
     try {
       const payload = await withLoading("auth-sign-up", "Creating your Aura workspace...", () =>
         signUpMutation.mutateAsync({
           fullName,
-          pharmacyName,
+          businessName,
+          storeVertical,
           email,
           password,
+          ...(selectedPlanCode ? { selectedPlanCode } : {}),
         }),
       );
 
@@ -69,7 +82,7 @@ export function RegisterPortal() {
 
       notify({
         variant: "success",
-        title: "Welcome to AuraPharma",
+        title: `Welcome to ${PRODUCT_NAME}`,
         description: "Your workspace is ready. Continue with onboarding to finish setup.",
       });
       router.push(payload.redirectTo ?? ROUTES.dashboard.onboarding.root);
@@ -87,7 +100,7 @@ export function RegisterPortal() {
   }
 
   return (
-    <div className="relative min-h-dvh bg-[#f7f9fb]">
+    <div className="relative min-h-dvh bg-[var(--app-canvas)]">
       <div
         className="pointer-events-none absolute right-8 top-48 size-64 rounded-full opacity-[0.03] blur-[70px]"
         style={{
@@ -101,9 +114,9 @@ export function RegisterPortal() {
       />
 
       {/* Header */}
-      <header className="fixed left-0 right-0 top-0 z-50 flex h-16 items-center justify-between border-b border-[rgba(20,184,166,0.1)] bg-white/80 px-6 backdrop-blur-md sm:px-12">
-        <Link href="/" className="bg-gradient-to-r from-[#14b8a6] to-[#6366f1] bg-clip-text text-2xl font-bold tracking-tight text-transparent">
-          AuraPharma
+      <header className="fixed left-0 right-0 top-0 z-50 flex h-16 items-center justify-between border-b border-[rgba(20,184,166,0.1)] bg-[var(--app-surface)]/80 px-6 backdrop-blur-md sm:px-12">
+        <Link href="/" className="flex shrink-0 items-center py-1">
+          <AppLogo variant="bar" />
         </Link>
         <div className="flex min-w-0 items-center gap-2 sm:gap-6">
           <span className="truncate text-xs font-medium uppercase tracking-[0.05em] text-[#6c7a78] sm:text-base">
@@ -120,7 +133,7 @@ export function RegisterPortal() {
 
       <div className="flex min-h-dvh flex-col pt-16 lg:flex-row">
         {/* Left: marketing */}
-        <aside className="relative flex flex-col justify-center overflow-hidden bg-[#f2f4f6] px-8 py-12 lg:min-h-[calc(100dvh-4rem)] lg:w-[min(100%,512px)] lg:shrink-0 lg:px-12 lg:py-16">
+        <aside className="relative flex flex-col justify-center overflow-hidden bg-[var(--app-input-bg)] px-8 py-12 lg:min-h-[calc(100dvh-4rem)] lg:w-[min(100%,512px)] lg:shrink-0 lg:px-12 lg:py-16">
           <div
             className="pointer-events-none absolute -left-24 -top-24 size-96 rounded-full opacity-20 blur-[60px]"
             style={{
@@ -135,15 +148,14 @@ export function RegisterPortal() {
 
           <div className="relative flex max-w-md flex-col gap-10 lg:max-w-none">
             <div className="space-y-4">
-              <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-[#191c1e] sm:text-5xl sm:leading-[48px] sm:tracking-[-0.02em]">
+              <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-[var(--app-text)] sm:text-5xl sm:leading-[48px] sm:tracking-[-0.02em]">
                 <span className="block">The Luminous</span>
                 <span className="block bg-gradient-to-r from-[#0fb9b1] to-[#14b8a6] bg-clip-text text-transparent">
                   Laboratory
                 </span>
               </h1>
-              <p className="max-w-sm text-lg leading-relaxed text-[#3c4948]">
-                Join thousands of pharmacists using intelligent data to transform clinical
-                outcomes.
+              <p className="max-w-sm text-lg leading-relaxed text-[var(--app-text-secondary)]">
+                Join thousands of retailers using intelligent data to transform operations.
               </p>
             </div>
 
@@ -161,8 +173,8 @@ export function RegisterPortal() {
                   </span>
                 </div>
                 <div className="min-w-0 space-y-1">
-                  <p className="font-bold text-[#191c1e]">Aura Stock: Master Your Inventory</p>
-                  <p className="text-sm leading-snug text-[#3c4948]">
+                  <p className="font-bold text-[var(--app-text)]">Aura Stock: Master Your Inventory</p>
+                  <p className="text-sm leading-snug text-[var(--app-text-secondary)]">
                     Predictive ordering and real-time waste tracking.
                   </p>
                 </div>
@@ -174,8 +186,8 @@ export function RegisterPortal() {
                   </span>
                 </div>
                 <div className="min-w-0 space-y-1">
-                  <p className="font-bold text-[#191c1e]">Aura Sales: Real-time Intelligence</p>
-                  <p className="text-sm leading-snug text-[#3c4948]">
+                  <p className="font-bold text-[var(--app-text)]">Aura Sales: Real-time Intelligence</p>
+                  <p className="text-sm leading-snug text-[var(--app-text-secondary)]">
                     Advanced analytics for high-performance clinics.
                   </p>
                 </div>
@@ -187,8 +199,8 @@ export function RegisterPortal() {
                   </span>
                 </div>
                 <div className="min-w-0 space-y-1">
-                  <p className="font-bold text-[#191c1e]">Aura Sync: Multi-branch Control</p>
-                  <p className="text-sm leading-snug text-[#3c4948]">
+                  <p className="font-bold text-[var(--app-text)]">Aura Sync: Multi-branch Control</p>
+                  <p className="text-sm leading-snug text-[var(--app-text-secondary)]">
                     Seamlessly manage data across your entire network.
                   </p>
                 </div>
@@ -202,7 +214,7 @@ export function RegisterPortal() {
                     key={name}
                     name={name}
                     decorative
-                    className="size-10 rounded-full border-2 border-[#f7f9fb] text-xs shadow-sm"
+                    className="size-10 rounded-full border-2 border-[var(--app-canvas)] text-xs shadow-sm"
                   />
                 ))}
               </div>
@@ -217,19 +229,19 @@ export function RegisterPortal() {
         <div className="relative flex flex-1 flex-col items-center justify-center px-6 py-12 sm:px-12 lg:px-16 lg:py-24">
           <div className="relative w-full max-w-md">
             <div className="mb-10 inline-flex items-center gap-2 rounded-full bg-[rgba(0,106,101,0.05)] px-3 py-1.5">
-              <span className="material-symbols-outlined notranslate text-sm text-[#006a65]">
+              <span className="material-symbols-outlined notranslate text-sm text-[var(--app-brand)]">
                 verified_user
               </span>
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#006a65]">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[var(--app-brand)]">
                 Secure Registration Portal
               </span>
             </div>
 
             <div className="mb-8 space-y-2">
-              <h2 className="text-base font-bold text-[#191c1e] sm:text-lg">
+              <h2 className="text-base font-bold text-[var(--app-text)] sm:text-lg">
                 Start your intelligence journey
               </h2>
-              <p className="text-base text-[#3c4948]">
+              <p className="text-base text-[var(--app-text-secondary)]">
                 Access the full suite of clinical tools today.
               </p>
             </div>
@@ -257,16 +269,16 @@ export function RegisterPortal() {
                   </div>
 
                   <div>
-                    <RegisterFieldLabel htmlFor="pharmacyName">Pharmacy name</RegisterFieldLabel>
+                    <RegisterFieldLabel htmlFor="businessName">Business or store name</RegisterFieldLabel>
                     <input
-                      id="pharmacyName"
-                      name="pharmacyName"
+                      id="businessName"
+                      name="businessName"
                       type="text"
                       autoComplete="organization"
                       placeholder="Aura Healthcare Ltd."
                       className={inputClass}
-                      value={pharmacyName}
-                      onChange={(event) => setPharmacyName(event.target.value)}
+                      value={businessName}
+                      onChange={(event) => setBusinessName(event.target.value)}
                       required
                     />
                   </div>
@@ -278,7 +290,7 @@ export function RegisterPortal() {
                       name="email"
                       type="email"
                       autoComplete="email"
-                      placeholder="sarah@aurapharma.com"
+                      placeholder="sarah@example.com"
                       className={inputClass}
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
@@ -301,16 +313,11 @@ export function RegisterPortal() {
                         onChange={(event) => setPassword(event.target.value)}
                         required
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-[#6c7a78] transition hover:bg-[#e0e3e5]/80 hover:text-[#191c1e] disabled:cursor-not-allowed disabled:opacity-60"
-                        aria-label={showPassword ? "Hide password" : "Show password"}
-                      >
-                        <span className="material-symbols-outlined notranslate text-xl">
-                          {showPassword ? "visibility_off" : "visibility"}
-                        </span>
-                      </button>
+                      <PasswordRevealButton
+                        passwordVisible={showPassword}
+                        onToggle={() => setShowPassword((v) => !v)}
+                        accessibleName="password"
+                      />
                     </div>
                   </div>
                 </fieldset>
@@ -333,11 +340,11 @@ export function RegisterPortal() {
 
                   <p className="text-center text-base leading-relaxed text-[#bbc9c7]">
                     By signing up, you agree to the{" "}
-                    <Link href="#" className="text-[#006a65] hover:underline">
+                    <Link href="#" className="text-[var(--app-brand)] hover:underline">
                       Terms of Service
                     </Link>{" "}
                     and{" "}
-                    <Link href="#" className="text-[#006a65] hover:underline">
+                    <Link href="#" className="text-[var(--app-brand)] hover:underline">
                       Privacy Policy
                     </Link>
                     .
@@ -359,18 +366,18 @@ export function RegisterPortal() {
 
             <div className="mt-10 flex flex-wrap items-center justify-center gap-8 opacity-60">
               <div className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined notranslate text-lg text-[#191c1e]">
+                <span className="material-symbols-outlined notranslate text-lg text-[var(--app-text)]">
                   lock
                 </span>
-                <span className="text-xs font-semibold uppercase text-[#191c1e]">
+                <span className="text-xs font-semibold uppercase text-[var(--app-text)]">
                   SSL Secure
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined notranslate text-lg text-[#191c1e]">
+                <span className="material-symbols-outlined notranslate text-lg text-[var(--app-text)]">
                   shield
                 </span>
-                <span className="text-xs font-semibold uppercase text-[#191c1e]">
+                <span className="text-xs font-semibold uppercase text-[var(--app-text)]">
                   HIPAA Ready
                 </span>
               </div>

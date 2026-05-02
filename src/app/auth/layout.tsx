@@ -23,7 +23,7 @@ export default async function AuthLayout({
   }
 
   return (
-    <div className="aura-landing relative min-h-dvh bg-[#f7f9fb] text-[#191c1e]">
+    <div className="aura-landing relative min-h-dvh bg-[var(--app-canvas)] text-[var(--app-text)]">
       {children}
     </div>
   );

@@ -28,7 +28,7 @@ type WeeklyHourPayload = {
   closesAt: string | null;
 };
 
-export type PharmacyDetailsPayload = {
+export type LocationDetailsPayload = {
   branchName: string;
   pharmacistCount: string;
   branchLocation: string;
@@ -88,18 +88,34 @@ export function useSaveIdentityMutation() {
   });
 }
 
-export function useSavePharmacyDetailsMutation() {
+export function useSaveLocationDetailsMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: PharmacyDetailsPayload) =>
-      fetchJson<OnboardingDraft>(apiUrl("/onboarding/pharmacy-details"), {
+    mutationFn: async (payload: LocationDetailsPayload) => {
+      const res = await fetch(apiUrl("/onboarding/location-details"), {
         method: "PATCH",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
-      }),
+      });
+      const body = (await res.json().catch(() => null)) as
+        | (OnboardingDraft & { error?: string; issues?: unknown })
+        | { error?: string; issues?: unknown }
+        | null;
+      if (!res.ok) {
+        const err = new Error((body as any)?.error ?? "Request failed.");
+        (err as any).status = res.status;
+        (err as any).payload = body;
+        throw err;
+      }
+      if (body === null) {
+        throw new Error("Empty response.");
+      }
+      return body as OnboardingDraft;
+    },
     onSuccess: (draft) => {
       queryClient.setQueryData(onboardingQueryKey, draft);
     },

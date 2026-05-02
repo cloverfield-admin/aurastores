@@ -4,7 +4,7 @@ import { ItemsNearExpiryContent } from "@/components/dashboard/items-near-expiry
 export const metadata: Metadata = {
   title: "Items Near Expiry",
   description:
-    "Review and manage pharmacy stock products expiring soon or already expired.",
+    "Review and manage products expiring soon or already expired across branches.",
 };
 
 export default function ItemsNearExpiryPage() {

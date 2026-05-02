@@ -2,13 +2,18 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { HomePageHeader } from "@/components/marketing/home-page-header";
+import { AppLogo } from "@/components/ui/app-logo";
 import { AURA_ASSETS } from "@/lib/aura-assets";
+import { services } from "@/lib/di";
 import { ROUTES } from "@/lib/routes";
 import { getSiteUrl } from "@/lib/site-url";
 
-const homeTitle = "AuraPharma — Clarity around every prescription";
+const homeTitle = "AuraStores — Clarity across every sale";
 const homeDescription =
-  "A cloud-based pharmacy management platform for inventory, pricing, payments, and every branch.";
+  "A cloud-based store operations platform for inventory, pricing, payments, and every branch.";
+
+export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: { absolute: homeTitle },
@@ -35,12 +40,12 @@ function HomeJsonLd() {
     "@graph": [
       {
         "@type": "Organization",
-        name: "AuraPharma",
+        name: "AuraStores",
         url: siteUrl,
       },
       {
         "@type": "WebSite",
-        name: "AuraPharma",
+        name: "AuraStores",
         url: siteUrl,
         description: homeDescription,
       },
@@ -54,8 +59,68 @@ function HomeJsonLd() {
   );
 }
 
-export default function HomePage() {
+const zwmFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "ZMW",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+export default async function HomePage() {
   const year = new Date().getFullYear();
+  const plans = await services.billing.listPublicPlans("ZMW");
+  const planOrder = ["free", "basic", "pro", "enterprise"] as const;
+  const orderedPlans = [...plans].sort(
+    (a, b) => planOrder.indexOf(a.code) - planOrder.indexOf(b.code),
+  );
+
+  const capabilityBullets: Array<{
+    key: keyof (typeof plans)[number]["features"]["capabilities"];
+    label: string;
+  }> = [
+    { key: "stock", label: "Aura Stock" },
+    { key: "sales", label: "Sales Tracking" },
+    // { key: "catalog", label: "Product Categories" },
+    { key: "insights", label: "Aura Insights" },
+    { key: "pay", label: "Aura Pay" },
+    { key: "staff", label: "Staff Management" },
+    { key: "organization", label: "Organization Controls" },
+  ];
+
+  function limitLabel(kind: "products" | "categories" | "salesTransactions", value: number | null | undefined) {
+    if (kind === "salesTransactions") {
+      return value != null ? `${value} sales / month` : "Unlimited sales";
+    }
+    const suffix = kind === "products" ? "Products" : "Categories";
+    return value != null ? `${value} ${suffix}` : `Unlimited ${suffix}`;
+  }
+
+  function buildPlanBullets(plan: (typeof plans)[number], prev?: (typeof plans)[number]) {
+    const out: string[] = [];
+    if (prev) {
+      out.push(`Everything in ${prev.name}`);
+    }
+
+    const caps = plan.features.capabilities;
+    const prevCaps = prev?.features.capabilities ?? null;
+    const limits = plan.features.limits;
+
+    for (const item of capabilityBullets) {
+      const enabled = Boolean(caps[item.key]);
+      const wasEnabled = prevCaps ? Boolean(prevCaps[item.key]) : false;
+      if (!enabled) continue;
+      if (prev && wasEnabled) continue;
+      out.push(item.label);
+    }
+
+    out.push(limits.branches != null ? `Multi-branch Sync (Up to ${limits.branches})` : "Multi-branch Sync (Unlimited)");
+    out.push(limitLabel("products", limits.products));
+    out.push(limitLabel("categories", limits.categories));
+    out.push(limitLabel("salesTransactions", limits.salesTransactions));
+    out.push(limits.staffUsers != null ? `${limits.staffUsers} Staff Users` : "Unlimited Staff Users");
+
+    return out.slice(0, 7);
+  }
 
   return (
     <div className="aura-landing min-h-screen bg-[#f7f9fb] text-[#191c1e]">
@@ -75,29 +140,28 @@ export default function HomePage() {
           />
           <div className="relative mx-auto flex max-w-7xl flex-col items-center gap-6 text-center">
             <div className="rounded-full bg-[rgba(0,106,101,0.1)] px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#006a65]">
-              The Intelligent Layer
+              Store operations, unified
             </div>
             <h1 className="max-w-4xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl md:text-6xl md:leading-[1.1] lg:text-7xl lg:leading-[72px]">
-              Clarity Around Every{" "}
+              Clarity across every{" "}
               <span className="bg-gradient-to-r from-[#0fb9b1] to-[#6366f1] bg-clip-text text-transparent">
-                Prescription
+                sale & branch
               </span>
             </h1>
             <p className="max-w-2xl text-lg leading-relaxed text-[#3c4948] sm:text-xl">
-              A cloud-based pharmacy management platform that gives pharmacies complete
-              visibility and control across inventory, pricing, and payments—across every
-              branch.
+              Run inventory, checkout, and payouts from one place—whether you operate a pharmacy,
+              a retail shop, or a growing multi-location chain.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
               <Link href={ROUTES.auth.register} className={gradientBtn}>
                 Get Started for Free
               </Link>
-              <Link
+              {/* <Link
                 href={ROUTES.demoSuccess}
                 className="rounded-xl bg-[#e0e3e5] px-8 py-4 text-center font-bold text-[#191c1e] transition hover:bg-[#d5d8db]"
               >
                 Watch Demo
-              </Link>
+              </Link> */}
             </div>
 
             <div className="relative mt-10 w-full max-w-6xl pt-4">
@@ -113,7 +177,7 @@ export default function HomePage() {
                 <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-[#0f172a]">
                   <Image
                     src={AURA_ASSETS.heroDashboard}
-                    alt="AuraPharma dashboard preview with analytics and inventory"
+                    alt="AuraStores dashboard preview with analytics and inventory"
                     fill
                     className="object-cover object-top"
                     sizes="(max-width: 1280px) 100vw, 1280px"
@@ -140,7 +204,7 @@ export default function HomePage() {
                 The Aura Ecosystem
               </h2>
               <p className="max-w-2xl text-base text-[#3c4948]">
-                Integrated modules designed for clinical excellence.
+                Integrated modules for day-to-day store operations and leadership visibility.
               </p>
             </div>
 
@@ -177,8 +241,8 @@ export default function HomePage() {
                 </div>
                 <h3 className="mt-6 text-2xl font-bold">Aura Sales</h3>
                 <p className="mt-2 text-base leading-relaxed text-[#3c4948]">
-                  Real-time intelligence dashboards that decode drug performance and patient
-                  demand patterns.
+                  Real-time dashboards that highlight what sells, when it moves, and where margin
+                  is leaking—by branch, category, or payment channel.
                 </p>
               </div>
 
@@ -234,8 +298,8 @@ export default function HomePage() {
                   <div>
                     <p className="text-lg font-bold">Product + Expiry Tracking</p>
                     <p className="mt-1 text-sm leading-relaxed text-[#3c4948]">
-                      Automated alerts for nearing expirations to reduce waste and ensure
-                      patient safety.
+                      Automated alerts for nearing expirations and slow movers so you cut waste
+                      and protect margin.
                     </p>
                   </div>
                 </li>
@@ -258,7 +322,7 @@ export default function HomePage() {
                 <div className="relative aspect-[4/3] overflow-hidden rounded-xl shadow-lg">
                   <Image
                     src={AURA_ASSETS.featurePharmacy}
-                    alt="Organized pharmacy shelves with medicine inventory"
+                    alt="Organized retail shelves with tracked inventory"
                     fill
                     className="object-cover"
                     sizes="(max-width: 1024px) 100vw, 50vw"
@@ -290,17 +354,16 @@ export default function HomePage() {
                 Aura Sales: Real-time Intelligence
               </h2>
               <p className="text-base leading-relaxed text-[#3c4948]">
-                Stop guessing what&apos;s selling. Our sales intelligence platform provides
-                deep-dive analytics into drug performance across different demographics and
-                times of day.
+                Stop guessing what&apos;s selling. Aura Sales surfaces velocity, basket mix, and
+                branch comparisons so you can act on trends—not spreadsheets.
               </p>
               <blockquote className="space-y-4 rounded-xl border-l-4 border-[#4648d4] bg-[#f2f4f6] py-6 pl-7 pr-6">
                 <p className="text-base font-medium text-[#191c1e]">
-                  &ldquo;We increased our margin by 14% in the first quarter just by
-                  optimizing our highest-moving drug categories with Aura Insights.&rdquo;
+                  &ldquo;We increased our margin by 14% in the first quarter by doubling down on
+                  the categories Aura Insights flagged as underpriced and overstocked.&rdquo;
                 </p>
                 <footer className="text-sm font-semibold text-[#6063ee]">
-                  — Dr. Elena Vance, Chief Pharmacist
+                  — Zanele Tembo, Owner @ Brightline Stores
                 </footer>
               </blockquote>
             </div>
@@ -317,8 +380,8 @@ export default function HomePage() {
               One Network. Complete Control.
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-white/80">
-              Whether you manage three branches or three hundred, Aura Sync ensures every
-              patient profile and every tablet is accounted for globally.
+              Whether you manage three branches or three hundred, Aura Sync keeps stock levels,
+              prices, and staff context aligned—so head office and the floor see the same truth.
             </p>
             <div className="mt-12 grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-8">
               {[
@@ -334,8 +397,8 @@ export default function HomePage() {
                 },
                 {
                   icon: "shield_lock",
-                  title: "Medical Security",
-                  body: "HIPAA-compliant, end-to-end encryption for every data byte.",
+                  title: "Built-in security",
+                  body: "Encryption in transit and at rest, with role-based access for your team.",
                 },
               ].map((item) => (
                 <div key={item.title} className="flex flex-col items-center text-center">
@@ -365,132 +428,147 @@ export default function HomePage() {
                 Pricing Plans
               </p>
               <h2 className="text-3xl font-extrabold md:text-4xl">
-                Scalable Clinical Intelligence
+                Scalable from first store to full chain
               </h2>
               <p className="mx-auto max-w-xl text-[#3c4948]">
-                Transparent pricing designed for every stage of your pharmacy&apos;s growth.
+                Transparent pricing for every stage of growth—from a single location to a
+                multi-branch operation.
+              </p>
+              <p className="mx-auto max-w-2xl text-sm font-medium text-[#006a65]">
+                Basic and Pro: 7-day free trial on your first paid plan, then regular billing.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-3">
-              {/* Starter */}
-              <div className="flex h-full flex-col rounded-2xl border border-[#bbc9c7] bg-white p-8 shadow-sm">
-                <div className="space-y-2 border-b border-[#e2e8f0] pb-8">
-                  <h3 className="text-xl font-bold">Starter</h3>
-                  <p className="text-sm text-[#3c4948]">
-                    Perfect for independent, single-branch pharmacies.
-                  </p>
-                  <p className="pt-4 text-4xl font-semibold">
-                    $99<span className="text-base font-normal text-[#3c4948]">/month</span>
-                  </p>
-                </div>
-                <ul className="flex flex-1 flex-col gap-4 py-8">
-                  {[
-                    "Aura Stock Basic",
-                    "Sales Tracking",
-                    "2 Staff Users",
-                  ].map((t) => (
-                    <li key={t} className="flex items-center gap-3 text-sm">
-                      <span className="material-symbols-outlined notranslate text-lg text-[#006a65]">
-                        check_circle
-                      </span>
-                      {t}
-                    </li>
-                  ))}
-                  <li className="flex items-center gap-3 text-sm opacity-50">
-                    <span className="material-symbols-outlined notranslate text-lg text-[#94a3b8]">
-                      block
-                    </span>
-                    Multi-branch Syncing
-                  </li>
-                </ul>
-                <Link
-                  href={ROUTES.auth.register}
-                  className="block w-full rounded-xl border-2 border-[#006a65] py-3.5 text-center font-bold text-[#006a65] transition hover:bg-[#006a65]/5"
-                >
-                  Choose Starter
-                </Link>
-              </div>
+            <div className="grid grid-cols-1 items-stretch gap-8 lg:grid-cols-4">
+              {orderedPlans.map((plan, index) => {
+                const prev = index > 0 ? orderedPlans[index - 1] : undefined;
+                const monthly = plan.prices.monthly;
+                const highlight = plan.code === "pro";
+                const wrapper = highlight
+                  ? "flex h-full flex-col rounded-2xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] p-8 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]"
+                  : "flex h-full flex-col rounded-2xl border border-[#bbc9c7] bg-white p-8 shadow-sm";
+                const heading = highlight ? "text-xl font-bold text-white" : "text-xl font-bold";
+                const subText = highlight ? "text-sm text-white/80" : "text-sm text-[#3c4948]";
+                const priceText = highlight
+                  ? "pt-4 font-semibold text-white text-[clamp(1.6rem,2.8vw,2.2rem)] leading-none tracking-tight whitespace-nowrap"
+                  : "pt-4 font-semibold text-[clamp(1.6rem,2.8vw,2.2rem)] leading-none tracking-tight whitespace-nowrap";
+                const divider = highlight ? "border-b border-white/20 pb-8" : "border-b border-[#e2e8f0] pb-8";
+                const listText = highlight ? "flex items-center gap-3 text-sm text-white" : "flex items-center gap-3 text-sm";
+                const checkColor = highlight ? "text-white" : "text-[#006a65]";
+                const cta = highlight
+                  ? "block w-full rounded-xl bg-white py-3 text-center font-bold text-[#006a65] shadow-lg transition hover:bg-white/95"
+                  : "block w-full rounded-xl border-2 border-[#006a65] py-3.5 text-center font-bold text-[#006a65] transition hover:bg-[#006a65]/5";
+                const ctaDisabled =
+                  "block w-full cursor-not-allowed rounded-xl border-2 border-[#bbc9c7] bg-[#f2f4f6] py-3.5 text-center font-bold text-[#6c7a78] opacity-80";
 
-              {/* Professional */}
-              <div className="relative order-first lg:order-none">
-                <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#4648d4] px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-lg">
-                  Most Popular
-                </div>
-                <div className="flex h-full flex-col rounded-2xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] p-8 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]">
-                  <div className="space-y-2 border-b border-white/20 pb-8">
-                    <h3 className="text-xl font-bold text-white">Professional</h3>
-                    <p className="text-sm text-white/80">
-                      Built for growing pharmacy networks and clinics.
-                    </p>
-                    <p className="pt-4 text-4xl font-semibold text-white">
-                      $249
-                      <span className="text-base font-normal text-white/80">/month</span>
-                    </p>
-                  </div>
-                  <ul className="flex flex-1 flex-col gap-4 py-8">
-                    {[
-                      "Full Aura Stock + Expiry Alerts",
-                      "Advanced Aura Sales Analytics",
-                      "Integrated Aura Pay",
-                      "Multi-branch Sync (Up to 5)",
-                      "Unlimited Staff Users",
-                    ].map((t) => (
-                      <li key={t} className="flex items-center gap-3 text-sm text-white">
-                        <span className="material-symbols-outlined notranslate text-lg text-white">
-                          check_circle
+                const bullets = buildPlanBullets(plan, prev);
+                const isEnterprise = plan.code === "enterprise";
+
+                return (
+                  <div key={plan.code} className={plan.code === "pro" ? "relative order-first lg:order-none" : ""}>
+                    {plan.code === "pro" ? (
+                      <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#4648d4] px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-lg">
+                        Most Popular
+                      </div>
+                    ) : null}
+                    <div className={wrapper}>
+                      <div className={`space-y-2 ${divider}`}>
+                        <h3 className={heading}>{plan.name}</h3>
+                        {isEnterprise ? (
+                          <p className={highlight ? "text-xs font-semibold uppercase tracking-[0.12em] text-white/90" : "text-xs font-semibold uppercase tracking-[0.12em] text-[#6063ee]"}>
+                            Coming soon
+                          </p>
+                        ) : null}
+                        <p className={subText}>
+                          {plan.code === "free"
+                            ? "Start with the essentials for a single location."
+                            : plan.code === "basic"
+                              ? "Built for small teams ready to scale."
+                              : plan.code === "pro"
+                                ? "Advanced analytics for growing multi-branch teams."
+                                : "Best for large networks and custom integrations."}
+                        </p>
+                        <p className={priceText}>
+                          {monthly ? (
+                            <>
+                              {zwmFormatter.format(monthly.amountCents / 100)}
+                              <span
+                                className={
+                                  highlight
+                                    ? "ml-1 align-baseline text-base font-normal text-white/80"
+                                    : "ml-1 align-baseline text-base font-normal text-[#3c4948]"
+                                }
+                              >
+                                /month
+                              </span>
+                            </>
+                          ) : (
+                            "Custom"
+                          )}
+                        </p>
+                        {/* {plan.code === "basic" || plan.code === "pro" ? (
+                          <p
+                            className={
+                              highlight
+                                ? "pt-2 text-sm font-semibold leading-snug text-white"
+                                : "pt-2 text-sm font-semibold leading-snug text-[#006a65]"
+                            }
+                          >
+                            7-day free trial
+                            <span
+                              className={
+                                highlight ? "font-normal text-white/85" : "font-normal text-[#3c4948]"
+                              }
+                            >
+                              {" "}
+                              · then billed monthly after trial
+                            </span>
+                          </p>
+                        ) : plan.code === "free" ? (
+                          <p className="pt-2 text-sm text-[#3c4948]">Always free — no trial needed.</p>
+                        ) : null} */}
+                      </div>
+                      <ul className="flex flex-1 flex-col gap-4 py-8">
+                        {bullets.map((t) => (
+                          <li key={t} className={listText}>
+                            <span className={`material-symbols-outlined notranslate text-lg ${checkColor}`}>
+                              check_circle
+                            </span>
+                            <span className="min-w-0 break-words">{t}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      {isEnterprise ? (
+                        <span className={ctaDisabled} aria-disabled="true">
+                          Coming soon
                         </span>
-                        {t}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link
-                    href={ROUTES.auth.register}
-                    className="block w-full rounded-xl bg-white py-3 text-center font-bold text-[#006a65] shadow-lg transition hover:bg-white/95"
-                  >
-                    Go Professional
-                  </Link>
-                </div>
-              </div>
-
-              {/* Enterprise */}
-              <div className="flex h-full flex-col rounded-2xl border border-[#bbc9c7] bg-white p-8 shadow-sm">
-                <div className="space-y-2 border-b border-[#e2e8f0] pb-8">
-                  <h3 className="text-xl font-bold">Enterprise</h3>
-                  <p className="text-sm text-[#3c4948]">
-                    Total visibility for national pharmacy chains.
-                  </p>
-                  <p className="pt-4 text-4xl font-semibold">Custom</p>
-                </div>
-                <ul className="flex flex-1 flex-col gap-4 py-8">
-                  {[
-                    "Unlimited Branch Syncing",
-                    "Custom API Integrations",
-                    "Dedicated Account Manager",
-                    "Aura Insights Predictive Engine",
-                  ].map((t) => (
-                    <li key={t} className="flex items-center gap-3 text-sm">
-                      <span className="material-symbols-outlined notranslate text-lg text-[#006a65]">
-                        check_circle
-                      </span>
-                      {t}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href={ROUTES.auth.register}
-                  className="block w-full rounded-xl bg-[#2d3133] py-3 text-center font-bold text-[#eff1f3] transition hover:bg-[#1a1d1f]"
-                >
-                  Contact Sales
-                </Link>
-              </div>
+                      ) : (
+                        <Link
+                          href={
+                            plan.code === "basic" || plan.code === "pro"
+                              ? `${ROUTES.auth.register}?plan=${plan.code}`
+                              : ROUTES.auth.register
+                          }
+                          className={cta}
+                        >
+                          {plan.code === "free" ? "Get Started" : "Choose Plan"}
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             <p className="flex flex-wrap items-center justify-center gap-2 text-center text-sm text-[#3c4948]">
               <span className="material-symbols-outlined notranslate text-[#006a65] text-lg">
                 lock
               </span>
-              All plans include 256-bit HIPAA compliant data encryption
+              All plans include strong encryption for data in transit and at rest
+            </p>
+            <p className="mx-auto max-w-2xl text-center text-sm leading-relaxed text-[#3c4948]">
+              Basic and Pro include a <span className="font-semibold text-[#006a65]">7-day free trial</span> on your
+              first paid subscription, then standard billing applies. The Free plan is always free—no trial needed.
             </p>
           </div>
         </section>
@@ -499,24 +577,18 @@ export default function HomePage() {
         <section className="px-4 py-20 sm:px-8 sm:py-32">
           <div className="mx-auto max-w-3xl space-y-8 text-center">
             <h2 className="text-3xl font-extrabold leading-tight sm:text-4xl sm:leading-tight md:text-5xl md:leading-[1.15]">
-              Ready to see your pharmacy in a new light?
+              Ready to run every store with less noise?
             </h2>
             <p className="text-lg text-[#3c4948]">
-              Join 1,200+ pharmacies using AuraPharma to bring clarity to their clinical and
-              financial operations.
+              Join teams using AuraStores to unify inventory, sales, and payouts—so operators and
+              owners stay on the same page.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
               <Link
-                href={ROUTES.demoSuccess}
+                href={ROUTES.auth.signIn}
                 className={`${gradientBtn} px-12 py-5 text-lg shadow-[0_25px_50px_-12px_rgba(0,106,101,0.3)]`}
               >
-                Book a Demo
-              </Link>
-              <Link
-                href={ROUTES.auth.register}
-                className="rounded-xl bg-[#e0e3e5] px-12 py-5 text-lg font-bold text-[#191c1e] transition hover:bg-[#d5d8db]"
-              >
-                Contact Sales
+                Log in
               </Link>
             </div>
           </div>
@@ -528,9 +600,9 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-8">
           <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-5">
             <div className="lg:col-span-2">
-              <p className="text-xl font-bold text-[#0f172a]">AuraPharma</p>
+              <AppLogo variant="footer" />
               <p className="mt-3 max-w-xs text-sm leading-relaxed text-[#64748b]">
-                Intelligence for the modern pharmacy.
+                One platform for pharmacies, retail, and multi-location chains.
               </p>
             </div>
             <div>
@@ -576,7 +648,7 @@ export default function HomePage() {
         </div>
         <div className="border-t border-[#e2e8f0]">
           <p className="px-4 py-8 text-center text-xs text-[#64748b] sm:px-8">
-            © {year} AuraPharma Clinical Intelligence. All rights reserved.
+            © {year} AuraStores. All rights reserved.
           </p>
         </div>
       </footer>

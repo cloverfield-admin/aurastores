@@ -31,12 +31,19 @@ export function LicenseUploadStepForm() {
   const { notify, withLoading, isLoading } = useAuraFeedback();
   const { draft, loading } = useOnboardingProgress();
   const uploadLicenseMutation = useUploadLicenseMutation();
+  const vertical = draft?.organization?.storeVertical ?? "pharmacy";
   const pharmacyInputRef = useRef<HTMLInputElement>(null);
   const picInputRef = useRef<HTMLInputElement>(null);
+  const retailRegInputRef = useRef<HTMLInputElement>(null);
+  const retailTradeInputRef = useRef<HTMLInputElement>(null);
   const [pharmacyFile, setPharmacyFile] = useState<File | null>(null);
   const [pharmacyError, setPharmacyError] = useState<string | null>(null);
   const [picFile, setPicFile] = useState<File | null>(null);
   const [picError, setPicError] = useState<string | null>(null);
+  const [retailRegFile, setRetailRegFile] = useState<File | null>(null);
+  const [retailRegError, setRetailRegError] = useState<string | null>(null);
+  const [retailTradeFile, setRetailTradeFile] = useState<File | null>(null);
+  const [retailTradeError, setRetailTradeError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const isBusy = isLoading("onboarding-license-upload");
@@ -77,6 +84,30 @@ export function LicenseUploadStepForm() {
     validateAndSetPic(f);
   }
 
+  const validateRetailFile = useCallback((file: File | null, setError: (s: string | null) => void) => {
+    if (!file) {
+      setError(null);
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      setError("File must be 10MB or smaller.");
+      return;
+    }
+    setError(null);
+  }, []);
+
+  function onRetailRegChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0] ?? null;
+    setRetailRegFile(f);
+    validateRetailFile(f, setRetailRegError);
+  }
+
+  function onRetailTradeChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0] ?? null;
+    setRetailTradeFile(f);
+    validateRetailFile(f, setRetailTradeError);
+  }
+
   function onDrop(e: DragEvent) {
     e.preventDefault();
     setDragActive(false);
@@ -88,21 +119,39 @@ export function LicenseUploadStepForm() {
     e.preventDefault();
     setSubmitError(null);
 
-    if (!pharmacyFile || !picFile) {
-      const message = "Upload both required compliance documents to continue.";
-      setSubmitError(message);
-      notify({
-        variant: "warning",
-        title: "Missing documents",
-        description: message,
-      });
-      return;
+    if (vertical === "pharmacy") {
+      if (!pharmacyFile || !picFile) {
+        const message = "Upload both required compliance documents to continue.";
+        setSubmitError(message);
+        notify({
+          variant: "warning",
+          title: "Missing documents",
+          description: message,
+        });
+        return;
+      }
+    } else {
+      if (!retailRegFile || !retailTradeFile) {
+        const message = "Upload both business registration and trade license documents to continue.";
+        setSubmitError(message);
+        notify({
+          variant: "warning",
+          title: "Missing documents",
+          description: message,
+        });
+        return;
+      }
     }
 
     try {
       const formData = new FormData();
-      formData.set("pharmacyLicense", pharmacyFile);
-      formData.set("picCertificate", picFile);
+      if (vertical === "pharmacy") {
+        formData.set("pharmacyLicense", pharmacyFile!);
+        formData.set("picCertificate", picFile!);
+      } else {
+        formData.set("businessRegistration", retailRegFile!);
+        formData.set("tradeLicense", retailTradeFile!);
+      }
 
       await withLoading("onboarding-license-upload", "Uploading and verifying your documents...", () =>
         uploadLicenseMutation.mutateAsync(formData),
@@ -134,7 +183,7 @@ export function LicenseUploadStepForm() {
   }, [pharmacyPreviewUrl]);
 
   if (loading && !draft) {
-    return <div className="py-12 text-sm text-[#64748b]">Loading onboarding details...</div>;
+    return <div className="py-12 text-sm text-[var(--app-text-muted)]">Loading onboarding details...</div>;
   }
 
   return (
@@ -151,14 +200,17 @@ export function LicenseUploadStepForm() {
               Step 3 of 4
             </span>
             <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[#191c1e] sm:text-[30px] sm:leading-9 sm:tracking-[-0.02em]">
-              Setting up your License Verification
+              {vertical === "pharmacy" ? "Setting up your License Verification" : "Business verification documents"}
             </h1>
             <p className="max-w-2xl text-base leading-relaxed text-[#3c4948]">
-              To ensure regulatory compliance and secure our clinical network, please provide
-              high-resolution copies of your active pharmaceutical licenses.
+              {vertical === "pharmacy"
+                ? "To ensure regulatory compliance and secure our network, please provide high-resolution copies of your active pharmaceutical licenses."
+                : "Upload clear copies of your business registration and trade license so we can verify your retail operation."}
             </p>
           </div>
 
+          {vertical === "pharmacy" ? (
+            <>
           <input
             ref={pharmacyInputRef}
             type="file"
@@ -251,13 +303,13 @@ export function LicenseUploadStepForm() {
                     />
                   ) : (
                     <div className="flex items-center gap-2 text-sm text-[#3c4948]">
-                      <span className="material-symbols-outlined notranslate text-[#64748b]">
+                      <span className="material-symbols-outlined notranslate text-[var(--app-text-muted)]">
                         picture_as_pdf
                       </span>
                       {pharmacyFile.name}
                     </div>
                   )}
-                  <span className="text-xs text-[#64748b]">{formatSize(pharmacyFile.size)}</span>
+                  <span className="text-xs text-[var(--app-text-muted)]">{formatSize(pharmacyFile.size)}</span>
                 </div>
               ) : (
                 <p className="text-center text-xs text-[rgba(60,73,72,0.6)]">
@@ -321,10 +373,61 @@ export function LicenseUploadStepForm() {
               />
             ) : null}
           </div>
+            </>
+          ) : (
+            <>
+              <input
+                ref={retailRegInputRef}
+                type="file"
+                accept={ACCEPT}
+                className="sr-only"
+                onChange={onRetailRegChange}
+              />
+              <input
+                ref={retailTradeInputRef}
+                type="file"
+                accept={ACCEPT}
+                className="sr-only"
+                onChange={onRetailTradeChange}
+              />
+              <div className="relative flex flex-col gap-6 rounded-xl bg-white p-8 shadow-[0_0_40px_-10px_rgba(15,185,177,0.15)]">
+                <h2 className="font-[family-name:var(--font-manrope)] text-lg font-bold text-[#191c1e]">
+                  Business registration
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => retailRegInputRef.current?.click()}
+                  className="rounded-lg border border-dashed border-[rgba(187,201,199,0.35)] px-4 py-8 text-sm text-[#3c4948]"
+                >
+                  {retailRegFile ? `${retailRegFile.name} (${formatSize(retailRegFile.size)})` : "Choose file"}
+                </button>
+                {retailRegError ? (
+                  <AuraInlineAlert variant="error" title="File issue" description={retailRegError} />
+                ) : null}
+              </div>
+              <div className="relative flex flex-col gap-6 rounded-xl bg-white p-8 shadow-[0_0_40px_-10px_rgba(15,185,177,0.15)]">
+                <h2 className="font-[family-name:var(--font-manrope)] text-lg font-bold text-[#191c1e]">
+                  Trade license
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => retailTradeInputRef.current?.click()}
+                  className="rounded-lg border border-dashed border-[rgba(187,201,199,0.35)] px-4 py-8 text-sm text-[#3c4948]"
+                >
+                  {retailTradeFile
+                    ? `${retailTradeFile.name} (${formatSize(retailTradeFile.size)})`
+                    : "Choose file"}
+                </button>
+                {retailTradeError ? (
+                  <AuraInlineAlert variant="error" title="File issue" description={retailTradeError} />
+                ) : null}
+              </div>
+            </>
+          )}
 
           <div className="flex flex-col-reverse items-stretch justify-between gap-4 pt-2 sm:flex-row sm:items-center">
             <Link
-              href={ROUTES.dashboard.onboarding.pharmacyDetails}
+              href={ROUTES.dashboard.onboarding.locationDetails}
               className="inline-flex items-center justify-center gap-2 font-[family-name:var(--font-manrope)] text-base font-bold text-[#3c4948] transition hover:text-[#191c1e]"
             >
               <span className="material-symbols-outlined notranslate text-lg">arrow_back</span>

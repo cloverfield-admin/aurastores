@@ -9,6 +9,7 @@ import {
   AuraInputWrap,
   auraInputClassName,
 } from "@/components/auth/aura-auth-chrome";
+import { PasswordRevealButton } from "@/components/auth/password-reveal-button";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { AuraInlineAlert } from "@/components/ui/aura-inline-alert";
 import { useUpdatePasswordMutation } from "@/lib/queries/auth";
@@ -19,6 +20,8 @@ export function UpdatePasswordForm() {
   const updateMutation = useUpdatePasswordMutation();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isBusy = isLoading("auth-update-password");
 
@@ -69,15 +72,20 @@ export function UpdatePasswordForm() {
               <input
                 id="new-password"
                 name="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 autoComplete="new-password"
                 placeholder="At least 8 characters"
-                className={auraInputClassName()}
+                className={`${auraInputClassName()} pr-12`}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 required
                 minLength={8}
                 maxLength={128}
+              />
+              <PasswordRevealButton
+                passwordVisible={showPassword}
+                onToggle={() => setShowPassword((v) => !v)}
+                accessibleName="new password"
               />
             </AuraInputWrap>
           </div>
@@ -88,15 +96,20 @@ export function UpdatePasswordForm() {
               <input
                 id="confirm-password"
                 name="confirmPassword"
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 autoComplete="new-password"
                 placeholder="Re-enter your password"
-                className={auraInputClassName()}
+                className={`${auraInputClassName()} pr-12`}
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 required
                 minLength={8}
                 maxLength={128}
+              />
+              <PasswordRevealButton
+                passwordVisible={showConfirmPassword}
+                onToggle={() => setShowConfirmPassword((v) => !v)}
+                accessibleName="confirm password"
               />
             </AuraInputWrap>
           </div>

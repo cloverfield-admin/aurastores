@@ -14,4 +14,6 @@ export type DocumentStorageUploadResult = {
 
 export interface DocumentStorageRepository {
   upload(params: DocumentStorageUploadParams): Promise<DocumentStorageUploadResult>;
+  /** Removes an object from storage (service role; trusted server only). */
+  remove(storageKey: string): Promise<void>;
 }

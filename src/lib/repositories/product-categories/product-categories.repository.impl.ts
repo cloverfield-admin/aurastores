@@ -1,6 +1,7 @@
 import { and, count, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { productCategories } from "@/lib/db/schema";
+import { assertWithinLimit } from "@/lib/billing/entitlements";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 import type {
   ProductCategoriesRepository,
@@ -66,6 +67,17 @@ export class ProductCategoriesRepositoryImpl implements ProductCategoriesReposit
     const description = input.description?.trim() ? input.description.trim() : null;
 
     try {
+      const [{ value: activeCount }] = await db
+        .select({ value: count() })
+        .from(productCategories)
+        .where(and(eq(productCategories.organizationId, context.organization.id), isNull(productCategories.archivedAt)));
+
+      assertWithinLimit({
+        kind: "categories",
+        current: activeCount,
+        limit: context.entitlements.limits.categories,
+      });
+
       const [created] = await db
         .insert(productCategories)
         .values({

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { BarcodeScannerModal } from "@/components/dashboard/barcode-scanner-modal";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
+import { useAllProductCategoriesQuery } from "@/lib/queries/product-categories";
 import { useCreateStockBatchesMutation, useStockCatalogQuery } from "@/lib/queries/stock";
 import { ROUTES } from "@/lib/routes";
 import { createStockBatchSchema } from "@/lib/validation/stock";
@@ -61,7 +62,7 @@ function createEmptyRow(): DraftRow {
 const fieldLabel =
   "mb-2 block text-xs font-normal uppercase tracking-[0.1em] text-[#6c7a78]";
 const inputClass =
-  "w-full rounded-lg border-0 bg-[#f2f4f6] px-4 py-4 text-base text-[#191c1e] outline-none placeholder:text-[#6c7a78]/60 focus:ring-2 focus:ring-[#006a65]/20";
+  "w-full rounded-lg border-0 bg-[var(--app-input-bg)] px-4 py-4 text-base text-[var(--app-text)] outline-none placeholder:text-[#6c7a78]/60 focus:ring-2 focus:ring-[var(--app-brand)]/20";
 
 function buildStockHref(branchId?: string) {
   return branchId
@@ -86,6 +87,11 @@ export function BulkAddBatchesContent() {
     suppressGlobalLoading: true,
   });
   const createBatchesMutation = useCreateStockBatchesMutation();
+  const categoriesQuery = useAllProductCategoriesQuery({ includeArchived: false });
+  const categoryOptions = useMemo(() => {
+    const categories = categoriesQuery.data?.categories ?? [];
+    return [...categories].sort((a, b) => a.name.localeCompare(b.name));
+  }, [categoriesQuery.data]);
 
   const resolvedBranchId = branchId ?? stockCatalogQuery.data?.branch.id ?? undefined;
   const backToStockHref = buildStockHref(resolvedBranchId);
@@ -133,7 +139,7 @@ export function BulkAddBatchesContent() {
         type="button"
         onClick={addRow}
         disabled={!canAddMore || isSaving}
-        className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#f2f4f6] px-5 py-2.5 text-sm font-semibold text-[#191c1e] transition hover:bg-[#e8eaed] disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--app-input-bg)] px-5 py-2.5 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-input-focus-bg)] disabled:cursor-not-allowed disabled:opacity-60"
       >
         <span className="material-symbols-outlined notranslate text-lg">add</span>
         Add another product
@@ -308,16 +314,16 @@ export function BulkAddBatchesContent() {
             <nav className="flex items-center gap-2" aria-label="Breadcrumb">
               <Link
                 href={backToStockHref}
-                className="text-xs font-normal uppercase tracking-[0.1em] text-[#6c7a78] hover:text-[#006a65]"
+                className="text-xs font-normal uppercase tracking-[0.1em] text-[#6c7a78] hover:text-[var(--app-brand)]"
               >
                 Aura Stock
               </Link>
               <span className="material-symbols-outlined notranslate text-sm text-[#bbc9c7]">chevron_right</span>
-              <span className="text-xs font-semibold uppercase tracking-[0.1em] text-[#006a65]">
+              <span className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--app-brand)]">
                 Bulk Add
               </span>
             </nav>
-            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-bold tracking-tight text-[#191c1e] sm:text-[30px] sm:leading-9 sm:tracking-[-0.025em]">
+            <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-bold tracking-tight text-[var(--app-text)] sm:text-[30px] sm:leading-9 sm:tracking-[-0.025em]">
               Bulk Add Products
             </h1>
             <p className="text-sm text-[#6c7a78]">
@@ -329,7 +335,7 @@ export function BulkAddBatchesContent() {
             <button
               type="button"
               onClick={() => router.push(backToStockHref)}
-              className="rounded-xl px-6 py-2.5 text-base font-medium text-[#3c4948] transition hover:bg-[#f2f4f6]"
+              className="rounded-xl px-6 py-2.5 text-base font-medium text-[var(--app-text-secondary)] transition hover:bg-[var(--app-input-bg)]"
             >
               Cancel
             </button>
@@ -363,22 +369,22 @@ export function BulkAddBatchesContent() {
           </div>
         ) : null}
 
-        <section className="rounded-xl bg-white p-6 shadow-sm">
+        <section className="rounded-xl bg-[var(--app-surface)] p-6 shadow-sm">
           <div
-            className="sticky top-[calc(max(5.5rem,env(safe-area-inset-top,0px))+0.5rem)] z-10 -mx-6 mb-4 flex flex-col gap-4 border-b border-[rgba(187,201,199,0.2)] bg-white/95 px-6 pb-4 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between"
+            className="sticky top-[calc(max(5.5rem,env(safe-area-inset-top,0px))+0.5rem)] z-10 -mx-6 mb-4 flex flex-col gap-4 border-b border-[var(--app-border)] bg-[var(--app-surface)]/95 px-6 pb-4 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="flex items-center gap-3">
               <div className="flex size-10 items-center justify-center rounded-lg bg-[rgba(0,106,101,0.1)]">
-                <span className="material-symbols-outlined notranslate text-xl text-[#006a65]">
+                <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">
                   playlist_add
                 </span>
               </div>
               <div>
-                <h2 className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[#191c1e]">
+                <h2 className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[var(--app-text)]">
                   Products ({rows.length})
                 </h2>
                 <p className="text-xs text-[#6c7a78]">
-                  Form completion: <span className="font-semibold text-[#006a65]">{completion}%</span>
+                  Form completion: <span className="font-semibold text-[var(--app-brand)]">{completion}%</span>
                 </p>
               </div>
             </div>
@@ -393,6 +399,11 @@ export function BulkAddBatchesContent() {
           ) : null}
 
           <div className="mt-6 space-y-6">
+            <datalist id="product-category-suggestions">
+              {categoryOptions.map((c) => (
+                <option key={c.id} value={c.name} />
+              ))}
+            </datalist>
             {rows.map((row, index) => {
               const result = results[row.id] ?? { status: "idle" as const };
               const statusPill =
@@ -402,16 +413,16 @@ export function BulkAddBatchesContent() {
                     ? "bg-[#fff1f2] text-[#b42318] border-[#fecdd3]"
                     : result.status === "saving"
                       ? "bg-[#eff6ff] text-[#1d4ed8] border-[#bfdbfe]"
-                      : "bg-[#f8fafc] text-[#64748b] border-[#e2e8f0]";
+                      : "bg-[var(--app-surface-muted)] text-[var(--app-text-muted)] border-[var(--app-border-ui)]";
 
               return (
                 <div
                   key={row.id}
-                  className="rounded-xl border border-[rgba(187,201,199,0.2)] bg-white p-6"
+                  className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6"
                 >
                   <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <p className="text-sm font-semibold text-[#191c1e]">Row {index + 1}</p>
+                      <p className="text-sm font-semibold text-[var(--app-text)]">Row {index + 1}</p>
                       <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${statusPill}`}>
                         {result.status}
                       </span>
@@ -424,7 +435,7 @@ export function BulkAddBatchesContent() {
                       type="button"
                       onClick={() => removeRow(row.id)}
                       disabled={rows.length <= 1 || isSaving}
-                      className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-[#64748b] transition hover:bg-[#f8fafc] hover:text-[#0f172a] disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface-muted)] hover:text-[var(--app-header-title)] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <span className="material-symbols-outlined notranslate text-base">delete</span>
                       Remove
@@ -434,15 +445,15 @@ export function BulkAddBatchesContent() {
                   <div className="grid gap-6 lg:grid-cols-12">
                     <div className="space-y-6 lg:col-span-7">
                       <div>
-                        <label className={fieldLabel} htmlFor={`medication-${row.id}`}>
-                          Medication Name
+                        <label className={fieldLabel} htmlFor={`product-name-${row.id}`}>
+                          Product name
                         </label>
                         <input
-                          id={`medication-${row.id}`}
+                          id={`product-name-${row.id}`}
                           type="text"
                           value={row.productName}
                           onChange={(e) => updateRow(row.id, { productName: e.target.value })}
-                          placeholder="e.g. Amoxicillin 500mg Capsules"
+                          placeholder="e.g. Premium cocoa powder 500g"
                           className={inputClass}
                           autoComplete="off"
                           spellCheck={false}
@@ -508,7 +519,7 @@ export function BulkAddBatchesContent() {
                               className={inputClass}
                               autoComplete="off"
                             />
-                            <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#64748b]">
+                            <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--app-text-muted)]">
                               calendar_today
                             </span>
                           </div>
@@ -518,14 +529,24 @@ export function BulkAddBatchesContent() {
                           <label className={fieldLabel} htmlFor={`category-${row.id}`}>
                             Category
                           </label>
-                          <input
-                            id={`category-${row.id}`}
-                            type="text"
-                            value={row.categoryName}
-                            onChange={(e) => updateRow(row.id, { categoryName: e.target.value })}
-                            placeholder="e.g. Antibiotics"
-                            className={inputClass}
-                          />
+                          <div className="relative">
+                            <input
+                              id={`category-${row.id}`}
+                              type="text"
+                              list="product-category-suggestions"
+                              value={row.categoryName}
+                              onChange={(e) => updateRow(row.id, { categoryName: e.target.value })}
+                              placeholder="Search or select a category"
+                              className={`${inputClass} pr-10 ${
+                                row.categoryName ? "text-[var(--app-text)]" : "text-[#6b7280]"
+                              }`}
+                              autoComplete="off"
+                              spellCheck={false}
+                            />
+                            <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--app-text-muted)]">
+                              expand_more
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -599,7 +620,7 @@ export function BulkAddBatchesContent() {
                             value={row.supplierName}
                             onChange={(e) => updateRow(row.id, { supplierName: e.target.value })}
                             className={`${inputClass} pr-10 ${
-                              row.supplierName ? "text-[#191c1e]" : "text-[#6b7280]"
+                              row.supplierName ? "text-[var(--app-text)]" : "text-[#6b7280]"
                             }`}
                             placeholder="Search or enter supplier"
                           />
@@ -608,7 +629,7 @@ export function BulkAddBatchesContent() {
                               <option key={s.id} value={s.name} />
                             ))}
                           </datalist>
-                          <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#64748b]">
+                          <span className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[var(--app-text-muted)]">
                             expand_more
                           </span>
                         </div>
@@ -665,7 +686,7 @@ export function BulkAddBatchesContent() {
             })}
           </div>
 
-          <div className="mt-8 flex flex-col items-stretch gap-3 border-t border-[rgba(187,201,199,0.2)] pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-8 flex flex-col items-stretch gap-3 border-t border-[var(--app-border)] pt-6 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-[#6c7a78] sm:max-w-md">
               Finished a row? Add the next product here without scrolling back up.
             </p>

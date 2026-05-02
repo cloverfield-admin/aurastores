@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { getCurrentAppContext, requireSupabaseUser } from "@/lib/auth/session";
 import { isSupabaseEmailVerified } from "@/lib/auth/supabase-email-verified";
-import { requireSupabaseUser } from "@/lib/auth/session";
+import type { DashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
+import { fullCapabilities } from "@/lib/rbac/capabilities";
+import { formatMembershipRole } from "@/lib/membership-display";
+import { loadAccessibleBranchTabs } from "@/lib/rbac/workspace-branches";
 import { ROUTES } from "@/lib/routes";
 import { DashboardLayoutShell } from "@/components/dashboard/dashboard-layout-shell";
+import { getUserAvatarPublicUrl } from "@/lib/supabase/user-avatar-public-url";
+import { DEFAULT_USER_PREFERENCES } from "@/lib/validation/me";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -22,5 +28,35 @@ export default async function DashboardLayout({
     redirect(verifyUrl);
   }
 
-  return <DashboardLayoutShell>{children}</DashboardLayoutShell>;
+  const appContext = await getCurrentAppContext();
+  const prefs = appContext?.user.preferences;
+  const initialTheme = prefs?.theme ?? DEFAULT_USER_PREFERENCES.theme;
+
+  const workspaceAccess: DashboardWorkspaceAccess = appContext
+    ? {
+        storeVertical: appContext.organization.storeVertical,
+        capabilities: appContext.capabilities,
+        allowedBranchIds: appContext.allowedBranchIds,
+        accessibleBranches: await loadAccessibleBranchTabs(appContext),
+        userDisplayName: appContext.user.fullName?.trim() || appContext.user.email || "User",
+        membershipRole: appContext.membership.role,
+        membershipRoleLabel: formatMembershipRole(appContext.membership.role),
+        userAvatarUrl: appContext.user.avatarStorageKey
+          ? getUserAvatarPublicUrl(appContext.user.avatarStorageKey)
+          : null,
+        initialTheme,
+      }
+    : {
+        storeVertical: "pharmacy",
+        capabilities: fullCapabilities(),
+        allowedBranchIds: [],
+        accessibleBranches: [],
+        userDisplayName: user.email ?? "User",
+        membershipRole: "",
+        membershipRoleLabel: "—",
+        userAvatarUrl: null,
+        initialTheme,
+      };
+
+  return <DashboardLayoutShell workspaceAccess={workspaceAccess}>{children}</DashboardLayoutShell>;
 }

@@ -1,7 +1,12 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { Geist, Geist_Mono, Inter, Manrope } from "next/font/google";
 import { AuraFeedbackProvider } from "@/components/providers/aura-feedback-provider";
 import { AppQueryProvider } from "@/components/providers/query-provider";
+import { ThemeColorMeta } from "@/components/providers/theme-color-meta";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import { ThemeStorageMigrate } from "@/components/providers/theme-storage-migrate";
+import { PRODUCT_NAME, PRODUCT_TAGLINE } from "@/lib/brand";
 import { getMetadataBase } from "@/lib/site-url";
 import "./globals.css";
 
@@ -25,23 +30,26 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-const defaultTitle = "AuraPharma — Pharmacy management platform";
+const defaultTitle = `${PRODUCT_NAME} — ${PRODUCT_TAGLINE}`;
 const defaultDescription =
-  "Cloud-based pharmacy management with inventory, sales intelligence, and multi-branch sync.";
+  "Cloud-based store operations with inventory, sales intelligence, and multi-branch sync.";
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#0fb9b1",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#0fb9b1" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f766e" },
+  ],
 };
 
 export const metadata: Metadata = {
   metadataBase: getMetadataBase(),
-  applicationName: "AuraPharma",
+  applicationName: PRODUCT_NAME,
   title: {
     default: defaultTitle,
-    template: "%s | AuraPharma",
+    template: `%s | ${PRODUCT_NAME}`,
   },
   description: defaultDescription,
   appleWebApp: {
@@ -55,7 +63,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    siteName: "AuraPharma",
+    siteName: PRODUCT_NAME,
     title: defaultTitle,
     description: defaultDescription,
   },
@@ -74,12 +82,18 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-zinc-50 text-zinc-900">
-        <AppQueryProvider>
-          <AuraFeedbackProvider>{children}</AuraFeedbackProvider>
-        </AppQueryProvider>
+      <body className="min-h-full bg-background text-foreground">
+        <ThemeStorageMigrate />
+        <ThemeProvider>
+          <ThemeColorMeta />
+          <AppQueryProvider>
+            <AuraFeedbackProvider>{children}</AuraFeedbackProvider>
+          </AppQueryProvider>
+        </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );

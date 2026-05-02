@@ -1,19 +1,176 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
+  branchStaffAssignments,
+  branches,
   complianceDocuments,
   organizationMemberships,
   organizationOnboarding,
   organizations,
+  organizationSubscriptions,
+  subscriptionPlanFeatures,
+  subscriptionPlans,
   users,
 } from "@/lib/db/schema";
+import { introPaidTrialEligibleForSnapshot } from "@/lib/billing/intro-trial";
+import { withPublicPlanSalesLimitFallback } from "@/lib/billing/plan-feature-defaults";
+import { ROUTES } from "@/lib/routes";
 import { uniqueSlug } from "@/lib/utils/slug";
+import { DEFAULT_USER_PREFERENCES } from "@/lib/validation/me";
+import type { UserPreferences } from "@/lib/db/schema";
 import type { AuthContext, AuthRepository, RegisteredUserParams } from "@/lib/repositories/auth/auth.repository";
+import type { SubscriptionPlanCode } from "@/lib/repositories/billing/billing.repository";
+import { billingRepository } from "@/lib/repositories/billing/billing.repository.impl";
+import { capabilitiesFromPlan, intersectCapabilities } from "@/lib/billing/entitlements";
+import { resolveAllowedBranchIdsFromAssignments } from "@/lib/rbac/branch-access";
+import {
+  fullCapabilities,
+  isOrgWideBranchRole,
+  normalizeStoredCapabilities,
+} from "@/lib/rbac/capabilities";
 
 async function findDefaultMembership(userId: string) {
   return db.query.organizationMemberships.findFirst({
     where: and(eq(organizationMemberships.userId, userId), eq(organizationMemberships.isDefault, true)),
   });
+}
+
+async function selectAllowedBranchIdsForUser(userId: string, organizationId: string): Promise<string[]> {
+  const rows = await db
+    .select({ branchId: branchStaffAssignments.branchId })
+    .from(branchStaffAssignments)
+    .innerJoin(branches, eq(branches.id, branchStaffAssignments.branchId))
+    .where(
+      and(
+        eq(branchStaffAssignments.userId, userId),
+        eq(branches.organizationId, organizationId),
+        eq(branchStaffAssignments.status, "active"),
+        isNull(branchStaffAssignments.unassignedAt),
+      ),
+    );
+  return [...new Set(rows.map((r) => r.branchId))];
+}
+
+function buildAuthContextSlice(
+  membership: typeof organizationMemberships.$inferSelect,
+  allowedBranchIds: string[] | null,
+): Pick<AuthContext, "capabilities" | "allowedBranchIds"> {
+  return {
+    capabilities: normalizeStoredCapabilities(membership.capabilities, membership.role),
+    allowedBranchIds,
+  };
+}
+
+function normalizeAuthSubscriptionStatus(
+  status: string,
+): NonNullable<AuthContext["subscription"]>["status"] {
+  if (
+    status === "active" ||
+    status === "past_due" ||
+    status === "canceled" ||
+    status === "pending_payment" ||
+    status === "trialing"
+  ) {
+    return status;
+  }
+  return "active";
+}
+
+async function loadSubscriptionSlice(
+  organizationId: string,
+  paidIntroTrialStartedAt: Date | null | undefined,
+): Promise<Pick<AuthContext, "entitlements" | "subscription">> {
+  await billingRepository.ensureIntroTrialReconciled(organizationId);
+
+  const base = await db
+    .select({
+      planId: subscriptionPlans.id,
+      planCode: subscriptionPlans.code,
+      planName: subscriptionPlans.name,
+      interval: organizationSubscriptions.interval,
+      status: organizationSubscriptions.status,
+      currentPeriodStart: organizationSubscriptions.currentPeriodStart,
+      currentPeriodEnd: organizationSubscriptions.currentPeriodEnd,
+      cancelAtPeriodEnd: organizationSubscriptions.cancelAtPeriodEnd,
+      scheduledPlanId: organizationSubscriptions.scheduledPlanId,
+      entitlements: subscriptionPlanFeatures.features,
+    })
+    .from(organizationSubscriptions)
+    .innerJoin(subscriptionPlans, eq(subscriptionPlans.id, organizationSubscriptions.planId))
+    .innerJoin(subscriptionPlanFeatures, eq(subscriptionPlanFeatures.planId, subscriptionPlans.id))
+    .where(eq(organizationSubscriptions.organizationId, organizationId))
+    .limit(1)
+    .then((rows) => rows[0] ?? null);
+
+  if (!base) {
+    // If backfill hasn't run yet (or tests), fall back to free plan entitlements if present.
+    const free = await db
+      .select({
+        planCode: subscriptionPlans.code,
+        entitlements: subscriptionPlanFeatures.features,
+      })
+      .from(subscriptionPlans)
+      .innerJoin(subscriptionPlanFeatures, eq(subscriptionPlanFeatures.planId, subscriptionPlans.id))
+      .where(eq(subscriptionPlans.code, "free"))
+      .limit(1)
+      .then((rows) => rows[0] ?? null);
+
+    const rawEntitlements =
+      free?.entitlements ??
+      ({
+        capabilities: {
+          stock: true,
+          sales: true,
+          catalog: true,
+          insights: false,
+          pay: false,
+          staff: false,
+          organization: true,
+        },
+        limits: {
+          products: 20,
+          salesTransactions: 100,
+          categories: 20,
+          staffUsers: 1,
+          branches: 1,
+        },
+      } as const);
+
+    return {
+      entitlements: withPublicPlanSalesLimitFallback("free", rawEntitlements),
+      subscription: null,
+    };
+  }
+
+  const planCode = base.planCode as SubscriptionPlanCode;
+  const subStatus = normalizeAuthSubscriptionStatus(base.status);
+
+  const scheduledPlanId =
+    typeof base.scheduledPlanId === "string" && base.scheduledPlanId.trim().length > 0
+      ? base.scheduledPlanId
+      : null;
+  const scheduledPlan = scheduledPlanId
+    ? await db.query.subscriptionPlans.findFirst({ where: eq(subscriptionPlans.id, scheduledPlanId) })
+    : null;
+
+  return {
+    entitlements: withPublicPlanSalesLimitFallback(planCode, base.entitlements),
+    subscription: {
+      planCode,
+      planName: base.planName,
+      interval: base.interval,
+      status: subStatus,
+      currentPeriodStart: base.currentPeriodStart,
+      currentPeriodEnd: base.currentPeriodEnd ?? null,
+      cancelAtPeriodEnd: base.cancelAtPeriodEnd,
+      scheduledPlanCode: scheduledPlan?.code ?? null,
+      introPaidTrialEligible: introPaidTrialEligibleForSnapshot({
+        paidIntroTrialStartedAt,
+        planCode,
+        status: subStatus,
+      }),
+    },
+  };
 }
 
 async function hasCompletedRequiredOnboarding(context: AuthContext) {
@@ -73,7 +230,44 @@ export class AuthRepositoryImpl implements AuthRepository {
       where: eq(organizationOnboarding.organizationId, organization.id),
     });
 
-    return { user, membership, organization, onboarding: onboarding ?? null };
+    const assignmentIds = await selectAllowedBranchIdsForUser(user.id, membership.organizationId);
+    let allowedBranchIds: string[] | null;
+    if (assignmentIds.length > 0) {
+      allowedBranchIds = resolveAllowedBranchIdsFromAssignments(assignmentIds);
+    } else if (isOrgWideBranchRole(membership.role)) {
+      // Legacy / pre-migration: no `branch_staff_assignments` rows but owner/admin should see all branches.
+      allowedBranchIds = null;
+    } else if (membership.status === "removed" || membership.status === "suspended") {
+      allowedBranchIds = [];
+    } else {
+      const orgBranchRows = await db
+        .select({ id: branches.id })
+        .from(branches)
+        .where(eq(branches.organizationId, membership.organizationId));
+      // Single-location orgs: members without explicit rows still need a branch scope for the UI/API.
+      allowedBranchIds = orgBranchRows.length === 1 ? [orgBranchRows[0]!.id] : [];
+    }
+
+    const subscriptionSlice = await loadSubscriptionSlice(organization.id, organization.paidIntroTrialStartedAt);
+    const planCapabilities = capabilitiesFromPlan(subscriptionSlice.entitlements);
+    const baseContext = {
+      user,
+      membership,
+      organization,
+      onboarding: onboarding ?? null,
+      ...buildAuthContextSlice(membership, allowedBranchIds),
+      ...subscriptionSlice,
+    } satisfies Omit<AuthContext, "capabilities"> & { capabilities: AuthContext["capabilities"] };
+
+    const isBypassRole = membership.role === "aurastores_admin";
+    const effectiveCapabilities = isBypassRole
+      ? fullCapabilities()
+      : intersectCapabilities(baseContext.capabilities, planCapabilities);
+
+    return {
+      ...baseContext,
+      capabilities: effectiveCapabilities,
+    };
   }
 
   async createRegisteredUser(params: RegisteredUserParams): Promise<AuthContext> {
@@ -96,12 +290,33 @@ export class AuthRepositoryImpl implements AuthRepository {
       const [organization] = await tx
         .insert(organizations)
         .values({
-          slug: uniqueSlug(params.pharmacyName),
-          displayName: params.pharmacyName,
-          legalName: params.pharmacyName,
+          slug: uniqueSlug(params.businessName),
+          displayName: params.businessName,
+          legalName: params.businessName,
           primaryEmail: params.email,
+          hqCountry: "ZM",
+          storeVertical: params.storeVertical ?? "pharmacy",
+          signupSelectedPlanCode: params.selectedPlanCode ?? null,
         })
         .returning();
+
+      const freePlan = await tx.query.subscriptionPlans.findFirst({
+        where: eq(subscriptionPlans.code, "free"),
+      });
+      if (freePlan) {
+        await tx.insert(organizationSubscriptions).values({
+          organizationId: organization.id,
+          planId: freePlan.id,
+          interval: "monthly",
+          status: "active",
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: null,
+          cancelAtPeriodEnd: false,
+          scheduledPlanId: null,
+          updatedAt: new Date(),
+          createdAt: new Date(),
+        });
+      }
 
       const [membership] = await tx
         .insert(organizationMemberships)
@@ -112,6 +327,7 @@ export class AuthRepositoryImpl implements AuthRepository {
           isDefault: true,
           joinedAt: new Date(),
           status: "active",
+          capabilities: fullCapabilities(),
         })
         .returning();
 
@@ -126,7 +342,32 @@ export class AuthRepositoryImpl implements AuthRepository {
         })
         .returning();
 
-      return { user, membership, organization, onboarding };
+      return {
+        user,
+        membership,
+        organization,
+        onboarding,
+        ...buildAuthContextSlice(membership, []),
+        entitlements: {
+          capabilities: {
+            stock: true,
+            sales: true,
+            catalog: true,
+            insights: false,
+            pay: false,
+            staff: false,
+            organization: true,
+          },
+          limits: {
+            products: 20,
+            salesTransactions: 100,
+            categories: 20,
+            staffUsers: 1,
+            branches: 1,
+          },
+        },
+        subscription: null,
+      };
     });
   }
 
@@ -156,9 +397,57 @@ export class AuthRepositoryImpl implements AuthRepository {
       return "/auth/sign-in";
     }
 
+    if (context.membership.status === "invited") {
+      const nextDash = encodeURIComponent(ROUTES.dashboard.main);
+      return `${ROUTES.auth.updatePassword}?staffInvite=1&next=${nextDash}`;
+    }
+
     return (await hasCompletedRequiredOnboarding(context))
       ? "/dashboard"
       : "/dashboard/onboarding";
+  }
+
+  async updateUserFullName(userId: string, fullName: string): Promise<void> {
+    const trimmed = fullName.trim();
+    await db
+      .update(users)
+      .set({
+        fullName: trimmed,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async updateUserPreferences(userId: string, patch: Partial<UserPreferences>): Promise<UserPreferences> {
+    const existing = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+    });
+    if (!existing) {
+      throw new Error("User not found.");
+    }
+    const current: UserPreferences = {
+      ...DEFAULT_USER_PREFERENCES,
+      ...(existing.preferences ?? {}),
+    };
+    const next: UserPreferences = { ...current, ...patch };
+    await db
+      .update(users)
+      .set({
+        preferences: next,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+    return next;
+  }
+
+  async setUserAvatarStorageKey(userId: string, storageKey: string): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        avatarStorageKey: storageKey,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
   }
 }
 

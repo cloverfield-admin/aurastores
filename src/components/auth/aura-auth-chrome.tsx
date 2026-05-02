@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AppLogo } from "@/components/ui/app-logo";
 
 export function AuraAuthBackground() {
   return (
@@ -15,19 +16,9 @@ export function AuraAuthBackground() {
 
 export function AuraAuthBranding() {
   return (
-    <div className="flex flex-col items-center gap-2 text-center">
-      <div
-        className="relative flex size-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6063ee] shadow-[0_10px_15px_-3px_rgba(0,106,101,0.1),0_4px_6px_-4px_rgba(0,106,101,0.1)]"
-        aria-hidden
-      >
-        <span className="material-symbols-outlined notranslate text-3xl text-white">
-          local_pharmacy
-        </span>
-      </div>
-      <h1 className="bg-gradient-to-r from-[#0d9488] to-[#4f46e5] bg-clip-text text-3xl font-extrabold tracking-tight text-transparent">
-        AuraPharma
-      </h1>
-      <p className="text-sm font-medium tracking-wide text-[#3c4948]">
+    <div className="flex flex-col items-center gap-3 text-center">
+      <AppLogo variant="auth" />
+      <p className="text-sm font-medium tracking-wide text-[var(--app-text-secondary)]">
         Clarity Around Every Prescription
       </p>
     </div>
@@ -36,7 +27,7 @@ export function AuraAuthBranding() {
 
 export function AuraAuthCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative w-full max-w-md rounded-xl border border-white/40 bg-white/80 p-8 pb-6 pt-8 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.06)] backdrop-blur-md">
+    <div className="relative w-full max-w-md rounded-xl border border-white/40 bg-[var(--app-surface)]/80 p-8 pb-6 pt-8 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.06)] backdrop-blur-md">
       {children}
     </div>
   );
@@ -48,19 +39,19 @@ export function AuraAuthFooter() {
       className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-center text-xs uppercase tracking-[0.12em] text-[#6c7a78]"
       aria-label="Legal"
     >
-      <Link href="#" className="transition hover:text-[#006a65]">
+      <Link href="#" className="transition hover:text-[var(--app-brand)]">
         Privacy Policy
       </Link>
       <span className="opacity-20" aria-hidden>
         •
       </span>
-      <Link href="#" className="transition hover:text-[#006a65]">
+      <Link href="#" className="transition hover:text-[var(--app-brand)]">
         Terms of Service
       </Link>
       <span className="opacity-20" aria-hidden>
         •
       </span>
-      <Link href="#" className="transition hover:text-[#006a65]">
+      <Link href="#" className="transition hover:text-[var(--app-brand)]">
         Help Center
       </Link>
     </nav>
@@ -81,7 +72,7 @@ export function AuraFieldLabel({
   return (
     <label
       htmlFor={htmlFor}
-      className={`mb-2 block pl-1 text-xs font-semibold uppercase tracking-[0.12em] text-[#3c4948] ${className}`}
+      className={`mb-2 block pl-1 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--app-text-secondary)] ${className}`}
     >
       {children}
     </label>
@@ -105,7 +96,7 @@ export function AuraInputWrap({ children, icon }: AuraInputWrapProps) {
 }
 
 export function auraInputClassName() {
-  return "w-full rounded-lg border border-transparent bg-[#f2f4f6] py-4 pl-12 pr-4 text-sm text-[#191c1e] outline-none placeholder:text-[rgba(108,122,120,0.6)] focus:border-[#006a65]/20 focus:ring-2 focus:ring-[#006a65]/25";
+  return "w-full rounded-lg border border-transparent bg-[var(--app-input-bg)] py-4 pl-12 pr-4 text-sm text-[var(--app-text)] outline-none placeholder:text-[rgba(108,122,120,0.6)] focus:border-[#006a65]/20 focus:ring-2 focus:ring-[#006a65]/25";
 }
 
 export function AuraGradientSubmit({

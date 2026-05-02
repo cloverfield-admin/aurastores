@@ -18,8 +18,29 @@ const withSerwist = withSerwistInit({
   additionalPrecacheEntries: [{ url: "/offline", revision: getSerwistRevision() }],
 });
 
+const supabaseImageHost = (() => {
+  const raw = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!raw) {
+    return null;
+  }
+  try {
+    return new URL(raw).hostname;
+  } catch {
+    return null;
+  }
+})();
+
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["192.168.1.52"],
+  async redirects() {
+    return [
+      {
+        source: "/dashboard/onboarding/pharmacy-details",
+        destination: "/dashboard/onboarding/location-details",
+        permanent: true,
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {
@@ -27,6 +48,15 @@ const nextConfig: NextConfig = {
         hostname: "lh3.googleusercontent.com",
         pathname: "/**",
       },
+      ...(supabaseImageHost
+        ? ([
+            {
+              protocol: "https" as const,
+              hostname: supabaseImageHost,
+              pathname: "/**",
+            },
+          ] as const)
+        : []),
     ],
   },
   async headers() {
@@ -47,5 +77,6 @@ const nextConfig: NextConfig = {
     ];
   },
 };
+
 
 export default withSerwist(nextConfig);

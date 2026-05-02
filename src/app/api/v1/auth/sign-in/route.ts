@@ -41,6 +41,22 @@ export async function POST(request: Request) {
     );
   }
 
+  const emailNormalized = data.user.email?.trim().toLowerCase() ?? "";
+  const invitationIdFromMetadata =
+    typeof data.user.user_metadata?.staff_invitation_id === "string"
+      ? data.user.user_metadata.staff_invitation_id
+      : undefined;
+
+  let context = await services.auth.findByAuthUserId(data.user.id);
+  if (!context && emailNormalized) {
+    await services.staff.acceptStaffInvitationFromAuth({
+      authUserId: data.user.id,
+      emailNormalized,
+      invitationIdFromMetadata,
+    });
+    context = await services.auth.findByAuthUserId(data.user.id);
+  }
+
   await services.auth.syncEmailVerifiedFromAuth(
     data.user.id,
     Boolean(data.user.email_confirmed_at),

@@ -41,7 +41,7 @@ export const usersRelations = relations(users, ({many}) => ({
 
 export const branchesRelations = relations(branches, ({one, many}) => ({
 	user: one(users, {
-		fields: [branches.leadPharmacistUserId],
+		fields: [branches.leadStaffUserId],
 		references: [users.id]
 	}),
 	organization: one(organizations, {

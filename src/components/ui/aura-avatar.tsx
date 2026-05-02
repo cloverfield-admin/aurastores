@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import Image from "next/image";
 
 function initialsFromName(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -29,6 +30,8 @@ const GRADIENTS = [
 
 type AuraAvatarProps = {
   name: string;
+  /** Public URL for a profile photo; initials are shown when absent. */
+  photoUrl?: string | null;
   className?: string;
   textClassName?: string;
   style?: CSSProperties;
@@ -40,6 +43,7 @@ type AuraAvatarProps = {
 
 export function AuraAvatar({
   name,
+  photoUrl,
   className = "",
   textClassName = "",
   style,
@@ -51,6 +55,19 @@ export function AuraAvatar({
   const a11y = decorative
     ? { "aria-hidden": true as const }
     : ({ role: "img" as const, "aria-label": ariaLabel ?? `Avatar for ${name}` } as const);
+
+  if (photoUrl) {
+    return (
+      <div
+        {...a11y}
+        className={`relative shrink-0 overflow-hidden ${className}`}
+        style={style}
+      >
+        <Image src={photoUrl} alt="" fill className="object-cover" sizes="256px" unoptimized />
+      </div>
+    );
+  }
+
   return (
     <div
       {...a11y}

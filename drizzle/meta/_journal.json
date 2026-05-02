@@ -85,6 +85,202 @@
       "when": 1778000000001,
       "tag": "0011_product_categories_archive",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1778100000000,
+      "tag": "0012_organization_memberships_staff_employee_code",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1778200000000,
+      "tag": "0013_staff_invitations",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1778300000000,
+      "tag": "0014_membership_capabilities",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1778400000000,
+      "tag": "0015_owner_admin_all_branch_assignments",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1778500000000,
+      "tag": "0016_capabilities_organization_rename",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1778600000000,
+      "tag": "0017_user_avatar_preferences",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1778600000001,
+      "tag": "0018_user_avatars_bucket",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1778700000000,
+      "tag": "0019_organization_tax_and_billing",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1778800000000,
+      "tag": "0020_remove_stripe_customer_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1778900000000,
+      "tag": "0021_subscription_billing",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1779000000000,
+      "tag": "0022_add_aurapharma_admin_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1779100000000,
+      "tag": "0023_lipila_collections_reference_id_text",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1779200000000,
+      "tag": "0024_lipila_transaction_status_pending",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1779300000000,
+      "tag": "0025_subscription_invoices_org_pending_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1779400000000,
+      "tag": "0026_lipila_transactions_add_organization_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1779500000000,
+      "tag": "0027_paid_plan_intro_trial",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1779600000000,
+      "tag": "0028_plan_sales_limits_monthly_caps",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1779700000000,
+      "tag": "0029_sales_monthly_completed_limit_trigger",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1779800000000,
+      "tag": "0030_branch_wallet_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1779900000000,
+      "tag": "0031_lipila_payment_transactions",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1780000000000,
+      "tag": "0032_lipila_payment_fee_breakdown",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1780100000000,
+      "tag": "0033_expenses",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1780200000000,
+      "tag": "0034_store_vertical",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1780200000001,
+      "tag": "0035_app_role_aurastores_admin",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1780200000002,
+      "tag": "0036_branch_professional_staff_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1780200000003,
+      "tag": "0037_onboarding_step_location_details",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1780200000004,
+      "tag": "0038_document_type_retail",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1780200000005,
+      "tag": "0039_sales_monthly_lock_aurastores",
+      "breakpoints": true
     }
   ]
 }

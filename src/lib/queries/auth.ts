@@ -20,9 +20,11 @@ type SignInResponse = {
 
 type SignUpPayload = {
   fullName: string;
-  pharmacyName: string;
+  businessName: string;
+  storeVertical?: "pharmacy" | "general_retail";
   email: string;
   password: string;
+  selectedPlanCode?: "basic" | "pro" | "enterprise";
 };
 
 type SignUpResponse = {

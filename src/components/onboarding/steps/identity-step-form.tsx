@@ -19,7 +19,7 @@ export function IdentityStepForm() {
   const { draft, loading } = useOnboardingProgress();
 
   if (loading && !draft) {
-    return <div className="py-12 text-sm text-[#64748b]">Loading onboarding details...</div>;
+    return <div className="py-12 text-sm text-[var(--app-text-muted)]">Loading onboarding details...</div>;
   }
 
   if (!draft) {
@@ -70,7 +70,7 @@ function IdentityStepFormFields({
     setError(null);
 
     try {
-      await withLoading("onboarding-identity", "Saving your pharmacy identity...", () =>
+      await withLoading("onboarding-identity", "Saving your business identity...", () =>
         saveIdentityMutation.mutateAsync({
           legalName,
           taxId,
@@ -86,7 +86,7 @@ function IdentityStepFormFields({
         title: "Identity saved",
         description: "Business details verified locally. Continue to branch setup.",
       });
-      router.push(ROUTES.dashboard.onboarding.pharmacyDetails);
+      router.push(ROUTES.dashboard.onboarding.locationDetails);
     } catch (submitError) {
       const message =
         submitError instanceof Error ? submitError.message : "Could not save business identity.";
@@ -113,7 +113,7 @@ function IdentityStepFormFields({
           Business Identity
         </h1>
         <p className="max-w-2xl pt-2 text-lg leading-relaxed text-[#3c4948]">
-          This information helps us verify your pharmacy for clinical compliance. Please
+          This information helps us verify your business for compliance. Please
           provide the official legal details of your business entity.
         </p>
       </div>
@@ -263,7 +263,7 @@ function IdentityStepFormFields({
             type="submit"
             className="relative flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0fb9b1] to-[#6063ee] px-10 py-4 text-base font-semibold text-white shadow-[0_10px_15px_-3px_rgba(15,185,177,0.2),0_4px_6px_-4px_rgba(15,185,177,0.2)] transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {saveIdentityMutation.isPending ? "Saving..." : "Next: Pharmacy Details"}
+            {saveIdentityMutation.isPending ? "Saving..." : "Next: Store location"}
             <span className="material-symbols-outlined notranslate text-base">
               arrow_forward
             </span>

@@ -15,6 +15,7 @@ import {
   stockCatalogQueryKey,
   stockDashboardQueryKey,
 } from "@/lib/queries/stock";
+import { OUTBOX_CHANGED_EVENT, OUTBOX_CHANGED_EVENT_LEGACY } from "@/lib/brand";
 
 const DEBOUNCE_MS = 400;
 
@@ -78,13 +79,15 @@ export function OutboxSyncProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    window.addEventListener("aurapharma:outbox-changed", onOutboxChanged);
+    window.addEventListener(OUTBOX_CHANGED_EVENT, onOutboxChanged);
+    window.addEventListener(OUTBOX_CHANGED_EVENT_LEGACY, onOutboxChanged);
     window.addEventListener("online", onOnline);
     document.addEventListener("visibilitychange", onVisibility);
     scheduleFlush();
 
     return () => {
-      window.removeEventListener("aurapharma:outbox-changed", onOutboxChanged);
+      window.removeEventListener(OUTBOX_CHANGED_EVENT, onOutboxChanged);
+      window.removeEventListener(OUTBOX_CHANGED_EVENT_LEGACY, onOutboxChanged);
       window.removeEventListener("online", onOnline);
       document.removeEventListener("visibilitychange", onVisibility);
       if (timeoutRef.current) {

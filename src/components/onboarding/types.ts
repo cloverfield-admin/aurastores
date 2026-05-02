@@ -1,6 +1,6 @@
 export type OnboardingStepId =
   | "identity"
-  | "pharmacy-details"
+  | "location-details"
   | "license"
   | "review";
 
@@ -29,6 +29,7 @@ export type OnboardingDraft = {
     city: string;
     state: string;
     zip: string;
+    storeVertical: "pharmacy" | "general_retail";
   };
   onboarding: {
     status: string;
