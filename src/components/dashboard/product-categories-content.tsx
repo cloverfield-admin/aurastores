@@ -406,92 +406,156 @@ export function ProductCategoriesContent() {
               </button>
             </div>
           ) : (
-            <div className="overflow-x-auto overscroll-x-contain">
-              <table className="w-full min-w-[720px]">
-                <thead>
-                  <tr className="bg-[var(--app-input-bg)]">
-                    <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[1px] text-[var(--app-text-muted)]">
-                      Name
-                    </th>
-                    <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[1px] text-[var(--app-text-muted)]">
-                      Description
-                    </th>
-                    <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[1px] text-[var(--app-text-muted)]">
-                      Status
-                    </th>
-                    <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[1px] text-[var(--app-text-muted)]">
-                      Updated
-                    </th>
-                    <th className="px-6 py-4 text-right text-[10px] font-semibold uppercase tracking-[1px] text-[var(--app-text-muted)]">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sorted.map((category) => {
-                    const archived = Boolean(category.archivedAt);
-                    return (
-                      <tr key={category.id} className="border-t border-[#f8fafc] transition hover:bg-[#fafafa]">
-                        <td className="px-6 py-4">
+            <>
+              <div className="md:hidden space-y-3 border-t border-[#f8fafc] px-4 py-4">
+                {sorted.map((category) => {
+                  const archived = Boolean(category.archivedAt);
+                  return (
+                    <article
+                      key={category.id}
+                      className="rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] p-4 shadow-sm"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0">
                           <p className="text-sm font-semibold leading-5 text-[var(--app-text)]">{category.name}</p>
                           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--app-text-faint)]">
                             {archived ? "Archived" : "Active"}
                           </p>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-[#475569]">
-                          {category.description ?? "—"}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span
-                            className={`inline-flex rounded-full px-2.5 py-1.5 text-xs font-semibold ${
-                              archived ? "bg-[var(--app-surface-subtle)] text-[#334155]" : "bg-[#f0fdfa] text-[var(--app-link-teal)]"
-                            }`}
+                        </div>
+                        <span
+                          className={`inline-flex shrink-0 rounded-full px-2.5 py-1.5 text-xs font-semibold ${
+                            archived ? "bg-[var(--app-surface-subtle)] text-[#334155]" : "bg-[#f0fdfa] text-[var(--app-link-teal)]"
+                          }`}
+                        >
+                          {archived ? "Archived" : "Active"}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm text-[#475569]">{category.description ?? "—"}</p>
+                      <p className="mt-2 text-xs text-[var(--app-text-muted)]">
+                        Updated {dateTime.format(new Date(category.updatedAt))}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {!archived ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setModalError(null);
+                                setModal({ open: true, mode: "edit", category });
+                              }}
+                              className="rounded-md bg-[#eff6ff] px-3 py-2 text-xs font-semibold text-[#2563eb] hover:bg-[#dbeafe]"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => archiveCategory(category)}
+                              className="rounded-md bg-[var(--app-surface-subtle)] px-3 py-2 text-xs font-semibold text-[#334155] hover:bg-[var(--app-cancel-hover)]"
+                            >
+                              Archive
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={async () => restoreCategory(category)}
+                            className="rounded-md bg-[#0d9488] px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#0f766e]"
                           >
-                            {archived ? "Archived" : "Active"}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-[#475569]">
-                          {dateTime.format(new Date(category.updatedAt))}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            {!archived ? (
-                              <>
+                            Restore
+                          </button>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+              <div className="hidden md:block overflow-x-auto overscroll-x-contain">
+                <table className="w-full min-w-[720px]">
+                  <thead>
+                    <tr className="bg-[var(--app-input-bg)]">
+                      <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[1px] text-[var(--app-text-muted)]">
+                        Name
+                      </th>
+                      <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[1px] text-[var(--app-text-muted)]">
+                        Description
+                      </th>
+                      <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[1px] text-[var(--app-text-muted)]">
+                        Status
+                      </th>
+                      <th className="px-6 py-4 text-left text-[10px] font-semibold uppercase tracking-[1px] text-[var(--app-text-muted)]">
+                        Updated
+                      </th>
+                      <th className="px-6 py-4 text-right text-[10px] font-semibold uppercase tracking-[1px] text-[var(--app-text-muted)]">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sorted.map((category) => {
+                      const archived = Boolean(category.archivedAt);
+                      return (
+                        <tr key={category.id} className="border-t border-[#f8fafc] transition hover:bg-[#fafafa]">
+                          <td className="px-6 py-4">
+                            <p className="text-sm font-semibold leading-5 text-[var(--app-text)]">{category.name}</p>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--app-text-faint)]">
+                              {archived ? "Archived" : "Active"}
+                            </p>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-[#475569]">
+                            {category.description ?? "—"}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`inline-flex rounded-full px-2.5 py-1.5 text-xs font-semibold ${
+                                archived ? "bg-[var(--app-surface-subtle)] text-[#334155]" : "bg-[#f0fdfa] text-[var(--app-link-teal)]"
+                              }`}
+                            >
+                              {archived ? "Archived" : "Active"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-[#475569]">
+                            {dateTime.format(new Date(category.updatedAt))}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex justify-end gap-2">
+                              {!archived ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setModalError(null);
+                                      setModal({ open: true, mode: "edit", category });
+                                    }}
+                                    className="rounded-md bg-[#eff6ff] px-3 py-1 text-[10px] font-semibold text-[#2563eb] hover:bg-[#dbeafe]"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={async () => archiveCategory(category)}
+                                    className="rounded-md bg-[var(--app-surface-subtle)] px-3 py-1 text-[10px] font-semibold text-[#334155] hover:bg-[var(--app-cancel-hover)]"
+                                  >
+                                    Archive
+                                  </button>
+                                </>
+                              ) : (
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    setModalError(null);
-                                    setModal({ open: true, mode: "edit", category });
-                                  }}
-                                  className="rounded-md bg-[#eff6ff] px-3 py-1 text-[10px] font-semibold text-[#2563eb] hover:bg-[#dbeafe]"
+                                  onClick={async () => restoreCategory(category)}
+                                  className="rounded-md bg-[#0d9488] px-3 py-1 text-[10px] font-semibold text-white shadow-sm hover:bg-[#0f766e]"
                                 >
-                                  Edit
+                                  Restore
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={async () => archiveCategory(category)}
-                                  className="rounded-md bg-[var(--app-surface-subtle)] px-3 py-1 text-[10px] font-semibold text-[#334155] hover:bg-[var(--app-cancel-hover)]"
-                                >
-                                  Archive
-                                </button>
-                              </>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={async () => restoreCategory(category)}
-                                className="rounded-md bg-[#0d9488] px-3 py-1 text-[10px] font-semibold text-white shadow-sm hover:bg-[#0f766e]"
-                              >
-                                Restore
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </section>
 

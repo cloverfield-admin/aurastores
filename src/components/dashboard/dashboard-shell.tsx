@@ -18,10 +18,11 @@ import type { DashboardWorkspaceAccess } from "@/components/dashboard/dashboard-
 import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { apiUrl } from "@/lib/api/version";
-import { PRODUCT_NAME, PRODUCT_TAGLINE } from "@/lib/brand";
+import { PRODUCT_TAGLINE } from "@/lib/brand";
 import { ROUTES } from "@/lib/routes";
 import { WorkspaceSearchField } from "@/components/dashboard/workspace-search-field";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
+import { AppLogo } from "@/components/ui/app-logo";
 import type { MembershipCapability } from "@/lib/rbac/capabilities";
 import { hasCapability, membershipCapabilityLabel } from "@/lib/rbac/capabilities";
 import { dashboardModuleCapabilityForPath } from "@/lib/rbac/dashboard-path-capability";
@@ -564,23 +565,12 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
           <Link
             href={ROUTES.dashboard.main}
             onClick={closeMobileNav}
-            className="flex items-center gap-3 px-2 pb-4 pt-0 lg:pb-8 lg:pt-2"
+            className="flex flex-col items-center gap-2 px-2 pb-4 pt-0 lg:pb-8 lg:pt-2"
           >
-            <div className="aura-gradient flex size-10 items-center justify-center rounded-xl shadow-md">
-              <span className="material-symbols-outlined notranslate text-xl text-white">
-                store
-              </span>
-            </div>
-            <br />
-            <br />
-            <div>
-              <p className="aura-gradient bg-clip-text font-[family-name:var(--font-manrope)] text-xl font-bold tracking-tight text-transparent">
-                {PRODUCT_NAME}
-              </p>
-              <p className="text-[10px] font-medium uppercase tracking-[-0.05em] text-[var(--app-text-muted)]">
-                {PRODUCT_TAGLINE}
-              </p>
-            </div>
+            <AppLogo variant="sidebar" className="!h-20 sm:!h-14 lg:!h-16" />
+            <p className="text-center text-[10px] font-medium uppercase tracking-[-0.05em] text-[var(--app-text-muted)]">
+              {PRODUCT_TAGLINE}
+            </p>
           </Link>
 
           <nav className="flex flex-col gap-1" aria-label="Product modules">

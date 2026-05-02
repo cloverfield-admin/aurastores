@@ -323,10 +323,10 @@ export function SalesPerformanceContent() {
             <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[var(--app-text)] sm:text-4xl">
               Monthly Sales Performance
             </h1>
-            <p className="max-w-xl text-base text-[var(--app-text-secondary)]">
+            {/* <p className="max-w-xl text-base text-[var(--app-text-secondary)]">
               Real-time sales and margin tracking for the current branch (selected window, compared to the previous
               period).
-            </p>
+            </p> */}
           </div>
           <div className="flex w-full min-w-0 flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-stretch sm:justify-end">
             {isSalesLimitReached ? (

@@ -632,43 +632,81 @@ export function AuraPayContent() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-[var(--app-border-ui)] text-sm">
-                <thead className="bg-gradient-to-r from-[#f0fdfa] to-[#eef2ff] text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:from-teal-950/35 dark:to-indigo-950/35 dark:text-slate-300">
-                  <tr>
-                    <th className="px-5 py-3">Sale</th>
-                    <th className="px-5 py-3">Method</th>
-                    <th className="px-5 py-3">Customer</th>
-                    <th className="px-5 py-3">Items</th>
-                    <th className="px-5 py-3">Paid</th>
-                    <th className="px-5 py-3 text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--app-border-ui)]">
-                  {transactions.map((tx) => (
-                    <tr key={tx.id} className="transition hover:bg-[var(--app-surface-muted)]">
-                      <td className="px-5 py-4">
-                        <Link href={ROUTES.dashboard.payTransaction(tx.id)} className="font-bold text-[var(--app-link-teal)]">
+            <>
+              <div className="md:hidden space-y-3 border-t border-[var(--app-border-ui)] bg-[var(--app-surface)] px-4 py-4">
+                {transactions.map((tx) => (
+                  <article
+                    key={tx.id}
+                    className="rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] p-4 shadow-sm"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <Link
+                          href={ROUTES.dashboard.payTransaction(tx.id)}
+                          className="font-bold text-[var(--app-link-teal)] hover:underline"
+                        >
                           {tx.saleNumber}
                         </Link>
-                        <p className="mt-1 text-[11px] text-[var(--app-text-faint)]">{tx.reference ?? "No reference"}</p>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${paymentColors(tx.method).badge}`}>
-                          {formatPaymentMethod(tx.method)}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 text-[var(--app-text-muted)]">{tx.patientName ?? "Walk-in customer"}</td>
-                      <td className="px-5 py-4 text-[var(--app-text-muted)]">{tx.itemCount.toLocaleString()}</td>
-                      <td className="px-5 py-4 text-[var(--app-text-muted)]">{formatDateTime(tx.paidAt ?? tx.createdAt)}</td>
-                      <td className="px-5 py-4 text-right font-bold text-[var(--app-text)]">
+                        <p className="mt-0.5 text-[11px] text-[var(--app-text-faint)]">{tx.reference ?? "No reference"}</p>
+                      </div>
+                      <p className="shrink-0 text-base font-bold text-[var(--app-text)]">
                         {currencyFormatter.format(tx.amountCents / 100)}
-                      </td>
+                      </p>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${paymentColors(tx.method).badge}`}>
+                        {formatPaymentMethod(tx.method)}
+                      </span>
+                    </div>
+                    <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
+                      <dt className="font-semibold text-[var(--app-text-faint)]">Customer</dt>
+                      <dd className="text-[var(--app-text)]">{tx.patientName ?? "Walk-in customer"}</dd>
+                      <dt className="font-semibold text-[var(--app-text-faint)]">Items</dt>
+                      <dd className="text-[var(--app-text-muted)]">{tx.itemCount.toLocaleString()}</dd>
+                      <dt className="font-semibold text-[var(--app-text-faint)]">Paid</dt>
+                      <dd className="text-[var(--app-text-muted)]">{formatDateTime(tx.paidAt ?? tx.createdAt)}</dd>
+                    </dl>
+                  </article>
+                ))}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
+                <table className="min-w-full divide-y divide-[var(--app-border-ui)] text-sm">
+                  <thead className="bg-gradient-to-r from-[#f0fdfa] to-[#eef2ff] text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:from-teal-950/35 dark:to-indigo-950/35 dark:text-slate-300">
+                    <tr>
+                      <th className="px-5 py-3">Sale</th>
+                      <th className="px-5 py-3">Method</th>
+                      <th className="px-5 py-3">Customer</th>
+                      <th className="px-5 py-3">Items</th>
+                      <th className="px-5 py-3">Paid</th>
+                      <th className="px-5 py-3 text-right">Amount</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--app-border-ui)]">
+                    {transactions.map((tx) => (
+                      <tr key={tx.id} className="transition hover:bg-[var(--app-surface-muted)]">
+                        <td className="px-5 py-4">
+                          <Link href={ROUTES.dashboard.payTransaction(tx.id)} className="font-bold text-[var(--app-link-teal)]">
+                            {tx.saleNumber}
+                          </Link>
+                          <p className="mt-1 text-[11px] text-[var(--app-text-faint)]">{tx.reference ?? "No reference"}</p>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${paymentColors(tx.method).badge}`}>
+                            {formatPaymentMethod(tx.method)}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-[var(--app-text-muted)]">{tx.patientName ?? "Walk-in customer"}</td>
+                        <td className="px-5 py-4 text-[var(--app-text-muted)]">{tx.itemCount.toLocaleString()}</td>
+                        <td className="px-5 py-4 text-[var(--app-text-muted)]">{formatDateTime(tx.paidAt ?? tx.createdAt)}</td>
+                        <td className="px-5 py-4 text-right font-bold text-[var(--app-text)]">
+                          {currencyFormatter.format(tx.amountCents / 100)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
 
           <div className="flex items-center justify-between border-t border-[var(--app-border-ui)] p-5 text-sm">

@@ -261,6 +261,182 @@ const StockAdjustDialog = memo(function StockAdjustDialog({
   );
 });
 
+type StockInventoryRow = StockDashboardResponse["inventory"][number];
+
+const StockInventoryMobileCard = memo(function StockInventoryMobileCard({
+  row,
+  showBranchColumn,
+  isSelected,
+  isRecentlyAdjusted,
+  onToggleSelect,
+  onEdit,
+  onAdjust,
+  onDispose,
+  onRestore,
+}: {
+  row: StockInventoryRow;
+  showBranchColumn: boolean;
+  isSelected: boolean;
+  isRecentlyAdjusted: boolean;
+  onToggleSelect: () => void;
+  onEdit: () => void;
+  onAdjust: () => void;
+  onDispose: () => void;
+  onRestore: () => void;
+}) {
+  const expiryVariant =
+    row.status === "expired" || row.status === "disposed"
+      ? "critical"
+      : row.status === "expiring_soon"
+        ? "warning"
+        : "safe";
+  const canAdjust = row.status !== "disposed";
+
+  const shellClass = isRecentlyAdjusted
+    ? "border-[#bbf7d0] bg-[rgba(240,253,244,0.95)]"
+    : expiryVariant === "critical"
+      ? "border-[var(--app-surface-subtle)] bg-[rgba(255,241,242,0.08)]"
+      : "border-[var(--app-surface-subtle)] bg-[var(--app-surface)]";
+
+  return (
+    <article className={`rounded-xl border p-4 shadow-sm ${shellClass}`}>
+      <div className="flex gap-3">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          disabled={!canAdjust}
+          onChange={onToggleSelect}
+          className="mt-1 size-4 shrink-0 rounded border-[var(--app-outline-variant)] text-[var(--app-link-teal)] focus:ring-[var(--app-link-teal)] disabled:opacity-40"
+          aria-label={`Select product ${row.batchNumber}`}
+        />
+        <div className="min-w-0 flex-1 space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <Link href={ROUTES.dashboard.stockBatch(row.id)} className="group min-w-0">
+              <p className="text-sm font-semibold text-[var(--app-text)] group-hover:text-[var(--app-brand)]">
+                {row.productName}
+              </p>
+              <p className="mt-0.5 font-mono text-[11px] uppercase tracking-tight text-[var(--app-text-faint)]">
+                SKU: {row.sku}
+              </p>
+            </Link>
+            <span
+              className={`inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase ${
+                expiryVariant === "safe"
+                  ? "bg-[#f0fdf4] text-[#15803d]"
+                  : expiryVariant === "warning"
+                    ? "bg-[#fffbeb] text-[#b45309]"
+                    : "bg-[#fff1f2] text-[#be123c]"
+              }`}
+            >
+              <span
+                className={`size-1.5 rounded-full ${
+                  expiryVariant === "safe"
+                    ? "bg-[#22c55e]"
+                    : expiryVariant === "warning"
+                      ? "bg-[#f59e0b]"
+                      : "bg-[#f43f5e]"
+                }`}
+              />
+              {formatExpiryLabel(row.daysToExpiry, row.expiresAt)}
+            </span>
+          </div>
+
+          <div>
+            <Link
+              href={ROUTES.dashboard.stockBatch(row.id)}
+              className="font-mono text-sm font-medium text-[var(--app-text-muted)] hover:text-[var(--app-brand)]"
+            >
+              #{row.batchNumber}
+            </Link>
+            {row.supplierName ? (
+              <p className="mt-1 text-xs text-[var(--app-text-faint)]">{row.supplierName}</p>
+            ) : null}
+          </div>
+
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
+            {showBranchColumn ? (
+              <>
+                <dt className="font-semibold text-[var(--app-text-faint)]">Branch</dt>
+                <dd className="text-[var(--app-text)]">{row.branchName}</dd>
+              </>
+            ) : null}
+            <dt className="font-semibold text-[var(--app-text-faint)]">Category</dt>
+            <dd className="text-[var(--app-text)]">{row.categoryName}</dd>
+          </dl>
+
+          <div className="w-full max-w-full space-y-1.5">
+            <div className="h-1.5 overflow-hidden rounded-full bg-[var(--app-surface-subtle)]">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${row.stockProgressPercent}%`,
+                  backgroundColor:
+                    expiryVariant === "safe"
+                      ? "#14b8a6"
+                      : expiryVariant === "warning"
+                        ? "#f59e0b"
+                        : "#e11d48",
+                }}
+              />
+            </div>
+            <p
+              className={`text-[11px] font-semibold ${
+                expiryVariant === "safe"
+                  ? "text-[var(--app-link-teal)]"
+                  : expiryVariant === "warning"
+                    ? "text-[#d97706]"
+                    : "text-[#e11d48]"
+              }`}
+            >
+              {row.quantityAvailable.toLocaleString()} / {row.quantityReceived.toLocaleString()} units
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onEdit}
+              className="min-h-10 min-w-[5.5rem] flex-1 rounded-lg bg-[var(--app-input-bg)] px-3 py-2 text-xs font-semibold text-[var(--app-text)] hover:bg-[var(--app-input-focus-bg)] sm:flex-none"
+            >
+              Edit
+            </button>
+            {canAdjust ? (
+              <button
+                type="button"
+                onClick={onAdjust}
+                className="min-h-10 min-w-[5.5rem] flex-1 rounded-lg bg-[#eff6ff] px-3 py-2 text-xs font-semibold text-[#2563eb] hover:bg-[#dbeafe] sm:flex-none"
+              >
+                Adjust
+              </button>
+            ) : null}
+            {row.canDispose ? (
+              <button
+                type="button"
+                onClick={onDispose}
+                className="min-h-10 min-w-[5.5rem] flex-1 rounded-lg bg-[#e11d48] px-3 py-2 text-xs font-semibold text-white hover:bg-[#be123c] sm:flex-none"
+              >
+                Dispose
+              </button>
+            ) : row.status === "disposed" ? (
+              <button
+                type="button"
+                onClick={onRestore}
+                className="min-h-10 min-w-[5.5rem] flex-1 rounded-lg bg-[#0d9488] px-3 py-2 text-xs font-semibold text-white hover:bg-[#0f766e] sm:flex-none"
+              >
+                Restore
+              </button>
+            ) : (
+              <span className="inline-flex min-h-10 items-center rounded-full bg-[var(--app-surface-muted)] px-3 text-[11px] font-semibold uppercase text-[var(--app-text-muted)]">
+                {row.status.replace("_", " ")}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+});
+
 export function StockInventoryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -807,7 +983,7 @@ export function StockInventoryContent() {
             </div>
           </div>
 
-          <div className="-mx-px overflow-x-auto overscroll-x-contain">
+          <div className="-mx-px">
             {stockQuery.isError ? (
               <div className="px-6 py-10 text-sm text-[#b42318]">
                 {stockQuery.error instanceof Error
@@ -837,13 +1013,113 @@ export function StockInventoryContent() {
                 ) : null}
               </div>
             ) : (
-              <div>
+              <>
                 {isTableRefreshing ? (
-                  <div className="flex items-center gap-2 border-b border-[var(--app-surface-subtle)] bg-[var(--app-surface-muted)] px-6 py-2 text-xs font-medium text-[var(--app-text-muted)]">
+                  <div className="flex items-center gap-2 border-b border-[var(--app-surface-subtle)] bg-[var(--app-surface-muted)] px-4 py-2 text-xs font-medium text-[var(--app-text-muted)] md:px-6">
                     <span className="material-symbols-outlined notranslate animate-spin text-sm">progress_activity</span>
                     Updating table results...
                   </div>
                 ) : null}
+
+                <div className="md:hidden border-t border-[var(--app-surface-subtle)] bg-[var(--app-surface)] px-4 pb-4 pt-3">
+                  {selectableRowIds.length > 0 ? (
+                    <label className="mb-3 flex cursor-pointer items-center gap-3 rounded-lg border border-[var(--app-border-ui)] bg-[var(--app-input-bg)] px-3 py-2.5">
+                      <input
+                        type="checkbox"
+                        checked={allRowsSelected}
+                        onChange={() => {
+                          setSelectedBatchIds((current) =>
+                            allRowsSelected
+                              ? current.filter((id) => !selectableRowIds.includes(id))
+                              : Array.from(new Set([...current, ...selectableRowIds])),
+                          );
+                        }}
+                        className="size-4 shrink-0 rounded border-[var(--app-outline-variant)] text-[var(--app-link-teal)] focus:ring-[var(--app-link-teal)]"
+                        aria-label="Select all products on this page"
+                      />
+                      <span className="text-sm font-semibold text-[var(--app-text)]">Select all on this page</span>
+                    </label>
+                  ) : null}
+                  <div className="space-y-3">
+                    {rows.map((row) => {
+                      const isSelected = selectedBatchIds.includes(row.id);
+                      const isRecentlyAdjusted = recentlyAdjustedBatchIds.includes(row.id);
+                      return (
+                        <StockInventoryMobileCard
+                          key={row.id}
+                          row={row}
+                          showBranchColumn={showBranchColumn}
+                          isSelected={isSelected}
+                          isRecentlyAdjusted={isRecentlyAdjusted}
+                          onToggleSelect={() => {
+                            setSelectedBatchIds((current) =>
+                              isSelected ? current.filter((id) => id !== row.id) : [...current, row.id],
+                            );
+                          }}
+                          onEdit={() => {
+                            const params = new URLSearchParams(window.location.search);
+                            const branchParam = params.get("branch");
+                            const href = branchParam
+                              ? `${ROUTES.dashboard.stockProductEdit(row.productId)}?branch=${encodeURIComponent(branchParam)}`
+                              : ROUTES.dashboard.stockProductEdit(row.productId);
+                            router.push(href);
+                          }}
+                          onAdjust={() => {
+                            setAdjustDialog({
+                              open: true,
+                              batchIds: [row.id],
+                              label: row.productName,
+                            });
+                          }}
+                          onDispose={() => {
+                            void withLoading(
+                              "dashboard-dispose-batch",
+                              "Disposing product from live inventory...",
+                              async () => {
+                                const result = await disposeBatchMutation.mutateAsync({
+                                  batchId: row.id,
+                                  branchId,
+                                  note:
+                                    row.status === "expired"
+                                      ? "Expired stock disposed from dashboard."
+                                      : "Manual stock disposal recorded from dashboard.",
+                                });
+
+                                setSelectedBatchIds((current) => current.filter((id) => id !== row.id));
+                                notify({
+                                  variant: "success",
+                                  title: "Product disposed",
+                                  description: `${result.productName} (${result.batchNumber}) was removed from available stock.`,
+                                });
+                              },
+                            );
+                          }}
+                          onRestore={() => {
+                            void withLoading(
+                              "dashboard-restore-batch",
+                              "Restoring disposed product...",
+                              async () => {
+                                const result = await restoreBatchMutation.mutateAsync({
+                                  batchId: row.id,
+                                  branchId,
+                                  note: "Product restored from stock dashboard.",
+                                });
+
+                                notify({
+                                  variant: "success",
+                                  title: "Product restored",
+                                  description: `${result.productName} (${result.batchNumber}) restored with ${result.restoredQuantity.toLocaleString()} units.`,
+                                });
+                              },
+                            );
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="hidden md:block overflow-x-auto overscroll-x-contain">
                 <table className="w-full min-w-[860px]">
                   <thead>
                   <tr className="bg-[rgba(242,244,246,0.5)]">
@@ -1107,7 +1383,8 @@ export function StockInventoryContent() {
                     })}
                   </tbody>
                 </table>
-              </div>
+                </div>
+              </>
             )}
           </div>
 

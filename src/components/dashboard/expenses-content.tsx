@@ -488,45 +488,73 @@ export function ExpensesContent() {
               <p className="mt-1 text-sm text-[var(--app-text-muted)]">Try adjusting your filters or date range.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-[var(--app-border-ui)] text-sm">
-                <thead className="bg-gradient-to-r from-[#f0fdfa] to-[#eef2ff] text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:from-teal-950/35 dark:to-indigo-950/35 dark:text-slate-300">
-                  <tr>
-                    <th className="px-5 py-3">Date</th>
-                    <th className="px-5 py-3">Type</th>
-                    <th className="px-5 py-3">Description</th>
-                    <th className="px-5 py-3 text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--app-border-ui)]">
-                  {data.expenses.map((row) => (
-                    <tr key={row.id} className="transition hover:bg-[var(--app-surface-muted)]">
-                      <td className="px-5 py-4 text-[var(--app-text-muted)]">
+            <>
+              <div className="md:hidden space-y-3 border-t border-[var(--app-border-ui)] bg-[var(--app-surface)] px-4 py-4">
+                {data.expenses.map((row) => (
+                  <article
+                    key={row.id}
+                    className="rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] p-4 shadow-sm"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <span className="text-xs font-semibold text-[var(--app-text-muted)]">
                         {row.expenseDate.slice(0, 10)}
-                      </td>
-                      <td className="px-5 py-4">
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                            typeColor(row.expenseType).badge
-                          }`}
-                        >
-                          {row.expenseType}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 text-[var(--app-text)]">
-                        <p className="font-semibold">{row.description}</p>
-                        {row.chargeType ? (
-                          <p className="mt-1 text-[11px] text-[var(--app-text-faint)]">{row.chargeType}</p>
-                        ) : null}
-                      </td>
-                      <td className="px-5 py-4 text-right font-bold text-[var(--app-text)]">
-                        {currencyFormatter.format(row.amountCents / 100)}
-                      </td>
+                      </span>
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-bold ${typeColor(row.expenseType).badge}`}
+                      >
+                        {row.expenseType}
+                      </span>
+                    </div>
+                    <p className="mt-2 font-semibold text-[var(--app-text)]">{row.description}</p>
+                    {row.chargeType ? (
+                      <p className="mt-1 text-[11px] text-[var(--app-text-faint)]">{row.chargeType}</p>
+                    ) : null}
+                    <p className="mt-3 text-lg font-bold text-[var(--app-text)]">
+                      {currencyFormatter.format(row.amountCents / 100)}
+                    </p>
+                  </article>
+                ))}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
+                <table className="min-w-full divide-y divide-[var(--app-border-ui)] text-sm">
+                  <thead className="bg-gradient-to-r from-[#f0fdfa] to-[#eef2ff] text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:from-teal-950/35 dark:to-indigo-950/35 dark:text-slate-300">
+                    <tr>
+                      <th className="px-5 py-3">Date</th>
+                      <th className="px-5 py-3">Type</th>
+                      <th className="px-5 py-3">Description</th>
+                      <th className="px-5 py-3 text-right">Amount</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--app-border-ui)]">
+                    {data.expenses.map((row) => (
+                      <tr key={row.id} className="transition hover:bg-[var(--app-surface-muted)]">
+                        <td className="px-5 py-4 text-[var(--app-text-muted)]">
+                          {row.expenseDate.slice(0, 10)}
+                        </td>
+                        <td className="px-5 py-4">
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                              typeColor(row.expenseType).badge
+                            }`}
+                          >
+                            {row.expenseType}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-[var(--app-text)]">
+                          <p className="font-semibold">{row.description}</p>
+                          {row.chargeType ? (
+                            <p className="mt-1 text-[11px] text-[var(--app-text-faint)]">{row.chargeType}</p>
+                          ) : null}
+                        </td>
+                        <td className="px-5 py-4 text-right font-bold text-[var(--app-text)]">
+                          {currencyFormatter.format(row.amountCents / 100)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
 
           <div className="flex items-center justify-between border-t border-[var(--app-border-ui)] p-5 text-sm">

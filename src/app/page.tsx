@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { HomePageHeader } from "@/components/marketing/home-page-header";
+import { AppLogo } from "@/components/ui/app-logo";
 import { AURA_ASSETS } from "@/lib/aura-assets";
 import { services } from "@/lib/di";
 import { ROUTES } from "@/lib/routes";
@@ -599,7 +600,7 @@ export default async function HomePage() {
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-8">
           <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-5">
             <div className="lg:col-span-2">
-              <p className="text-xl font-bold text-[#0f172a]">AuraStores</p>
+              <AppLogo variant="footer" />
               <p className="mt-3 max-w-xs text-sm leading-relaxed text-[#64748b]">
                 One platform for pharmacies, retail, and multi-location chains.
               </p>
