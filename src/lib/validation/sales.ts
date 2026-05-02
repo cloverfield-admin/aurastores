@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { zambiaLipilaMsisdnSchema } from "@/lib/validation/lipila";
 
 const optionalText = (max: number) =>
   z
@@ -41,7 +42,7 @@ export const startSaleMobileMoneySchema = z.object({
     status: z.literal("completed").optional(),
     paymentMethod: z.literal("mobile-money").optional(),
   }),
-  mobileMoneyNumber: z.string().trim().min(7).max(32),
+  mobileMoneyNumber: zambiaLipilaMsisdnSchema,
   customerPaysLipilaFee: z.boolean().optional().default(false),
 });
 

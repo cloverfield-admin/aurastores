@@ -84,10 +84,10 @@ export function NetworkOverviewContent() {
             <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[var(--app-text)] sm:text-4xl sm:tracking-[-0.025em]">
               Network Overview
             </h1>
-            <p className="max-w-xl text-base leading-relaxed text-[var(--app-text-secondary)]">
+            {/* <p className="max-w-xl text-base leading-relaxed text-[var(--app-text-secondary)]">
               Revenue, margin, and sell-through for the selected period (UTC), compared to the prior period of the same
               length. Stock health reflects current on-hand batches.
-            </p>
+            </p> */}
           </div>
           <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-end lg:w-auto lg:shrink-0">
             <DashboardDateRangeMenu

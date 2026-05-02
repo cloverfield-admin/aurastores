@@ -21,6 +21,7 @@ import { useAppMeQuery } from "@/lib/queries/staff";
 import { ROUTES } from "@/lib/routes";
 import { PRODUCT_NAME } from "@/lib/brand";
 import { calculateCollectionFee } from "@/lib/lipila/fees";
+import { LIPILA_ZAMBIA_MSISDN_RE, normalizeLipilaZambiaMsisdn } from "@/lib/validation/lipila";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -848,15 +849,17 @@ export function NewSaleContent() {
   }
 
   async function submitMobileMoneySale() {
-    const trimmedNumber = momoNumber.trim();
-    if (trimmedNumber.length < 7) {
-      throw new Error("Enter a valid customer mobile money number.");
+    const normalized = normalizeLipilaZambiaMsisdn(momoNumber);
+    if (!LIPILA_ZAMBIA_MSISDN_RE.test(normalized)) {
+      throw new Error(
+        "Enter the number as 260 plus 9 digits (12 digits total), e.g. 260971234567. You can add spaces or a leading +.",
+      );
     }
 
     const sale = buildSalePayload("completed");
     const started = await startSaleMobileMoneyMutation.mutateAsync({
       sale,
-      mobileMoneyNumber: trimmedNumber,
+      mobileMoneyNumber: normalized,
       customerPaysLipilaFee,
       idempotencyKey: crypto.randomUUID(),
     });
@@ -1871,12 +1874,18 @@ export function NewSaleContent() {
             <input
               id="momoNumber"
               type="tel"
+              inputMode="numeric"
+              autoComplete="tel-national"
               value={momoNumber}
               disabled={momoPending}
               onChange={(e) => setMomoNumber(e.target.value)}
-              placeholder="260..."
+              placeholder="260971234567"
               className={inputClass}
             />
+            <p className="mt-1.5 text-xs text-[var(--app-text-muted)]">
+              Lipila requires Zambia international format: <span className="font-mono">260</span> and 9 digits (12
+              total). Spaces or a leading + are fine.
+            </p>
 
             <label className="mt-4 flex items-start gap-3 rounded-2xl border border-[rgba(0,0,0,0.06)] bg-[rgba(99,102,241,0.06)] p-4">
               <input

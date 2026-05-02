@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AppLogo } from "@/components/ui/app-logo";
 
 export function AuraAuthBackground() {
   return (
@@ -15,18 +16,8 @@ export function AuraAuthBackground() {
 
 export function AuraAuthBranding() {
   return (
-    <div className="flex flex-col items-center gap-2 text-center">
-      <div
-        className="relative flex size-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6063ee] shadow-[0_10px_15px_-3px_rgba(0,106,101,0.1),0_4px_6px_-4px_rgba(0,106,101,0.1)]"
-        aria-hidden
-      >
-        <span className="material-symbols-outlined notranslate text-3xl text-white">
-          local_pharmacy
-        </span>
-      </div>
-      <h1 className="bg-gradient-to-r from-[#0d9488] to-[#4f46e5] bg-clip-text text-3xl font-extrabold tracking-tight text-transparent">
-        AuraStores
-      </h1>
+    <div className="flex flex-col items-center gap-3 text-center">
+      <AppLogo variant="auth" />
       <p className="text-sm font-medium tracking-wide text-[var(--app-text-secondary)]">
         Clarity Around Every Prescription
       </p>

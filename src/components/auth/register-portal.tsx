@@ -6,6 +6,7 @@ import { useState, type FormEvent } from "react";
 import { PasswordRevealButton } from "@/components/auth/password-reveal-button";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
+import { AppLogo } from "@/components/ui/app-logo";
 import { AuraInlineAlert } from "@/components/ui/aura-inline-alert";
 import { useSignUpMutation } from "@/lib/queries/auth";
 import { ROUTES } from "@/lib/routes";
@@ -114,8 +115,8 @@ export function RegisterPortal() {
 
       {/* Header */}
       <header className="fixed left-0 right-0 top-0 z-50 flex h-16 items-center justify-between border-b border-[rgba(20,184,166,0.1)] bg-[var(--app-surface)]/80 px-6 backdrop-blur-md sm:px-12">
-        <Link href="/" className="bg-gradient-to-r from-[#14b8a6] to-[#6366f1] bg-clip-text text-2xl font-bold tracking-tight text-transparent">
-          {PRODUCT_NAME}
+        <Link href="/" className="flex shrink-0 items-center py-1">
+          <AppLogo variant="bar" />
         </Link>
         <div className="flex min-w-0 items-center gap-2 sm:gap-6">
           <span className="truncate text-xs font-medium uppercase tracking-[0.05em] text-[#6c7a78] sm:text-base">

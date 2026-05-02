@@ -208,7 +208,28 @@ export function AuraPayTransactionDetailContent({ paymentId }: { paymentId: stri
                   Purchased Items
                 </h2>
               </div>
-              <div className="overflow-x-auto">
+              <div className="md:hidden space-y-3 border-t border-[var(--app-border-ui)] px-4 py-4">
+                {detail.items.map((item) => (
+                  <article
+                    key={item.id}
+                    className="rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] p-4 shadow-sm"
+                  >
+                    <p className="font-semibold text-[var(--app-text)]">{item.description}</p>
+                    {item.productName ? (
+                      <p className="mt-1 text-[11px] text-[var(--app-text-faint)]">{item.productName}</p>
+                    ) : null}
+                    <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs">
+                      <dt className="font-semibold text-[var(--app-text-faint)]">Quantity</dt>
+                      <dd className="text-[var(--app-text-muted)]">{item.quantity.toLocaleString()}</dd>
+                      <dt className="font-semibold text-[var(--app-text-faint)]">Unit price</dt>
+                      <dd className="text-[var(--app-text-muted)]">{currencyFormatter.format(item.unitPriceCents / 100)}</dd>
+                      <dt className="font-semibold text-[var(--app-text-faint)]">Line total</dt>
+                      <dd className="font-bold text-[var(--app-text)]">{currencyFormatter.format(item.lineTotalCents / 100)}</dd>
+                    </dl>
+                  </article>
+                ))}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full divide-y divide-[var(--app-border-ui)] text-sm">
                   <thead className="bg-gradient-to-r from-[#eff6ff] to-[#f0fdfa] text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:from-blue-950/35 dark:to-teal-950/35 dark:text-slate-300">
                     <tr>

@@ -1,0 +1,55 @@
+<svg width="100%" viewBox="0 0 680 420" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">Aura Stores logo</title>
+  <desc style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">Aura Stores wordmark with a glowing orb symbol in purple and teal tones</desc>
+
+  <defs>
+    <radialGradient id="orbGrad" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#AFA9EC"/>
+      <stop offset="60%" stop-color="#7F77DD"/>
+      <stop offset="100%" stop-color="#3C3489"/>
+    </radialGradient>
+    <radialGradient id="innerGlow" cx="38%" cy="35%" r="50%">
+      <stop offset="0%" stop-color="#E1F5EE" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#1D9E75" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="accentArc" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#5DCAA5"/>
+      <stop offset="100%" stop-color="#0F6E56"/>
+    </radialGradient>
+    <clipPath id="orbClip">
+      <circle cx="340" cy="148" r="72"/>
+    </clipPath>
+  </defs>
+
+  <!-- ── Orb body ── -->
+  <circle cx="340" cy="148" r="72" fill="url(#orbGrad)" style="stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Teal arc ring — upper left quadrant -->
+  <path d="M282 108 A72 72 0 0 1 340 76" fill="none" stroke="#5DCAA5" stroke-width="10" stroke-linecap="round" style="fill:none;stroke:rgb(93, 202, 165);color:rgb(255, 255, 255);stroke-width:10px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <!-- Smaller inner teal arc -->
+  <path d="M296 96 A52 52 0 0 1 340 90" fill="none" stroke="#9FE1CB" stroke-width="5" stroke-linecap="round" opacity="0.75" style="fill:none;stroke:rgb(159, 225, 203);color:rgb(255, 255, 255);stroke-width:5px;stroke-linecap:round;stroke-linejoin:miter;opacity:0.75;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Shimmer highlight -->
+  <ellipse cx="318" cy="118" rx="22" ry="15" fill="#E1F5EE" opacity="0.28" transform="rotate(-20 318 118)" style="fill:rgb(225, 245, 238);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.28;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <ellipse cx="313" cy="114" rx="10" ry="7" fill="#ffffff" opacity="0.38" transform="rotate(-20 313 114)" style="fill:rgb(255, 255, 255);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.38;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Inner glow overlay -->
+  <circle cx="340" cy="148" r="72" fill="url(#innerGlow)" style="stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Small teal dot accent -->
+  <circle cx="384" cy="106" r="6" fill="#5DCAA5" style="fill:rgb(93, 202, 165);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <circle cx="384" cy="106" r="3" fill="#E1F5EE" opacity="0.8" style="fill:rgb(225, 245, 238);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.8;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- ── Wordmark ── -->
+  <!-- "Aura" -->
+  <text x="340" y="266" font-family="Georgia, 'Times New Roman', serif" font-size="62" font-weight="700" fill="#3C3489" text-anchor="middle" letter-spacing="4" style="fill:rgb(60, 52, 137);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:Georgia, &quot;Times New Roman&quot;, serif;font-size:62px;font-weight:700;text-anchor:middle;dominant-baseline:auto">AURA</text>
+
+  <!-- "STORES" — lighter teal, tight tracking -->
+  <text x="340" y="308" font-family="Georgia, 'Times New Roman', serif" font-size="26" font-weight="400" fill="#0F6E56" text-anchor="middle" letter-spacing="12" style="fill:rgb(15, 110, 86);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:Georgia, &quot;Times New Roman&quot;, serif;font-size:26px;font-weight:400;text-anchor:middle;dominant-baseline:auto">STORES</text>
+
+  <!-- Thin divider line between orb and wordmark -->
+  <line x1="260" y1="238" x2="420" y2="238" stroke="#AFA9EC" stroke-width="0.8" opacity="0.5" style="fill:rgb(0, 0, 0);stroke:rgb(175, 169, 236);color:rgb(255, 255, 255);stroke-width:0.8px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.5;font-family:&quot;Anthropic Sans&quot;, -apple-system, &quot;system-ui&quot;, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Tagline -->
+  <text x="340" y="358" font-family="'Helvetica Neue', Arial, sans-serif" font-size="13" font-weight="400" fill="#888780" text-anchor="middle" letter-spacing="2" style="fill:rgb(136, 135, 128);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Helvetica Neue&quot;, Arial, sans-serif;font-size:13px;font-weight:400;text-anchor:middle;dominant-baseline:auto">clarity in every purchase</text>
+</svg>
