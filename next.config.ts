@@ -32,6 +32,15 @@ const supabaseImageHost = (() => {
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["192.168.1.52"],
+  async redirects() {
+    return [
+      {
+        source: "/dashboard/onboarding/pharmacy-details",
+        destination: "/dashboard/onboarding/location-details",
+        permanent: true,
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {

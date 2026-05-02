@@ -8,8 +8,8 @@ import type { NetworkRepository } from "@/lib/repositories/network/network.repos
 import { networkRepository } from "@/lib/repositories/network/network.repository.impl";
 import type { InsightsRepository } from "@/lib/repositories/insights/insights.repository";
 import { insightsRepository } from "@/lib/repositories/insights/insights.repository.impl";
-import type { PharmacySearchRepository } from "@/lib/repositories/pharmacy-search/pharmacy-search.repository";
-import { pharmacySearchRepository } from "@/lib/repositories/pharmacy-search/pharmacy-search.repository.impl";
+import type { WorkspaceSearchRepository } from "@/lib/repositories/workspace-search/workspace-search.repository";
+import { workspaceSearchRepository } from "@/lib/repositories/workspace-search/workspace-search.repository.impl";
 import type { OnboardingRepository } from "@/lib/repositories/onboarding/onboarding.repository";
 import { onboardingRepository } from "@/lib/repositories/onboarding/onboarding.repository.impl";
 import type { PayRepository } from "@/lib/repositories/pay/pay.repository";
@@ -42,7 +42,7 @@ import { ProductCategoriesService } from "@/lib/services/product-categories/prod
 import { ProductsService } from "@/lib/services/products/products.service";
 import { SalesService } from "@/lib/services/sales/sales.service";
 import { StaffService } from "@/lib/services/staff/staff.service";
-import { PharmacySearchService } from "@/lib/services/pharmacy-search/pharmacy-search.service";
+import { WorkspaceSearchService } from "@/lib/services/workspace-search/workspace-search.service";
 import { StockService } from "@/lib/services/stock/stock.service";
 import type { AppServices } from "@/lib/di/services";
 
@@ -61,7 +61,7 @@ export type TestServiceOverrides = Partial<{
   insights: InsightsRepository;
   pay: PayRepository;
   expenses: ExpensesRepository;
-  pharmacySearch: PharmacySearchRepository;
+  workspaceSearch: WorkspaceSearchRepository;
   productCategories: ProductCategoriesRepository;
   products: ProductsRepository;
 }>;
@@ -80,7 +80,7 @@ export function createTestServices(overrides: TestServiceOverrides = {}): AppSer
   const insights = overrides.insights ?? insightsRepository;
   const pay = overrides.pay ?? payRepository;
   const expenses = overrides.expenses ?? expensesRepository;
-  const pharmacySearch = overrides.pharmacySearch ?? pharmacySearchRepository;
+  const workspaceSearch = overrides.workspaceSearch ?? workspaceSearchRepository;
   const productCategories = overrides.productCategories ?? productCategoriesRepository;
   const products = overrides.products ?? productsRepository;
 
@@ -96,7 +96,7 @@ export function createTestServices(overrides: TestServiceOverrides = {}): AppSer
     insights: new InsightsService({ insights }),
     pay: new PayService({ pay }),
     expenses: new ExpensesService({ expenses }),
-    pharmacySearch: new PharmacySearchService({ pharmacySearch }),
+    workspaceSearch: new WorkspaceSearchService({ workspaceSearch }),
     productCategories: new ProductCategoriesService({ productCategories }),
     products: new ProductsService({ products }),
   };

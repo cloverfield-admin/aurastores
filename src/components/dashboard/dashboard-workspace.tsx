@@ -6,6 +6,8 @@ import type { MembershipCapabilities } from "@/lib/rbac/capabilities";
 import type { WorkspaceBranchTab } from "@/lib/rbac/workspace-branches";
 
 export type DashboardWorkspaceAccess = {
+  /** Organization vertical from `organizations.store_vertical`. */
+  storeVertical: "pharmacy" | "general_retail";
   capabilities: MembershipCapabilities;
   allowedBranchIds: string[] | null;
   /** Branches the user may see in the shell and home overview (RBAC-scoped). */

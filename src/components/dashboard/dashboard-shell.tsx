@@ -18,9 +18,11 @@ import type { DashboardWorkspaceAccess } from "@/components/dashboard/dashboard-
 import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { apiUrl } from "@/lib/api/version";
+import { PRODUCT_TAGLINE } from "@/lib/brand";
 import { ROUTES } from "@/lib/routes";
-import { PharmacySearchField } from "@/components/dashboard/pharmacy-search-field";
+import { WorkspaceSearchField } from "@/components/dashboard/workspace-search-field";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
+import { AppLogo } from "@/components/ui/app-logo";
 import type { MembershipCapability } from "@/lib/rbac/capabilities";
 import { hasCapability, membershipCapabilityLabel } from "@/lib/rbac/capabilities";
 import { dashboardModuleCapabilityForPath } from "@/lib/rbac/dashboard-path-capability";
@@ -107,7 +109,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
     [workspaceAccess.capabilities],
   );
 
-  const canUsePharmacySearch =
+  const canUseWorkspaceSearch =
     hasCapability(workspaceAccess.capabilities, "stock") ||
     hasCapability(workspaceAccess.capabilities, "staff") ||
     hasCapability(workspaceAccess.capabilities, "catalog");
@@ -254,12 +256,12 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
   const searchPlaceholder = isStock
     ? "Search inventory..."
     : isSales
-      ? "Search sales ID, patient, or drug..."
+      ? "Search sales, customer, or SKU..."
       : isInsights
         ? "Search insights..."
         : isStaff
-          ? "Search pharmacy network..."
-          : "Search clinical data...";
+          ? "Search workspace..."
+          : "Search workspace...";
   const topActionLabel = isStock ? "Aura Sync" : "Branch Toggle";
   const topActionIcon = isStock ? "sync" : "shuffle";
   const topActionVariant = isStock ? "outline" : "primary";
@@ -563,23 +565,12 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
           <Link
             href={ROUTES.dashboard.main}
             onClick={closeMobileNav}
-            className="flex items-center gap-3 px-2 pb-4 pt-0 lg:pb-8 lg:pt-2"
+            className="flex flex-col items-center gap-2 px-2 pb-4 pt-0 lg:pb-8 lg:pt-2"
           >
-            <div className="aura-gradient flex size-10 items-center justify-center rounded-xl shadow-md">
-              <span className="material-symbols-outlined notranslate text-xl text-white">
-                local_pharmacy
-              </span>
-            </div>
-            <br />
-            <br />
-            <div>
-              <p className="aura-gradient bg-clip-text font-[family-name:var(--font-manrope)] text-xl font-bold tracking-tight text-transparent">
-                AuraPharma
-              </p>
-              <p className="text-[10px] font-medium uppercase tracking-[-0.05em] text-[var(--app-text-muted)]">
-                Clinical Intelligence
-              </p>
-            </div>
+            <AppLogo variant="sidebar" className="!h-20 sm:!h-14 lg:!h-16" />
+            <p className="text-center text-[10px] font-medium uppercase tracking-[-0.05em] text-[var(--app-text-muted)]">
+              {PRODUCT_TAGLINE}
+            </p>
           </Link>
 
           <nav className="flex flex-col gap-1" aria-label="Product modules">
@@ -813,7 +804,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                   })}
                 </div>
               ) : isDashboardMain ? (
-                canUsePharmacySearch ? <PharmacySearchField /> : null
+                canUseWorkspaceSearch ? <WorkspaceSearchField /> : null
               ) : (
                 <div className="flex flex-col gap-4">
                   {!isStock && !isSettings && !isOrganization ? (
@@ -919,7 +910,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
                 <>
                   {!isStock && !isSettings && !isOrganization ? (
                     isDashboardMain ? (
-                      canUsePharmacySearch ? <PharmacySearchField /> : null
+                      canUseWorkspaceSearch ? <WorkspaceSearchField /> : null
                     ) : (
                       <label className="relative block w-full sm:w-64">
                         <span className="material-symbols-outlined notranslate pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-[var(--app-text-faint)]">

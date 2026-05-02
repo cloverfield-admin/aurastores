@@ -83,7 +83,7 @@ export class BranchesRepositoryImpl implements BranchesRepository {
           country: "ZM",
           latitude: input.latitude != null && input.longitude != null ? input.latitude : null,
           longitude: input.latitude != null && input.longitude != null ? input.longitude : null,
-          licensedPharmacistCount: input.licensedPharmacistCount,
+          professionalStaffCount: input.professionalStaffCount,
           updatedAt: new Date(),
         })
         .returning({ id: branches.id, name: branches.name });
@@ -140,7 +140,7 @@ export class BranchesRepositoryImpl implements BranchesRepository {
       addressLine1: branch.addressLine1,
       latitude: branch.latitude ?? null,
       longitude: branch.longitude ?? null,
-      licensedPharmacistCount: branch.licensedPharmacistCount,
+      professionalStaffCount: branch.professionalStaffCount,
       operatingHours: hours.map((h) => ({
         dayOfWeek: Number(h.dayOfWeek),
         isClosed: Boolean(h.isClosed),
@@ -174,7 +174,7 @@ export class BranchesRepositoryImpl implements BranchesRepository {
           addressLine1: input.addressLine1,
           latitude: input.latitude != null && input.longitude != null ? input.latitude : null,
           longitude: input.latitude != null && input.longitude != null ? input.longitude : null,
-          licensedPharmacistCount: input.licensedPharmacistCount,
+          professionalStaffCount: input.professionalStaffCount,
           updatedAt: new Date(),
         })
         .where(and(eq(branches.id, branchId), eq(branches.organizationId, context.organization.id)))
@@ -188,7 +188,7 @@ export class BranchesRepositoryImpl implements BranchesRepository {
       await tx.insert(branchOperatingHours).values(
         hoursRowsForBranchInput({
           name: input.name,
-          licensedPharmacistCount: input.licensedPharmacistCount,
+          professionalStaffCount: input.professionalStaffCount,
           addressLine1: input.addressLine1,
           latitude: input.latitude,
           longitude: input.longitude,
@@ -218,7 +218,7 @@ export class BranchesRepositoryImpl implements BranchesRepository {
         addressLine1: updated.addressLine1,
         latitude: updated.latitude ?? null,
         longitude: updated.longitude ?? null,
-        licensedPharmacistCount: updated.licensedPharmacistCount,
+        professionalStaffCount: updated.professionalStaffCount,
         operatingHours: hours.map((h) => ({
           dayOfWeek: Number(h.dayOfWeek),
           isClosed: Boolean(h.isClosed),

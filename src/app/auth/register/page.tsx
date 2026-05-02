@@ -5,7 +5,7 @@ import { RegisterPortal } from "@/components/auth/register-portal";
 export const metadata: Metadata = {
   title: "Register",
   description:
-    "Create your AuraPharma account and access clinical intelligence tools for your pharmacy.",
+    "Create your AuraStores account and access clinical intelligence tools for your pharmacy.",
 };
 
 function RegisterLoading() {

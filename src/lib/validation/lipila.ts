@@ -1,5 +1,21 @@
 import { z } from "zod";
 
+/** Lipila collections expect Zambia international format: 260 + 9 subscriber digits. */
+export const LIPILA_ZAMBIA_MSISDN_RE = /^260\d{9}$/;
+
+export function normalizeLipilaZambiaMsisdn(raw: string): string {
+  return raw.trim().replace(/^\+/, "").replace(/[\s-]/g, "");
+}
+
+export const zambiaLipilaMsisdnSchema = z
+  .string()
+  .transform((value) => normalizeLipilaZambiaMsisdn(value))
+  .pipe(
+    z
+      .string()
+      .regex(LIPILA_ZAMBIA_MSISDN_RE, "Invalid phone number format. Use 260XXXXXXXXX (12 digits)."),
+  );
+
 export const lipilaPaymentCallbackSchema = z.object({
   referenceId: z.string().trim().min(1).max(128).optional(),
   currency: z.string().trim().max(8).optional(),

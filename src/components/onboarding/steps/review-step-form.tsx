@@ -98,6 +98,8 @@ export function ReviewStepForm() {
     () => ({
       pharmacy_operation_license: "Pharmacy Operation License",
       pharmacist_in_charge_certificate: "Pharmacist-in-Charge Certificate",
+      business_registration: "Business registration",
+      trade_license: "Trade license",
     }),
     [],
   );
@@ -312,7 +314,7 @@ export function ReviewStepForm() {
                   </h3>
                 </div>
                 <Link
-                  href={ROUTES.dashboard.onboarding.pharmacyDetails}
+                  href={ROUTES.dashboard.onboarding.locationDetails}
                   className="text-sm font-semibold text-[#006a65] hover:underline"
                 >
                   EDIT

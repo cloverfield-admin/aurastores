@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { zambiaLipilaMsisdnSchema } from "@/lib/validation/lipila";
 
 export const currencySchema = z.string().trim().min(3).max(3).default("ZMW");
 
@@ -26,7 +27,7 @@ export type StartLipilaPaymentInput = z.infer<typeof startLipilaPaymentSchema>;
 
 export const startLipilaMomoCollectionSchema = z.object({
   invoiceId: z.string().uuid(),
-  msisdn: z.string().trim().min(7).max(32),
+  msisdn: zambiaLipilaMsisdnSchema,
   /** Optional network hint (if Lipila requires it). */
   network: z.string().trim().min(2).max(64).optional(),
 });

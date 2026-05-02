@@ -21,7 +21,7 @@ export type BranchDetailResponse = {
     addressLine1: string;
     latitude: number | null;
     longitude: number | null;
-    licensedPharmacistCount: number;
+    professionalStaffCount: number;
     operatingHours: Array<{
       dayOfWeek: number;
       isClosed: boolean;

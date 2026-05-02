@@ -65,7 +65,7 @@ export function SignInForm() {
                 name="email"
                 type="email"
                 autoComplete="email"
-                placeholder="pharmacist@aurapharma.com"
+                placeholder="pharmacist@example.com"
                 className={auraInputClassName()}
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
@@ -129,7 +129,7 @@ export function SignInForm() {
         ) : null}
 
         <AuraGradientSubmit disabled={isBusy}>
-          {signInMutation.isPending ? "Signing In..." : "Sign In to AuraPharma"}
+          {signInMutation.isPending ? "Signing In..." : "Sign In to AuraStores"}
         </AuraGradientSubmit>
       </form>
 

@@ -48,4 +48,21 @@ describe("startSaleMobileMoneySchema", () => {
       }).success,
     ).toBe(false);
   });
+
+  it("rejects numbers not in Lipila 260XXXXXXXXX format", () => {
+    expect(
+      startSaleMobileMoneySchema.safeParse({
+        sale,
+        mobileMoneyNumber: "0977000000",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("normalizes + and spacing on mobile money number", () => {
+    const parsed = startSaleMobileMoneySchema.parse({
+      sale,
+      mobileMoneyNumber: "+260 977-000-000",
+    });
+    expect(parsed.mobileMoneyNumber).toBe("260977000000");
+  });
 });

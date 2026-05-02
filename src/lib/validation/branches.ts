@@ -83,7 +83,7 @@ const branchHoursRefinement = (
 
 const branchCoreSchema = z.object({
   name: z.string().trim().min(2).max(160),
-  licensedPharmacistCount: z.coerce.number().int().min(1).max(1000),
+  professionalStaffCount: z.coerce.number().int().min(1).max(1000),
   addressLine1: z.string().trim().min(3).max(255),
   hoursMode: hoursModeSchema,
   weeklyHours: z.array(weeklyHourEntrySchema).length(7).optional(),

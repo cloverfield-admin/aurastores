@@ -3,16 +3,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/api/client";
 import { apiUrl } from "@/lib/api/version";
-import type { PharmacySearchResult } from "@/lib/repositories/pharmacy-search/pharmacy-search.repository";
+import type { WorkspaceSearchResult } from "@/lib/repositories/workspace-search/workspace-search.repository";
 
-export const pharmacySearchQueryKey = ["pharmacy-search"] as const;
+export const workspaceSearchQueryKey = ["workspace-search"] as const;
 
-export function usePharmacySearchQuery(q: string) {
+export function useWorkspaceSearchQuery(q: string) {
   const trimmed = q.trim();
   return useQuery({
-    queryKey: [...pharmacySearchQueryKey, trimmed],
+    queryKey: [...workspaceSearchQueryKey, trimmed],
     queryFn: () =>
-      fetchJson<PharmacySearchResult>(`${apiUrl("/search")}?q=${encodeURIComponent(trimmed)}`, {
+      fetchJson<WorkspaceSearchResult>(`${apiUrl("/search")}?q=${encodeURIComponent(trimmed)}`, {
         method: "GET",
       }),
     enabled: trimmed.length >= 2,

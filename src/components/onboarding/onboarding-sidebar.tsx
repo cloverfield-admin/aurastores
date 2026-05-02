@@ -105,7 +105,7 @@ export function OnboardingSidebar({
             <h2 className="font-[family-name:var(--font-manrope)] text-lg font-bold text-[var(--app-link-teal)]">
               Onboarding
             </h2>
-            <p className="mt-1 text-xs text-[var(--app-text-muted)]">Setup your clinical suite</p>
+            <p className="mt-1 text-xs text-[var(--app-text-muted)]">Set up your store workspace</p>
           </div>
           <nav className="flex flex-col gap-1 pl-0" aria-label="Onboarding steps">
             {ONBOARDING_STEPS.map((step) => stepRow(step, true))}
@@ -115,7 +115,7 @@ export function OnboardingSidebar({
           <div className="rounded-xl border border-[var(--app-brand-border)] bg-[var(--app-brand-soft)] p-4">
             <p className="text-xs font-medium text-[var(--app-header-title)]">Need Help?</p>
             <p className="mt-2 text-[10px] leading-relaxed text-[var(--app-text-muted)]">
-              Our clinical support team is available 24/7 for verification assistance.
+              Our support team is available to help with verification questions.
             </p>
           </div>
           <Link

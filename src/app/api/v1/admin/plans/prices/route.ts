@@ -5,8 +5,8 @@ import { db } from "@/lib/db";
 import { subscriptionPlanPrices, subscriptionPlans } from "@/lib/db/schema";
 import { updatePlanPriceSchema } from "@/lib/validation/billing";
 
-function requireAuraPharmaAdmin(role: string) {
-  if (role !== "aurapharma_admin") {
+function requireAuraStoresAdmin(role: string) {
+  if (role !== "aurastores_admin") {
     throw new Error("Forbidden");
   }
 }
@@ -16,7 +16,7 @@ export async function GET() {
   if (!gate.ok) return gate.response;
 
   try {
-    requireAuraPharmaAdmin(gate.context.membership.role);
+    requireAuraStoresAdmin(gate.context.membership.role);
   } catch {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   if (!gate.ok) return gate.response;
 
   try {
-    requireAuraPharmaAdmin(gate.context.membership.role);
+    requireAuraStoresAdmin(gate.context.membership.role);
   } catch {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

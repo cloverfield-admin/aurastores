@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
+import { AppLogo } from "@/components/ui/app-logo";
 import { ONBOARDING_STEPS, onboardingStepIndex } from "./onboarding-steps";
 import { useOnboardingProgress } from "./onboarding-progress-provider";
 import type { OnboardingStepId } from "./types";
@@ -30,26 +31,11 @@ export function ReviewPortalShell({
       {/* Sidebar */}
       <aside className="fixed left-0 top-0 z-40 hidden h-full w-64 flex-col justify-between border-r border-[var(--app-surface-subtle)] bg-[var(--app-surface-muted)] px-4 py-8 lg:flex">
         <div>
-          <Link href="/" className="flex items-center gap-3 px-4 pb-10">
-            <div
-              className="flex size-10 items-center justify-center rounded-xl shadow-md"
-              style={{
-                background:
-                  "linear-gradient(135deg, rgb(15, 185, 177) 0%, rgb(99, 102, 241) 100%)",
-              }}
-            >
-              <span className="material-symbols-outlined notranslate text-xl text-white">
-                local_pharmacy
-              </span>
-            </div>
-            <div>
-              <p className="font-[family-name:var(--font-manrope)] text-xl font-bold tracking-tight text-[var(--app-link-teal)]">
-                AuraPharma
-              </p>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--app-text-faint)]">
-                Onboarding Portal
-              </p>
-            </div>
+          <Link href="/" className="flex flex-col gap-2 px-4 pb-10">
+            <AppLogo variant="sidebar" />
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--app-text-faint)]">
+              Onboarding Portal
+            </p>
           </Link>
 
           <nav className="relative space-y-1 px-2" aria-label="Onboarding steps">
@@ -133,7 +119,7 @@ export function ReviewPortalShell({
               />
             </div>
             <p className="mt-3 text-[11px] leading-relaxed text-[var(--app-text-muted)]">
-              Ready for deployment into the AuraPharma network.
+              Ready for deployment into the AuraStores network.
             </p>
           </div>
         </div>

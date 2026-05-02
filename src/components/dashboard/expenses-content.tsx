@@ -213,11 +213,19 @@ export function ExpensesContent() {
                 </button>
 
                 {dateMenuOpen && (
-                  <div
-                    role="dialog"
-                    aria-label="Expenses date filter"
-                    className="absolute right-0 z-20 mt-2 w-[320px] rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] p-3 shadow-lg"
-                  >
+                  <>
+                    <button
+                      type="button"
+                      className="fixed inset-0 z-[90] bg-black/25 sm:hidden"
+                      aria-label="Close date filter"
+                      onClick={() => setDateMenuOpen(false)}
+                    />
+                    <div
+                      role="dialog"
+                      aria-label="Expenses date filter"
+                      className="fixed inset-x-0 bottom-0 z-[100] max-h-[min(88dvh,32rem)] overflow-y-auto overscroll-contain rounded-t-2xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-8px_32px_rgba(15,23,42,0.12)] sm:absolute sm:inset-x-auto sm:bottom-auto sm:left-auto sm:right-0 sm:top-[calc(100%+8px)] sm:mt-0 sm:max-h-[min(28rem,80vh)] sm:w-[min(22rem,calc(100vw-2rem))] sm:rounded-xl sm:p-3 sm:shadow-lg"
+                    >
+                    <div className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-[var(--app-border-ui)] sm:hidden" aria-hidden />
                     <div className="space-y-2">
                       {[
                         { label: "This Month (MTD)", next: thisMonthRange },
@@ -244,8 +252,8 @@ export function ExpensesContent() {
                     <div className="my-3 h-px bg-[var(--app-border-ui)]" />
 
                     <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-2">
-                        <label className="space-y-1">
+                      <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-2">
+                        <label className="min-w-0 space-y-1">
                           <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--app-text-faint)]">
                             Start Date
                           </span>
@@ -253,10 +261,10 @@ export function ExpensesContent() {
                             type="date"
                             value={draftStart}
                             onChange={(e) => setDraftStart(e.target.value)}
-                            className="w-full rounded-lg border border-[var(--app-border-ui)] bg-[var(--app-input-bg)] px-3 py-2 text-sm text-[var(--app-text)]"
+                            className="box-border w-full min-w-0 max-w-full rounded-lg border border-[var(--app-border-ui)] bg-[var(--app-input-bg)] px-2 py-2.5 text-base text-[var(--app-text)] sm:px-3 sm:text-sm"
                           />
                         </label>
-                        <label className="space-y-1">
+                        <label className="min-w-0 space-y-1">
                           <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--app-text-faint)]">
                             End Date
                           </span>
@@ -264,18 +272,18 @@ export function ExpensesContent() {
                             type="date"
                             value={draftEnd}
                             onChange={(e) => setDraftEnd(e.target.value)}
-                            className="w-full rounded-lg border border-[var(--app-border-ui)] bg-[var(--app-input-bg)] px-3 py-2 text-sm text-[var(--app-text)]"
+                            className="box-border w-full min-w-0 max-w-full rounded-lg border border-[var(--app-border-ui)] bg-[var(--app-input-bg)] px-2 py-2.5 text-base text-[var(--app-text)] sm:px-3 sm:text-sm"
                           />
                         </label>
                       </div>
 
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="text-[11px] font-semibold text-[var(--app-text-faint)]">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0 break-all text-[11px] font-semibold text-[var(--app-text-faint)]">
                           {range.start} → {range.end}
                         </div>
                         <button
                           type="button"
-                          className="rounded-lg bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-3 py-2 text-sm font-semibold text-white shadow-sm transition enabled:hover:opacity-95 disabled:opacity-50"
+                          className="w-full rounded-lg bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition enabled:hover:opacity-95 disabled:opacity-50 sm:w-auto"
                           disabled={
                             !draftStart ||
                             !draftEnd ||
@@ -298,7 +306,8 @@ export function ExpensesContent() {
                         </p>
                       )}
                     </div>
-                  </div>
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -479,45 +488,73 @@ export function ExpensesContent() {
               <p className="mt-1 text-sm text-[var(--app-text-muted)]">Try adjusting your filters or date range.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-[var(--app-border-ui)] text-sm">
-                <thead className="bg-gradient-to-r from-[#f0fdfa] to-[#eef2ff] text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:from-teal-950/35 dark:to-indigo-950/35 dark:text-slate-300">
-                  <tr>
-                    <th className="px-5 py-3">Date</th>
-                    <th className="px-5 py-3">Type</th>
-                    <th className="px-5 py-3">Description</th>
-                    <th className="px-5 py-3 text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--app-border-ui)]">
-                  {data.expenses.map((row) => (
-                    <tr key={row.id} className="transition hover:bg-[var(--app-surface-muted)]">
-                      <td className="px-5 py-4 text-[var(--app-text-muted)]">
+            <>
+              <div className="md:hidden space-y-3 border-t border-[var(--app-border-ui)] bg-[var(--app-surface)] px-4 py-4">
+                {data.expenses.map((row) => (
+                  <article
+                    key={row.id}
+                    className="rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] p-4 shadow-sm"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <span className="text-xs font-semibold text-[var(--app-text-muted)]">
                         {row.expenseDate.slice(0, 10)}
-                      </td>
-                      <td className="px-5 py-4">
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                            typeColor(row.expenseType).badge
-                          }`}
-                        >
-                          {row.expenseType}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 text-[var(--app-text)]">
-                        <p className="font-semibold">{row.description}</p>
-                        {row.chargeType ? (
-                          <p className="mt-1 text-[11px] text-[var(--app-text-faint)]">{row.chargeType}</p>
-                        ) : null}
-                      </td>
-                      <td className="px-5 py-4 text-right font-bold text-[var(--app-text)]">
-                        {currencyFormatter.format(row.amountCents / 100)}
-                      </td>
+                      </span>
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-bold ${typeColor(row.expenseType).badge}`}
+                      >
+                        {row.expenseType}
+                      </span>
+                    </div>
+                    <p className="mt-2 font-semibold text-[var(--app-text)]">{row.description}</p>
+                    {row.chargeType ? (
+                      <p className="mt-1 text-[11px] text-[var(--app-text-faint)]">{row.chargeType}</p>
+                    ) : null}
+                    <p className="mt-3 text-lg font-bold text-[var(--app-text)]">
+                      {currencyFormatter.format(row.amountCents / 100)}
+                    </p>
+                  </article>
+                ))}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
+                <table className="min-w-full divide-y divide-[var(--app-border-ui)] text-sm">
+                  <thead className="bg-gradient-to-r from-[#f0fdfa] to-[#eef2ff] text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:from-teal-950/35 dark:to-indigo-950/35 dark:text-slate-300">
+                    <tr>
+                      <th className="px-5 py-3">Date</th>
+                      <th className="px-5 py-3">Type</th>
+                      <th className="px-5 py-3">Description</th>
+                      <th className="px-5 py-3 text-right">Amount</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--app-border-ui)]">
+                    {data.expenses.map((row) => (
+                      <tr key={row.id} className="transition hover:bg-[var(--app-surface-muted)]">
+                        <td className="px-5 py-4 text-[var(--app-text-muted)]">
+                          {row.expenseDate.slice(0, 10)}
+                        </td>
+                        <td className="px-5 py-4">
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                              typeColor(row.expenseType).badge
+                            }`}
+                          >
+                            {row.expenseType}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-[var(--app-text)]">
+                          <p className="font-semibold">{row.description}</p>
+                          {row.chargeType ? (
+                            <p className="mt-1 text-[11px] text-[var(--app-text-faint)]">{row.chargeType}</p>
+                          ) : null}
+                        </td>
+                        <td className="px-5 py-4 text-right font-bold text-[var(--app-text)]">
+                          {currencyFormatter.format(row.amountCents / 100)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
 
           <div className="flex items-center justify-between border-t border-[var(--app-border-ui)] p-5 text-sm">

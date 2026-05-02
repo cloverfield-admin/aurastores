@@ -16,7 +16,7 @@ import type {
   OnboardingRepository,
 } from "@/lib/repositories/onboarding/onboarding.repository";
 import { branchCodeFromName } from "@/lib/utils/slug";
-import type { IdentityInput, PharmacyDetailsInput } from "@/lib/validation/onboarding";
+import type { IdentityInput, LocationDetailsInput } from "@/lib/validation/onboarding";
 
 const ALWAYS_OPEN_HOURS = [
   { dayOfWeek: 0, opensAt: "00:00:00", closesAt: "23:59:00", isClosed: false },
@@ -40,7 +40,7 @@ function toDbTime(hhMm: string): string {
   return `${hhMm}:00`;
 }
 
-function hoursRowsForPharmacyInput(input: PharmacyDetailsInput) {
+function hoursRowsForLocationInput(input: LocationDetailsInput) {
   if (input.hoursMode === "24-7") {
     return [...ALWAYS_OPEN_HOURS];
   }
@@ -106,6 +106,7 @@ export class OnboardingRepositoryImpl implements OnboardingRepository {
         city: context.organization.hqCity ?? "",
         state: context.organization.hqState ?? "",
         zip: context.organization.hqPostalCode ?? "",
+        storeVertical: context.organization.storeVertical,
       },
       onboarding: {
         status: context.onboarding?.status ?? "draft",
@@ -116,7 +117,7 @@ export class OnboardingRepositoryImpl implements OnboardingRepository {
         ? {
             id: primaryBranch.id,
             branchName: primaryBranch.name,
-            pharmacistCount: primaryBranch.licensedPharmacistCount,
+            pharmacistCount: primaryBranch.professionalStaffCount,
             branchLocation: primaryBranch.addressLine1,
             latitude: primaryBranch.latitude ?? null,
             longitude: primaryBranch.longitude ?? null,
@@ -159,7 +160,7 @@ export class OnboardingRepositoryImpl implements OnboardingRepository {
       await tx
         .update(organizationOnboarding)
         .set({
-          currentStep: "pharmacy_details",
+          currentStep: "location_details",
           furthestStepIndex: sql`GREATEST(${organizationOnboarding.furthestStepIndex}, 1)`,
           updatedAt: new Date(),
         })
@@ -173,7 +174,7 @@ export class OnboardingRepositoryImpl implements OnboardingRepository {
     return snapshot;
   }
 
-  async savePharmacyDetails(authUserId: string, input: PharmacyDetailsInput) {
+  async saveLocationDetails(authUserId: string, input: LocationDetailsInput) {
     const context = await this.authRepo.findByAuthUserId(authUserId);
     if (!context) {
       throw new Error("User context not found.");
@@ -203,7 +204,7 @@ export class OnboardingRepositoryImpl implements OnboardingRepository {
           input.latitude != null && input.longitude != null ? input.latitude : null,
         longitude:
           input.latitude != null && input.longitude != null ? input.longitude : null,
-        licensedPharmacistCount: input.pharmacistCount,
+        professionalStaffCount: input.pharmacistCount,
         updatedAt: new Date(),
       };
 
@@ -235,7 +236,7 @@ export class OnboardingRepositoryImpl implements OnboardingRepository {
       await tx.delete(branchOperatingHours).where(eq(branchOperatingHours.branchId, branch.id));
 
       await tx.insert(branchOperatingHours).values(
-        hoursRowsForPharmacyInput(input).map((hours) => ({
+        hoursRowsForLocationInput(input).map((hours) => ({
           branchId: branch.id,
           dayOfWeek: hours.dayOfWeek,
           opensAt: hours.opensAt,

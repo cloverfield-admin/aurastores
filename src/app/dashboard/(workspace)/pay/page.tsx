@@ -4,7 +4,7 @@ import { AuraPayContent } from "@/components/dashboard/aura-pay-content";
 export const metadata: Metadata = {
   title: "Aura Pay",
   description:
-    "Payments workspace for AuraPharma — connect modules to show live transaction and payout data.",
+    "Payments workspace for AuraStores — connect modules to show live transaction and payout data.",
 };
 
 export default function AuraPayPage() {

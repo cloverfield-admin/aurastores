@@ -8,7 +8,7 @@ import type { OnboardingDraft } from "@/components/onboarding/types";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { useOnboardingProgress } from "@/components/onboarding/onboarding-progress-provider";
 import { AuraInlineAlert } from "@/components/ui/aura-inline-alert";
-import { useSavePharmacyDetailsMutation } from "@/lib/queries/onboarding";
+import { useSaveLocationDetailsMutation } from "@/lib/queries/onboarding";
 import { ROUTES } from "@/lib/routes";
 
 const BranchLocationPicker = dynamic(
@@ -236,7 +236,7 @@ function PharmacyDetailsStepFormFields({
 }) {
   const router = useRouter();
   const { notify, withLoading, isLoading } = useAuraFeedback();
-  const savePharmacyDetailsMutation = useSavePharmacyDetailsMutation();
+  const saveLocationDetailsMutation = useSaveLocationDetailsMutation();
   const [hoursMode, setHoursMode] = useState<HoursMode>(draft.mainBranch?.hoursMode ?? "custom");
   const [branchName, setBranchName] = useState(draft.mainBranch?.branchName ?? "");
   const [pharmacistCount, setPharmacistCount] = useState(
@@ -255,7 +255,7 @@ function PharmacyDetailsStepFormFields({
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors | null>(null);
   const [mapExpanded, setMapExpanded] = useState(false);
-  const isBusy = isLoading("onboarding-pharmacy-details");
+  const isBusy = isLoading("onboarding-location-details");
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -285,8 +285,8 @@ function PharmacyDetailsStepFormFields({
     setFieldErrors(null);
 
     try {
-      await withLoading("onboarding-pharmacy-details", "Saving your main branch details...", () =>
-        savePharmacyDetailsMutation.mutateAsync({
+      await withLoading("onboarding-location-details", "Saving your main branch details...", () =>
+        saveLocationDetailsMutation.mutateAsync({
           branchName,
           pharmacistCount,
           branchLocation,
@@ -643,7 +643,7 @@ function PharmacyDetailsStepFormFields({
             type="submit"
             className="inline-flex items-center justify-center gap-3 rounded-2xl bg-[#006a65] px-10 py-4 text-base font-semibold text-white shadow-[0_10px_15px_-3px_rgba(0,106,101,0.2),0_4px_6px_-4px_rgba(0,106,101,0.2)] transition hover:bg-[#005850] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {savePharmacyDetailsMutation.isPending ? "Saving..." : "Next: License Upload"}
+            {saveLocationDetailsMutation.isPending ? "Saving..." : "Next: License Upload"}
             <span className="material-symbols-outlined notranslate text-base">arrow_forward</span>
           </button>
         </div>

@@ -149,7 +149,7 @@ export function NewBranchForm() {
       await withLoading("dashboard-new-branch", "Creating your new branch...", () =>
         createBranchMutation.mutateAsync({
           name: branchName,
-          licensedPharmacistCount: Number.isFinite(parsedCount) ? parsedCount : 1,
+          professionalStaffCount: Number.isFinite(parsedCount) ? parsedCount : 1,
           addressLine1: branchLocation,
           latitude: mapLat,
           longitude: mapLng,
@@ -203,7 +203,7 @@ export function NewBranchForm() {
                 Add a <span className="text-[#006a65]">New Branch</span>
               </h1>
               <p className="max-w-2xl text-lg leading-relaxed text-[#3c4948]">
-                Create a new location for your pharmacy network. You can fine-tune staffing and operations later.
+                Create a new location for your organization. You can fine-tune staffing and operations later.
               </p>
             </div>
 
@@ -219,7 +219,7 @@ export function NewBranchForm() {
                   <input
                     name="branchName"
                     type="text"
-                    placeholder="e.g. Eastside Pharmacy"
+                    placeholder="e.g. Eastside Branch"
                     className={inputMuted}
                     value={branchName}
                     onChange={(event) => setBranchName(event.target.value)}
@@ -231,7 +231,7 @@ export function NewBranchForm() {
                     <span className="material-symbols-outlined notranslate text-base text-[var(--app-text-muted)]">
                       groups
                     </span>
-                    Number of pharmacists
+                    On-site professional staff
                   </div>
                   <div className="flex flex-wrap items-center gap-4">
                     <input
@@ -243,7 +243,7 @@ export function NewBranchForm() {
                       className={`${inputMuted} w-24 text-center`}
                       required
                     />
-                    <span className="text-sm text-[#3c4948]">Licensed personnel on site</span>
+                    <span className="text-sm text-[#3c4948]">Head count for licensed or specialist roles at this location</span>
                   </div>
                 </div>
               </div>

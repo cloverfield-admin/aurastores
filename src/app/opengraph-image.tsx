@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
 
-export const alt = "AuraPharma — Pharmacy management platform";
+export const alt = "AuraStores — Pharmacy management platform";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -38,7 +38,7 @@ export default function OpenGraphImage() {
               lineHeight: 1.1,
             }}
           >
-            AuraPharma
+            AuraStores
           </div>
           <div
             style={{
@@ -50,7 +50,7 @@ export default function OpenGraphImage() {
               maxWidth: 900,
             }}
           >
-            Clarity around every prescription
+            Clarity across every sale
           </div>
         </div>
       </div>

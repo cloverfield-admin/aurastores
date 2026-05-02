@@ -16,10 +16,10 @@ export const ONBOARDING_STEPS: OnboardingStepConfig[] = [
     href: ROUTES.dashboard.onboarding.root,
   },
   {
-    id: "pharmacy-details",
-    label: "Pharmacy Details",
+    id: "location-details",
+    label: "Store location",
     icon: "storefront",
-    href: ROUTES.dashboard.onboarding.pharmacyDetails,
+    href: ROUTES.dashboard.onboarding.locationDetails,
   },
   {
     id: "license",

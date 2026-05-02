@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
 import { LockedCapabilityTease } from "@/components/dashboard/locked-capability-tease";
@@ -51,7 +51,20 @@ export function StaffManagementContent() {
   const locked = !canStaff;
   const [openActionsMenuId, setOpenActionsMenuId] = useState<string | null>(null);
   const urlQ = searchParams.get("q")?.trim() ?? "";
-  const firstMatchRef = useRef<HTMLTableRowElement>(null);
+  const firstMatchMobileRef = useRef<HTMLElement | null>(null);
+  const firstMatchDesktopRef = useRef<HTMLTableRowElement | null>(null);
+  const isMdUp = useSyncExternalStore(
+    (onStoreChange) => {
+      if (typeof window === "undefined") {
+        return () => {};
+      }
+      const mq = window.matchMedia("(min-width: 768px)");
+      mq.addEventListener("change", onStoreChange);
+      return () => mq.removeEventListener("change", onStoreChange);
+    },
+    () => (typeof window !== "undefined" ? window.matchMedia("(min-width: 768px)").matches : false),
+    () => false,
+  );
   const page = Math.max(1, Number.parseInt(searchParams.get("page") ?? "1", 10) || 1);
   const pageSize = Math.min(50, Math.max(1, Number.parseInt(searchParams.get("pageSize") ?? "10", 10) || 10));
 
@@ -81,10 +94,12 @@ export function StaffManagementContent() {
   const other = summary.other;
 
   useEffect(() => {
-    if (urlQ && firstMatchRef.current) {
-      firstMatchRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (!urlQ) {
+      return;
     }
-  }, [urlQ, members.length]);
+    const el = isMdUp ? firstMatchDesktopRef.current : firstMatchMobileRef.current;
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [urlQ, members.length, isMdUp]);
 
   const content = (
     <div className="px-4 pb-16 sm:px-6 lg:px-8">
@@ -96,7 +111,7 @@ export function StaffManagementContent() {
               Staff Management
             </h1>
             <p className="text-sm text-[var(--app-text-muted)]">
-              Monitor, verify, and coordinate your clinical workforce across the network.
+              Monitor, verify, and coordinate your team across branches.
             </p>
           </div>
           <Link
@@ -185,7 +200,113 @@ export function StaffManagementContent() {
                   </button>
                 </div>
               </div>
-              <div className="overflow-x-auto overscroll-x-contain">
+              <div className="md:hidden space-y-3 border-t border-[#f8fafc] px-4 py-4">
+                {staffQuery.isPending ? (
+                  <p className="py-6 text-center text-sm text-[var(--app-text-muted)]">Loading directory…</p>
+                ) : staffQuery.isError ? (
+                  <div className="py-6 text-center text-sm">
+                    {staffQuery.error instanceof Error && staffQuery.error.message === "Forbidden" ? (
+                      <MissingCapabilityNotice capability="staff" variant="inline" className="mx-auto max-w-md" />
+                    ) : (
+                      <span className="text-red-600">Could not load staff. Try refreshing the page.</span>
+                    )}
+                  </div>
+                ) : members.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-[var(--app-text-muted)]">
+                    No team members yet. Use{" "}
+                    <Link href={ROUTES.dashboard.staffAdd} className="font-semibold text-[var(--app-link-teal)] underline">
+                      Add New Staff
+                    </Link>{" "}
+                    once they have an AuraStores account.
+                  </p>
+                ) : (
+                  members.map((member, rowIndex) => {
+                    const licenseStatus = membershipStatusToLicense(member.membershipStatus);
+                    const licenseStyle = LICENSE_STYLES[licenseStatus];
+                    const roleClass = ROLE_STYLES[member.role] ?? "bg-[var(--app-surface-subtle)] text-[#334155]";
+                    return (
+                      <article
+                        key={member.membershipId}
+                        ref={urlQ && rowIndex === 0 && !isMdUp ? firstMatchMobileRef : undefined}
+                        className="relative rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] p-4 shadow-sm"
+                      >
+                        <div className="flex items-start gap-3">
+                          <AuraAvatar
+                            name={member.fullName}
+                            photoUrl={member.avatarUrl}
+                            decorative
+                            className="size-10 shrink-0 rounded-full ring-2 ring-white text-xs"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold leading-5 text-[var(--app-text)]">{member.fullName}</p>
+                            <p className="truncate text-xs text-[var(--app-text-faint)]">{member.email}</p>
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <span
+                                className={`inline-flex rounded-full px-2.5 py-1.5 text-xs font-semibold ${roleClass}`}
+                              >
+                                {formatAppRole(member.role)}
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className={`material-symbols-outlined notranslate text-sm ${licenseStyle.text}`}
+                                >
+                                  {licenseStyle.icon}
+                                </span>
+                                <span className={`text-xs font-semibold ${licenseStyle.text}`}>
+                                  {licenseStatus === "verified"
+                                    ? "Active"
+                                    : licenseStatus === "expiring_soon"
+                                      ? "Suspended"
+                                      : "Invited"}
+                                </span>
+                              </div>
+                            </div>
+                            <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+                              <dt className="font-semibold text-[var(--app-text-faint)]">Staff ID</dt>
+                              <dd className="font-medium text-[#475569]">{member.staffEmployeeCode ?? "—"}</dd>
+                            </dl>
+                          </div>
+                          <div className="relative shrink-0">
+                            <button
+                              type="button"
+                              className="rounded-lg p-2 text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)]"
+                              aria-label="Actions"
+                              aria-expanded={openActionsMenuId === member.membershipId}
+                              onClick={() =>
+                                setOpenActionsMenuId((id) =>
+                                  id === member.membershipId ? null : member.membershipId,
+                                )
+                              }
+                            >
+                              <span className="material-symbols-outlined notranslate text-base">more_vert</span>
+                            </button>
+                            {openActionsMenuId === member.membershipId ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="fixed inset-0 z-10 cursor-default bg-transparent"
+                                  aria-label="Close menu"
+                                  onClick={() => setOpenActionsMenuId(null)}
+                                />
+                                <div className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-lg border border-[var(--app-border-ui)] bg-[var(--app-surface)] py-1 shadow-lg">
+                                  <Link
+                                    href={ROUTES.dashboard.staffEdit(member.membershipId)}
+                                    className="block px-4 py-2.5 text-left text-sm font-semibold text-[#334155] hover:bg-[var(--app-surface-muted)]"
+                                    onClick={() => setOpenActionsMenuId(null)}
+                                  >
+                                    Edit member
+                                  </Link>
+                                </div>
+                              </>
+                            ) : null}
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })
+                )}
+              </div>
+              <div className="hidden md:block overflow-x-auto overscroll-x-contain">
                 <table className="w-full min-w-[560px]">
                   <thead>
                     <tr className="bg-[var(--app-input-bg)]">
@@ -230,7 +351,7 @@ export function StaffManagementContent() {
                           <Link href={ROUTES.dashboard.staffAdd} className="font-semibold text-[var(--app-link-teal)] underline">
                             Add New Staff
                           </Link>{" "}
-                          once they have an AuraPharma account.
+                          once they have an AuraStores account.
                         </td>
                       </tr>
                     ) : (
@@ -241,7 +362,7 @@ export function StaffManagementContent() {
                         return (
                           <tr
                             key={member.membershipId}
-                            ref={urlQ && rowIndex === 0 ? firstMatchRef : undefined}
+                            ref={urlQ && rowIndex === 0 && isMdUp ? firstMatchDesktopRef : undefined}
                             className="border-t border-[#f8fafc] transition hover:bg-[#fafafa]"
                           >
                             <td className="px-6 py-4">

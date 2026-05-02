@@ -3,7 +3,7 @@ import { StaffManagementContent } from "@/components/dashboard/staff-management-
 
 export const metadata: Metadata = {
   title: "Staff Management",
-  description: "Monitor, verify, and coordinate your clinical workforce across the network.",
+  description: "Monitor, verify, and coordinate your team across branches.",
 };
 
 export default function StaffPage() {

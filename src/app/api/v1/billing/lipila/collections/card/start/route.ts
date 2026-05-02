@@ -7,6 +7,7 @@ import { createLipilaClient } from "@/lib/billing/lipila-client";
 import { startLipilaCardCollectionSchema } from "@/lib/validation/billing";
 import { services } from "@/lib/di";
 import { getSiteUrl } from "@/lib/site-url";
+import { PAYMENT_REFERENCE_PREFIX } from "@/lib/brand";
 
 function maskValue(value: string, head = 6, tail = 4): string {
   if (!value) return "";
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
     externalId: invoice.id,
     callbackUrl,
     returnUrl,
-    description: `AuraPharma subscription invoice ${invoice.identifier}`,
+    description: `${PAYMENT_REFERENCE_PREFIX} subscription invoice ${invoice.identifier}`,
     type: "Collection",
     paymentMethod: "card",
   };

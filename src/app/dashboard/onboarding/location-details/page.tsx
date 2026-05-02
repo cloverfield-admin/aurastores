@@ -8,10 +8,10 @@ export const metadata: Metadata = {
     "Configure your primary branch, location, and operating hours for Aura Sync.",
 };
 
-export default function OnboardingPharmacyDetailsPage() {
+export default function OnboardingLocationDetailsPage() {
   return (
     <OnboardingShell
-      activeStep="pharmacy-details"
+      activeStep="location-details"
       contentMaxWidthClass="max-w-4xl xl:max-w-[56rem]"
       saveProgressVariant="outline"
       scoreProgressPercent={50}

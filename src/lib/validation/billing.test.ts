@@ -65,6 +65,14 @@ describe("startLipilaMomoCollectionSchema", () => {
       network: "AirtelMoney",
     });
   });
+
+  it("normalizes msisdn to 260XXXXXXXXX", () => {
+    const parsed = startLipilaMomoCollectionSchema.parse({
+      invoiceId: "b4c9a8f1-7c4d-4b3e-bc8a-5d9e2b15f7a1",
+      msisdn: "+260 977-000-000",
+    });
+    expect(parsed.msisdn).toBe("260977000000");
+  });
 });
 
 describe("startLipilaCardCollectionSchema", () => {

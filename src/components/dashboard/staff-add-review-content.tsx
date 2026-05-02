@@ -152,7 +152,7 @@ export function StaffAddReviewContent() {
       notify({
         variant: "error",
         title: "Credentials required",
-        description: "Pharmacists must upload at least one license or credential. Go back to add files.",
+        description: "This role requires at least one license or credential. Go back to add files.",
       });
       return;
     }
@@ -173,7 +173,7 @@ export function StaffAddReviewContent() {
           notify({
             variant: "success",
             title: "Invitation sent",
-            description: `${draft.fullName} will receive an email with a sign-in link and temporary password for your pharmacy. They must choose a new password before using the dashboard.`,
+            description: `${draft.fullName} will receive an email with a sign-in link and temporary password for your organization. They must choose a new password before using the dashboard.`,
           });
         } else {
           const codeNote = result.staffEmployeeCode
@@ -418,7 +418,7 @@ export function StaffAddReviewContent() {
               </ul>
             ) : draft.appRole === "pharmacist" ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-950">
-                No credentials uploaded. Pharmacist role requires at least one file—use Edit to go back and
+                No credentials uploaded. This role requires at least one file—use Edit to go back and
                 upload licenses.
               </p>
             ) : (

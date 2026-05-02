@@ -29,10 +29,12 @@ export const organizationStatusEnum = pgEnum("organization_status", [
   "archived",
 ]);
 
+export const storeVerticalEnum = pgEnum("store_vertical", ["pharmacy", "general_retail"]);
+
 export const appRoleEnum = pgEnum("app_role", [
   "owner",
   "admin",
-  "aurapharma_admin",
+  "aurastores_admin",
   "manager",
   "pharmacist",
   "cashier",
@@ -73,6 +75,7 @@ export const organizations = pgTable(
     hqState: varchar("hq_state", { length: 128 }),
     hqPostalCode: varchar("hq_postal_code", { length: 32 }),
     hqCountry: varchar("hq_country", { length: 2 }).notNull().default("ZM"),
+    storeVertical: storeVerticalEnum("store_vertical").notNull().default("pharmacy"),
     salesTaxEnabled: boolean("sales_tax_enabled").notNull().default(false),
     /** e.g. 1600 = 16.00% */
     salesTaxRateBps: integer("sales_tax_rate_bps").notNull().default(0),

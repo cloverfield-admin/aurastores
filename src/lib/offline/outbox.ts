@@ -8,6 +8,7 @@ import type {
   OutboxGlobalSummary,
   OutboxState,
 } from "./outbox-types";
+import { OUTBOX_CHANGED_EVENT, OUTBOX_CHANGED_EVENT_LEGACY, STORAGE_KEYS } from "@/lib/brand";
 
 export type {
   OutboxEntry,
@@ -17,8 +18,9 @@ export type {
   OutboxStatus,
 } from "./outbox-types";
 
-const OUTBOX_KEY_V1 = "aurapharma-offbox-v1";
-const OUTBOX_KEY = "aurapharma-offbox-v2";
+const OUTBOX_KEY_V1 = STORAGE_KEYS.outboxV1Legacy;
+const OUTBOX_KEY = STORAGE_KEYS.outboxV2;
+const OUTBOX_KEY_LEGACY_NAMESPACE = STORAGE_KEYS.outboxV2Legacy;
 
 const OUTBOX_FLUSH_MAX_ATTEMPTS = 8;
 
@@ -26,7 +28,8 @@ type LegacyOutboxEntry = Omit<OutboxEntry, "feature"> & { feature?: string };
 
 function notifyOutboxChanged() {
   if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent("aurapharma:outbox-changed"));
+  window.dispatchEvent(new CustomEvent(OUTBOX_CHANGED_EVENT));
+  window.dispatchEvent(new CustomEvent(OUTBOX_CHANGED_EVENT_LEGACY));
 }
 
 function inferFeatureFromKind(kind: string): OutboxFeature {
@@ -68,6 +71,19 @@ function normalizeStuckSyncing(entries: OutboxEntry[]): OutboxEntry[] {
   return entries.map((e) => (e.status === "syncing" ? { ...e, status: "pending" as const } : e));
 }
 
+async function migrateLegacyOutboxV2NamespaceIfNeeded(): Promise<void> {
+  const existing = await get<unknown>(OUTBOX_KEY);
+  if (Array.isArray(existing) && existing.length > 0) {
+    return;
+  }
+  const legacy = await get<unknown>(OUTBOX_KEY_LEGACY_NAMESPACE);
+  if (!Array.isArray(legacy) || legacy.length === 0) {
+    return;
+  }
+  await set(OUTBOX_KEY, legacy);
+  await del(OUTBOX_KEY_LEGACY_NAMESPACE);
+}
+
 async function migrateV1ToV2IfNeeded(): Promise<void> {
   const existingV2 = await get<unknown>(OUTBOX_KEY);
   const rawV1 = await get<unknown>(OUTBOX_KEY_V1);
@@ -98,6 +114,7 @@ async function migrateV1ToV2IfNeeded(): Promise<void> {
 }
 
 async function readAll(): Promise<OutboxEntry[]> {
+  await migrateLegacyOutboxV2NamespaceIfNeeded();
   await migrateV1ToV2IfNeeded();
   const raw = await get<unknown>(OUTBOX_KEY);
   if (!Array.isArray(raw)) return [];

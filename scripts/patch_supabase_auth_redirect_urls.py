@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Merge AuraPharma auth redirect URLs into Supabase Auth `uri_allow_list` via Management API.
+Merge AuraStores auth redirect URLs into Supabase Auth `uri_allow_list` via Management API.
 
 Requires a Supabase personal access token (Dashboard → Account → Access Tokens).
 Either export it in your shell, or add a line to `.env.local` (gitignored):

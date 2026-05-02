@@ -445,15 +445,15 @@ export function BulkAddBatchesContent() {
                   <div className="grid gap-6 lg:grid-cols-12">
                     <div className="space-y-6 lg:col-span-7">
                       <div>
-                        <label className={fieldLabel} htmlFor={`medication-${row.id}`}>
-                          Medication Name
+                        <label className={fieldLabel} htmlFor={`product-name-${row.id}`}>
+                          Product name
                         </label>
                         <input
-                          id={`medication-${row.id}`}
+                          id={`product-name-${row.id}`}
                           type="text"
                           value={row.productName}
                           onChange={(e) => updateRow(row.id, { productName: e.target.value })}
-                          placeholder="e.g. Amoxicillin 500mg Capsules"
+                          placeholder="e.g. Premium cocoa powder 500g"
                           className={inputClass}
                           autoComplete="off"
                           spellCheck={false}

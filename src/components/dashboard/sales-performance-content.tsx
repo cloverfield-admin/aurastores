@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
+import { DashboardDateRangeMenu } from "@/components/dashboard/dashboard-date-range-menu";
 import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
 import { LockedCapabilityTease } from "@/components/dashboard/locked-capability-tease";
@@ -28,22 +29,12 @@ function startOfMonthUtc(date: Date) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 }
 
-function addMonthsUtc(date: Date, months: number) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1));
-}
-
-function endOfPreviousMonthUtc(date: Date) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 0));
-}
-
 function daysBetweenInclusiveUtc(startIso: string, endIso: string) {
   const start = new Date(`${startIso}T00:00:00.000Z`);
   const end = new Date(`${endIso}T00:00:00.000Z`);
   const diffDays = Math.round((end.getTime() - start.getTime()) / 86_400_000);
   return Math.max(1, diffDays + 1);
 }
-
-const MAX_DASHBOARD_RANGE_DAYS = 93;
 
 function formatRelativeTime(isoString: string) {
   const diffMs = Date.now() - new Date(isoString).getTime();
@@ -214,38 +205,11 @@ export function SalesPerformanceContent() {
     return { start: toIsoDateUtc(start), end: toIsoDateUtc(todayUtc) };
   }, [todayUtc]);
 
-  const lastMonthRange = useMemo<SalesDateRangeInput>(() => {
-    const firstOfThisMonth = startOfMonthUtc(todayUtc);
-    const start = addMonthsUtc(firstOfThisMonth, -1);
-    const end = endOfPreviousMonthUtc(firstOfThisMonth);
-    return { start: toIsoDateUtc(start), end: toIsoDateUtc(end) };
-  }, [todayUtc]);
-
-  const last3MonthsRange = useMemo<SalesDateRangeInput>(() => {
-    const firstOfThisMonth = startOfMonthUtc(todayUtc);
-    const start = addMonthsUtc(firstOfThisMonth, -2);
-    return { start: toIsoDateUtc(start), end: toIsoDateUtc(todayUtc) };
-  }, [todayUtc]);
-
   const [range, setRange] = useState<SalesDateRangeInput>(thisMonthRange);
-  const [draftStart, setDraftStart] = useState(range.start);
-  const [draftEnd, setDraftEnd] = useState(range.end);
-  const [dateMenuOpen, setDateMenuOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [exportingFormat, setExportingFormat] = useState<null | "csv" | "xlsx" | "pdf">(null);
 
   const rangeDays = useMemo(() => daysBetweenInclusiveUtc(range.start, range.end), [range.end, range.start]);
-  const draftDays = useMemo(() => {
-    if (!draftStart || !draftEnd || draftStart > draftEnd) return null;
-    return daysBetweenInclusiveUtc(draftStart, draftEnd);
-  }, [draftEnd, draftStart]);
-
-  const selectedLabel = useMemo(() => {
-    if (range.start === thisMonthRange.start && range.end === thisMonthRange.end) return "This Month";
-    if (range.start === lastMonthRange.start && range.end === lastMonthRange.end) return "Last Month";
-    if (range.start === last3MonthsRange.start && range.end === last3MonthsRange.end) return "Last 3 Months";
-    return "Custom";
-  }, [last3MonthsRange.end, last3MonthsRange.start, lastMonthRange.end, lastMonthRange.start, range.end, range.start, thisMonthRange.end, thisMonthRange.start]);
 
   const salesDashboardQuery = useSalesDashboardQuery(branch, canSales, range);
   const salesRecentQuery = useSalesRecentSalesQuery(branch, canSales);
@@ -359,12 +323,12 @@ export function SalesPerformanceContent() {
             <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[var(--app-text)] sm:text-4xl">
               Monthly Sales Performance
             </h1>
-            <p className="max-w-xl text-base text-[var(--app-text-secondary)]">
-              Real-time clinical intelligence and financial tracking for the current branch (selected window, compared to
-              the previous period).
-            </p>
+            {/* <p className="max-w-xl text-base text-[var(--app-text-secondary)]">
+              Real-time sales and margin tracking for the current branch (selected window, compared to the previous
+              period).
+            </p> */}
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex w-full min-w-0 flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-stretch sm:justify-end">
             {isSalesLimitReached ? (
               <button
                 type="button"
@@ -374,7 +338,7 @@ export function SalesPerformanceContent() {
                     ? `Monthly plan limit reached: ${salesUsage ?? 0}/${salesLimit} completed sales this UTC month. Resets at the start of the next UTC month, or upgrade to raise the cap.`
                     : "Plan limit reached. Upgrade to add more."
                 }
-                className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-5 py-2.5 text-base font-semibold text-white opacity-50"
+                className="inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-5 py-2.5 text-base font-semibold text-white opacity-50"
               >
                 <span className="material-symbols-outlined notranslate text-lg">lock</span>
                 Add Sale
@@ -382,130 +346,14 @@ export function SalesPerformanceContent() {
             ) : (
               <Link
                 href={addSaleHref}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-5 py-2.5 text-base font-semibold text-white shadow-sm transition hover:opacity-95"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-5 py-2.5 text-base font-semibold text-white shadow-sm transition hover:opacity-95"
               >
                 <span className="material-symbols-outlined notranslate text-lg">add_shopping_cart</span>
                 Add Sale
               </Link>
             )}
-            <div className="relative">
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-xl bg-[var(--app-input-bg)] px-5 py-2.5 text-base font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-input-focus-bg)]"
-                onClick={() => setDateMenuOpen((open) => !open)}
-                aria-haspopup="dialog"
-                aria-expanded={dateMenuOpen}
-              >
-                <span className="material-symbols-outlined notranslate text-lg">calendar_month</span>
-                {selectedLabel}
-              </button>
-
-              {dateMenuOpen && (
-                <div
-                  role="dialog"
-                  aria-label="Sales date filter"
-                  className="absolute right-0 z-20 mt-2 w-[320px] rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] p-3 shadow-lg"
-                >
-                  <div className="space-y-2">
-                    <button
-                      type="button"
-                      className="w-full rounded-lg border border-[var(--app-border-ui)] bg-[var(--app-surface)] px-3 py-2 text-left text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-surface-muted)]"
-                      onClick={() => {
-                        setRange(thisMonthRange);
-                        setDraftStart(thisMonthRange.start);
-                        setDraftEnd(thisMonthRange.end);
-                        setDateMenuOpen(false);
-                      }}
-                    >
-                      This Month (MTD)
-                    </button>
-                    <button
-                      type="button"
-                      className="w-full rounded-lg border border-[var(--app-border-ui)] bg-[var(--app-surface)] px-3 py-2 text-left text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-surface-muted)]"
-                      onClick={() => {
-                        setRange(lastMonthRange);
-                        setDraftStart(lastMonthRange.start);
-                        setDraftEnd(lastMonthRange.end);
-                        setDateMenuOpen(false);
-                      }}
-                    >
-                      Last Month
-                    </button>
-                    <button
-                      type="button"
-                      className="w-full rounded-lg border border-[var(--app-border-ui)] bg-[var(--app-surface)] px-3 py-2 text-left text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-surface-muted)]"
-                      onClick={() => {
-                        setRange(last3MonthsRange);
-                        setDraftStart(last3MonthsRange.start);
-                        setDraftEnd(last3MonthsRange.end);
-                        setDateMenuOpen(false);
-                      }}
-                    >
-                      Last 3 Months
-                    </button>
-                  </div>
-
-                  <div className="my-3 h-px bg-[var(--app-border-ui)]" />
-
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2">
-                      <label className="space-y-1">
-                        <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--app-text-faint)]">
-                          Start Date
-                        </span>
-                        <input
-                          type="date"
-                          value={draftStart}
-                          onChange={(e) => setDraftStart(e.target.value)}
-                          className="w-full rounded-lg border border-[var(--app-border-ui)] bg-[var(--app-input-bg)] px-3 py-2 text-sm text-[var(--app-text)]"
-                        />
-                      </label>
-                      <label className="space-y-1">
-                        <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--app-text-faint)]">
-                          End Date
-                        </span>
-                        <input
-                          type="date"
-                          value={draftEnd}
-                          onChange={(e) => setDraftEnd(e.target.value)}
-                          className="w-full rounded-lg border border-[var(--app-border-ui)] bg-[var(--app-input-bg)] px-3 py-2 text-sm text-[var(--app-text)]"
-                        />
-                      </label>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-[11px] font-semibold text-[var(--app-text-faint)]">
-                        {range.start} → {range.end}
-                      </div>
-                      <button
-                        type="button"
-                        className="rounded-lg bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-3 py-2 text-sm font-semibold text-white shadow-sm transition enabled:hover:opacity-95 disabled:opacity-50"
-                        disabled={
-                          !draftStart ||
-                          !draftEnd ||
-                          draftStart > draftEnd ||
-                          (draftDays != null && draftDays > MAX_DASHBOARD_RANGE_DAYS)
-                        }
-                        onClick={() => {
-                          const next = { start: draftStart, end: draftEnd };
-                          setRange(next);
-                          setDateMenuOpen(false);
-                        }}
-                      >
-                        Apply
-                      </button>
-                    </div>
-
-                    {draftDays != null && draftDays > MAX_DASHBOARD_RANGE_DAYS && (
-                      <p className="text-[11px] font-medium text-[#e11d48]">
-                        Please choose a range of {MAX_DASHBOARD_RANGE_DAYS} days or less.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="relative">
+            <DashboardDateRangeMenu range={range} onRangeChange={setRange} dialogLabel="Sales date filter" />
+            <div className="relative w-full min-w-0 sm:w-auto">
               <button
                 type="button"
                 className="inline-flex items-center gap-2 rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] px-5 py-2.5 text-base font-semibold text-[var(--app-text)] shadow-sm transition hover:bg-[var(--app-surface-muted)]"
@@ -842,11 +690,11 @@ export function SalesPerformanceContent() {
             {/* Q4 Compliance CTA */}
             <article className="rounded-xl border border-[#e0e7ff] bg-[#eef2ff] p-6">
               <h3 className="font-[family-name:var(--font-manrope)] text-base font-bold text-[#3730a3]">
-                Q4 Compliance Review
+                Q4 operations checklist
               </h3>
               <p className="mt-2 text-sm text-[#4f46e5]">
-                Ensure all medication dispensers are calibrated by Oct 31st. Schedule inspection to
-                maintain audit compliance.
+                Reconcile branch stock counts and expense categories by quarter end. Schedule a walkthrough to keep
+                audits and handoffs smooth.
               </p>
               <button
                 type="button"
@@ -861,8 +709,8 @@ export function SalesPerformanceContent() {
         {/* Footer strip */}
         <footer className="flex flex-col gap-4 border-t border-[var(--app-surface-subtle)] pt-6 text-[11px] uppercase tracking-[0.1em] text-[var(--app-text-faint)] sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <span className="font-semibold text-[#cbd5e1]">AuraPharma v1.0.0</span>
-            <span>© {new Date().getFullYear()} Clinical Intelligence</span>
+            <span className="font-semibold text-[#cbd5e1]">AuraStores v1.0.0</span>
+            <span>© {new Date().getFullYear()} AuraStores</span>
           </div>
           <div className="flex flex-wrap gap-4">
             <Link href="#" className="underline decoration-[rgba(20,184,166,0.3)] hover:text-[var(--app-text-muted)]">

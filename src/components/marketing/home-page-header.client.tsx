@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { AppLogo } from "@/components/ui/app-logo";
 import { ROUTES } from "@/lib/routes";
 
 const gradientBtnSm =
@@ -55,10 +56,8 @@ export function HomePageHeaderClient({ isAuthenticated }: HomePageHeaderClientPr
   return (
     <header className="fixed left-0 right-0 top-0 z-50 border-b border-black/5 bg-white/80 shadow-sm backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-4 sm:gap-4 sm:px-8">
-        <Link href="/" className="min-w-0 shrink-0">
-          <span className="bg-gradient-to-r from-[#0fb9b1] to-[#6366f1] bg-clip-text text-xl font-bold text-transparent sm:text-2xl">
-            AuraPharma
-          </span>
+        <Link href="/" className="min-w-0 shrink-0 py-0.5">
+          <AppLogo variant="header" />
         </Link>
 
         <nav

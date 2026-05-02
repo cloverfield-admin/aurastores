@@ -3,7 +3,7 @@ import { AddNewStaffContent } from "@/components/dashboard/add-new-staff-content
 
 export const metadata: Metadata = {
   title: "Add New Staff",
-  description: "Onboard a new professional to the AuraPharma clinical network.",
+  description: "Onboard a new team member to your AuraStores workspace.",
 };
 
 export default function AddNewStaffPage() {

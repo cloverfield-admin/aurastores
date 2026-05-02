@@ -2,11 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useMemo, useState } from "react";
+import { DashboardDateRangeMenu } from "@/components/dashboard/dashboard-date-range-menu";
 import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
 import { LockedCapabilityTease } from "@/components/dashboard/locked-capability-tease";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { AuraAvatar } from "@/components/ui/aura-avatar";
+import { inclusiveUtcDayCount } from "@/lib/dates/dashboard-range-window";
+import type { DashboardDateRangeValue } from "@/lib/dashboard/dashboard-date-range-value";
 import { useNetworkDashboardQuery } from "@/lib/queries/network";
 import { ROUTES } from "@/lib/routes";
 import { hasCapability } from "@/lib/rbac/capabilities";
@@ -24,12 +28,33 @@ const MAP_CYCLE = [
   DASHBOARD_ASSETS.mapWarehouse,
 ] as const;
 
+function toIsoDateUtc(date: Date) {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 export function NetworkOverviewContent() {
   const { withLoading, notify } = useAuraFeedback();
   const workspace = useDashboardWorkspaceAccess();
   const canInsights = hasCapability(workspace.capabilities, "insights");
   const locked = !canInsights;
-  const networkQuery = useNetworkDashboardQuery({ enabled: canInsights });
+  const [range, setRange] = useState<DashboardDateRangeValue>(() => {
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    return { start: toIsoDateUtc(monthStart), end: toIsoDateUtc(today) };
+  });
+  const rangeDays = useMemo(
+    () =>
+      inclusiveUtcDayCount(
+        new Date(`${range.start}T00:00:00.000Z`),
+        new Date(`${range.end}T00:00:00.000Z`),
+      ),
+    [range.end, range.start],
+  );
+  const networkQuery = useNetworkDashboardQuery({ enabled: canInsights, range });
   const data = networkQuery.data;
   const totals = data?.totals;
   const revenueDeltaRaw =
@@ -54,22 +79,30 @@ export function NetworkOverviewContent() {
     <div className="px-4 pb-16 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1280px] space-y-10">
         {/* Page header */}
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-2">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0 space-y-2">
             <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-extrabold tracking-tight text-[var(--app-text)] sm:text-4xl sm:tracking-[-0.025em]">
               Network Overview
             </h1>
-            <p className="max-w-xl text-base leading-relaxed text-[var(--app-text-secondary)]">
-              Real-time clinical and operational pulse across all active branches.
-            </p>
+            {/* <p className="max-w-xl text-base leading-relaxed text-[var(--app-text-secondary)]">
+              Revenue, margin, and sell-through for the selected period (UTC), compared to the prior period of the same
+              length. Stock health reflects current on-hand batches.
+            </p> */}
           </div>
-          <Link
-            href={ROUTES.dashboard.organizationBranches.new}
-            className="relative inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-6 py-3 text-base font-semibold text-white shadow-[0_10px_15px_-3px_rgba(99,102,241,0.2),0_4px_6px_-4px_rgba(99,102,241,0.2)] transition hover:opacity-95"
-          >
-            <span className="material-symbols-outlined notranslate text-[22px]">add</span>
-            Add New Branch
-          </Link>
+          <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-end lg:w-auto lg:shrink-0">
+            <DashboardDateRangeMenu
+              range={range}
+              onRangeChange={setRange}
+              dialogLabel="Network overview date range"
+            />
+            <Link
+              href={ROUTES.dashboard.organizationBranches.new}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-6 py-3 text-base font-semibold text-white shadow-[0_10px_15px_-3px_rgba(99,102,241,0.2),0_4px_6px_-4px_rgba(99,102,241,0.2)] transition hover:opacity-95"
+            >
+              <span className="material-symbols-outlined notranslate text-[22px]">add</span>
+              Add New Branch
+            </Link>
+          </div>
         </div>
 
         {networkQuery.isError ? (
@@ -98,7 +131,7 @@ export function NetworkOverviewContent() {
                   }`}
                 >
                   {revenueDeltaPct.startsWith("-") ? "" : "+"}
-                  {revenueDeltaPct}% vs prior 30d
+                  {revenueDeltaPct}% vs prior {rangeDays}d
                 </span>
               ) : (
                 <span className="rounded-full bg-[rgba(96,99,238,0.1)] px-2 py-1 text-xs text-[#6063ee]">
@@ -132,7 +165,7 @@ export function NetworkOverviewContent() {
                 </span>
               </div>
               <span className="rounded-full bg-[rgba(15,185,177,0.12)] px-2 py-1 text-xs text-[var(--app-link-teal)]">
-                30d
+                {rangeDays}d
               </span>
             </div>
             <p className="mt-4 text-base font-normal uppercase tracking-[0.1em] text-[var(--app-text-secondary)]">
@@ -244,15 +277,15 @@ export function NetworkOverviewContent() {
                 notify={notify}
                 rows={[
                   {
-                    label: "30-day sales",
+                    label: `Sales (${rangeDays}d)`,
                     value: money.format(b.revenueCents30d / 100),
                   },
                   {
-                    label: "Lead pharmacist",
-                    value: b.leadPharmacistName ?? "—",
+                    label: "Lead staff",
+                    value: b.leadStaffName ?? "—",
                   },
                   {
-                    label: "Units dispensed (30d)",
+                    label: `Units sold (${rangeDays}d)`,
                     value: b.unitsSold30d.toLocaleString(),
                     valueTone: "teal" as const,
                   },
@@ -292,7 +325,7 @@ export function NetworkOverviewContent() {
         {/* Footer strip */}
         <footer className="flex flex-col gap-4 border-t border-[var(--app-surface-subtle)] pt-6 text-[11px] uppercase tracking-[0.1em] text-[var(--app-text-faint)] sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <span className="font-semibold text-[#cbd5e1]">AuraPharma v1.0.0</span>
+            <span className="font-semibold text-[#cbd5e1]">AuraStores v1.0.0</span>
             <div className="flex flex-wrap gap-4">
               <Link href="#" className="underline decoration-[rgba(20,184,166,0.3)] hover:text-[var(--app-text-muted)]">
                 Privacy Policy
@@ -303,7 +336,7 @@ export function NetworkOverviewContent() {
             </div>
           </div>
           <p className="text-right sm:text-left">
-            © {new Date().getFullYear()} AuraPharma v1.0.0 Clinical Intelligence
+            © {new Date().getFullYear()} AuraStores
           </p>
         </footer>
       </div>

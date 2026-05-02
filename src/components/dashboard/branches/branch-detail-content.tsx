@@ -55,10 +55,10 @@ export function BranchDetailContent({ branchId }: { branchId: string }) {
         <section className="grid gap-4 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-sm sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--app-text-faint)]">
-              Pharmacists
+              Professional staff
             </p>
             <p className="mt-1 text-sm font-semibold text-[var(--app-text)]">
-              {branch.licensedPharmacistCount}
+              {branch.professionalStaffCount}
             </p>
           </div>
           <div>

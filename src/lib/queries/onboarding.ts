@@ -28,7 +28,7 @@ type WeeklyHourPayload = {
   closesAt: string | null;
 };
 
-export type PharmacyDetailsPayload = {
+export type LocationDetailsPayload = {
   branchName: string;
   pharmacistCount: string;
   branchLocation: string;
@@ -88,12 +88,12 @@ export function useSaveIdentityMutation() {
   });
 }
 
-export function useSavePharmacyDetailsMutation() {
+export function useSaveLocationDetailsMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (payload: PharmacyDetailsPayload) => {
-      const res = await fetch(apiUrl("/onboarding/pharmacy-details"), {
+    mutationFn: async (payload: LocationDetailsPayload) => {
+      const res = await fetch(apiUrl("/onboarding/location-details"), {
         method: "PATCH",
         credentials: "include",
         headers: {

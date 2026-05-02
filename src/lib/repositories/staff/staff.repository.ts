@@ -17,7 +17,7 @@ export type StaffDirectoryMember = {
 export type StaffAppRole =
   | "owner"
   | "admin"
-  | "aurapharma_admin"
+  | "aurastores_admin"
   | "manager"
   | "pharmacist"
   | "cashier"

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentAppContext } from "@/lib/auth/session";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 import type { MembershipCapability } from "@/lib/rbac/capabilities";
-import { assertApiCapability, assertPharmacySearchCapability } from "@/lib/rbac/api-guards";
+import { assertApiCapability, assertWorkspaceSearchCapability } from "@/lib/rbac/api-guards";
 
 export async function requireAppApiContext(): Promise<
   | { ok: true; context: AuthContext }
@@ -29,14 +29,14 @@ export async function requireAppApiCapability(
   return { ok: true, context: base.context };
 }
 
-export async function requirePharmacySearchApiContext(): Promise<
+export async function requireWorkspaceSearchApiContext(): Promise<
   { ok: true; context: AuthContext } | { ok: false; response: NextResponse }
 > {
   const base = await requireAppApiContext();
   if (!base.ok) {
     return base;
   }
-  const denied = assertPharmacySearchCapability(base.context);
+  const denied = assertWorkspaceSearchCapability(base.context);
   if (denied) {
     return { ok: false, response: denied };
   }

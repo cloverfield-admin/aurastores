@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BarcodeScannerModal } from "@/components/dashboard/barcode-scanner-modal";
+import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 import { OutboxFeatureStatus } from "@/components/outbox/outbox-detail-dialog";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { isOfflineQueuedError } from "@/lib/offline/offline-queued-error";
@@ -18,7 +19,9 @@ import {
 import { useOrganizationOverviewQuery } from "@/lib/queries/organization";
 import { useAppMeQuery } from "@/lib/queries/staff";
 import { ROUTES } from "@/lib/routes";
+import { PRODUCT_NAME } from "@/lib/brand";
 import { calculateCollectionFee } from "@/lib/lipila/fees";
+import { LIPILA_ZAMBIA_MSISDN_RE, normalizeLipilaZambiaMsisdn } from "@/lib/validation/lipila";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -68,7 +71,7 @@ function MedicationCombobox({
   value,
   products,
   disabled,
-  placeholder = "Select medication",
+  placeholder = "Select product",
   className,
   onChange,
   onQueryChange,
@@ -439,6 +442,8 @@ export function NewSaleContent() {
     productSearchDebounced.trim().length >= 2 && salesCatalogSearchQuery.isFetching;
   const orgQuery = useOrganizationOverviewQuery();
   const meQuery = useAppMeQuery();
+  const { storeVertical } = useDashboardWorkspaceAccess();
+  const isPharmacyStore = storeVertical === "pharmacy";
   const createSaleMutation = useCreateSaleMutation();
   const startSaleMobileMoneyMutation = useStartSaleMobileMoneyMutation();
   const [customerSearch, setCustomerSearch] = useState("");
@@ -459,7 +464,9 @@ export function NewSaleContent() {
   const [momoPaymentNotice, setMomoPaymentNotice] = useState<string | null>(null);
   const [customerPaysLipilaFee, setCustomerPaysLipilaFee] = useState(false);
 
-  const showCustomerInfo = customerInfoExpanded || Boolean(customerSearch || patientId || mobile);
+  const showCustomerInfo =
+    customerInfoExpanded ||
+    Boolean(customerSearch || (isPharmacyStore && patientId) || mobile);
   const showPaymentDetails = paymentDetailsExpanded || Boolean(reference || paymentMethod !== "cash");
 
   useEffect(() => {
@@ -583,7 +590,7 @@ export function NewSaleContent() {
     if (salesCatalogQuery.isError) {
       notify({
         variant: "error",
-        title: "Unable to load medications",
+        title: "Unable to load products",
         description: "Refresh the page or switch branch, then try again.",
       });
       return;
@@ -637,7 +644,7 @@ export function NewSaleContent() {
     if (salesCatalogQuery.isError) {
       notify({
         variant: "error",
-        title: "Unable to load medications",
+        title: "Unable to load products",
         description: "Refresh the page or switch branch, then try again.",
       });
       return;
@@ -650,7 +657,7 @@ export function NewSaleContent() {
     if (!defaultProduct) {
       notify({
         variant: "warning",
-        title: "No medications available",
+        title: "No products available",
         description: "There are no sellable products in this branch yet.",
       });
       return;
@@ -663,7 +670,7 @@ export function NewSaleContent() {
         id: `new-${Date.now()}`,
         productId: defaultProduct?.id,
         batchId: defaultBatch?.id,
-        name: defaultProduct?.name ?? "Select medication",
+        name: defaultProduct?.name ?? "Select product",
         batch: defaultBatch?.batchNumber ?? "N/A",
         expiry: defaultBatch ? new Date(defaultBatch.expiresAt).toLocaleDateString("en-US") : "N/A",
         qty: 1,
@@ -717,7 +724,7 @@ export function NewSaleContent() {
       notify({
         variant: "error",
         title: "Product unavailable",
-        description: "This medication is no longer in the catalog for this branch.",
+        description: "This product is no longer in the catalog for this branch.",
       });
       return { ok: false };
     }
@@ -776,7 +783,7 @@ export function NewSaleContent() {
     const validItems = items.filter((item) => item.productId && item.unitPrice > 0 && item.qty > 0);
 
     if (validItems.length === 0) {
-      throw new Error("Add at least one valid medication line item.");
+      throw new Error("Add at least one valid line item.");
     }
 
     if (status === "completed" && isSalesMonthlyLimitReached) {
@@ -788,7 +795,7 @@ export function NewSaleContent() {
     return {
       branchId: branch,
       customerName: customerSearch || undefined,
-      patientCode: patientId || undefined,
+      patientCode: isPharmacyStore && patientId ? patientId : undefined,
       mobile: mobile || undefined,
       paymentMethod:
         paymentMethod === "aura-pay"
@@ -842,15 +849,17 @@ export function NewSaleContent() {
   }
 
   async function submitMobileMoneySale() {
-    const trimmedNumber = momoNumber.trim();
-    if (trimmedNumber.length < 7) {
-      throw new Error("Enter a valid customer mobile money number.");
+    const normalized = normalizeLipilaZambiaMsisdn(momoNumber);
+    if (!LIPILA_ZAMBIA_MSISDN_RE.test(normalized)) {
+      throw new Error(
+        "Enter the number as 260 plus 9 digits (12 digits total), e.g. 260971234567. You can add spaces or a leading +.",
+      );
     }
 
     const sale = buildSalePayload("completed");
     const started = await startSaleMobileMoneyMutation.mutateAsync({
       sale,
-      mobileMoneyNumber: trimmedNumber,
+      mobileMoneyNumber: normalized,
       customerPaysLipilaFee,
       idempotencyKey: crypto.randomUUID(),
     });
@@ -869,12 +878,12 @@ export function NewSaleContent() {
 
   function getLineItemIssue(item: LineItem) {
     if (!item.productId) {
-      return "Select a medication before checkout.";
+      return "Select a product before checkout.";
     }
 
     const product = productById.get(item.productId);
     if (!product) {
-      return "This medication is no longer available in the selected branch.";
+      return "This product is no longer available in the selected branch.";
     }
 
     if (product.batches.length === 0) {
@@ -976,7 +985,7 @@ export function NewSaleContent() {
       <html>
         <head>
           <meta charset="utf-8" />
-          <title>AuraPharma Receipt</title>
+          <title>${PRODUCT_NAME} Receipt</title>
           <style>
             body { font-family: Arial, sans-serif; margin: 24px; color: #191c1e; }
             .header { display: flex; justify-content: space-between; margin-bottom: 16px; }
@@ -995,7 +1004,7 @@ export function NewSaleContent() {
         <body>
           <div class="header">
             <div>
-              <div class="brand">AuraPharma</div>
+              <div class="brand">${PRODUCT_NAME}</div>
               <div class="meta">Receipt printed from New Sale</div>
             </div>
             <div class="meta">
@@ -1008,14 +1017,14 @@ export function NewSaleContent() {
 
           <div class="meta">
             <div>Customer: ${escapeHtml(customerSearch || "Walk-in")}</div>
-            ${patientId ? `<div>Patient ID: ${escapeHtml(patientId)}</div>` : ""}
+            ${isPharmacyStore && patientId ? `<div>Patient ID: ${escapeHtml(patientId)}</div>` : ""}
             ${mobile ? `<div>Mobile: ${escapeHtml(mobile)}</div>` : ""}
           </div>
 
           <table>
             <thead>
               <tr>
-                <th>Medication</th>
+                <th>Product</th>
                 <th>Product ref</th>
                 <th>Qty</th>
                 <th>Unit Price</th>
@@ -1033,7 +1042,7 @@ export function NewSaleContent() {
           </div>
 
           <div class="footer">
-            Thank you for choosing AuraPharma.
+            Thank you for choosing ${PRODUCT_NAME}.
           </div>
           <script>
             window.onload = () => {
@@ -1064,7 +1073,7 @@ export function NewSaleContent() {
     const message = error instanceof Error ? error.message : "Unable to save this sale right now.";
 
     if (message.includes("No available stock batch")) {
-      return "Selected medication has no available stock in this branch. Choose another medication or switch branch.";
+      return "Selected product has no available stock in this branch. Choose another product or switch branch.";
     }
 
     if (message.includes("Insufficient quantity")) {
@@ -1094,7 +1103,7 @@ export function NewSaleContent() {
           if (!product) {
             notify({
               variant: "error",
-              title: "No matching medication",
+              title: "No matching product",
               description:
                 "No product in this branch uses that barcode. Add stock with the barcode first, or pick from the list.",
             });
@@ -1133,7 +1142,7 @@ export function NewSaleContent() {
           }
           setScannerLineId(null);
         }}
-        title="Scan medication barcode"
+        title="Scan product barcode"
       />
       <div className="mx-auto min-w-0 max-w-[1280px]">
         {/* Header */}
@@ -1246,19 +1255,21 @@ export function NewSaleContent() {
                       Search existing records to auto-fill details.
                     </p>
                   </div>
-                  <div>
-                    <label className={fieldLabel} htmlFor="patientId">
-                      Patient ID
-                    </label>
-                    <input
-                      id="patientId"
-                      type="text"
-                      value={patientId}
-                      onChange={(e) => setPatientId(e.target.value)}
-                      placeholder="e.g. AUR-8892"
-                      className={inputClass}
-                    />
-                  </div>
+                  {isPharmacyStore ? (
+                    <div>
+                      <label className={fieldLabel} htmlFor="patientId">
+                        Patient ID
+                      </label>
+                      <input
+                        id="patientId"
+                        type="text"
+                        value={patientId}
+                        onChange={(e) => setPatientId(e.target.value)}
+                        placeholder="e.g. AUR-8892"
+                        className={inputClass}
+                      />
+                    </div>
+                  ) : null}
                   <div>
                     <label className={fieldLabel} htmlFor="mobile">
                       Mobile Number
@@ -1292,11 +1303,11 @@ export function NewSaleContent() {
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[rgba(0,106,101,0.1)]">
                     <span className="material-symbols-outlined notranslate text-xl text-[var(--app-brand)]">
-                      medication_liquid
+                      shopping_bag
                     </span>
                   </div>
                   <h2 className="font-[family-name:var(--font-manrope)] text-base font-bold text-[var(--app-text)] sm:text-lg">
-                    Items &amp; Prescription
+                    {isPharmacyStore ? "Items & Prescription" : "Items"}
                   </h2>
                 </div>
                 <div className="flex w-full flex-col gap-2 min-[400px]:flex-row sm:w-auto sm:flex-wrap sm:items-center">
@@ -1323,7 +1334,7 @@ export function NewSaleContent() {
 
               {items.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-[var(--app-border-ui)] bg-[#fafbfc] py-8 text-center text-sm leading-relaxed text-[var(--app-text-muted)] md:hidden">
-                  No medications yet. Use <span className="font-semibold text-[var(--app-text)]">Add Item</span> or{" "}
+                  No line items yet. Use <span className="font-semibold text-[var(--app-text)]">Add Item</span> or{" "}
                   <span className="font-semibold text-[var(--app-text)]">Scan to add</span>.
                 </p>
               ) : null}
@@ -1341,7 +1352,7 @@ export function NewSaleContent() {
                     >
                       <div className="space-y-2">
                         <label className={fieldLabel} htmlFor={`med-select-${row.id}`}>
-                          Medication
+                          Product
                         </label>
                         <div className="grid grid-cols-[1fr,44px] gap-2">
                           <MedicationCombobox
@@ -1430,7 +1441,7 @@ export function NewSaleContent() {
                   <thead>
                     <tr className="border-b border-[var(--app-surface-subtle)]">
                       <th className="w-[55%] px-4 py-3 text-xs font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
-                        Medication Name
+                        Product
                       </th>
                       <th className="w-[160px] px-4 py-3 text-xs font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
                         Qty
@@ -1810,20 +1821,21 @@ export function NewSaleContent() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-[rgba(0,106,101,0.1)] bg-[rgba(0,106,101,0.05)] p-4">
-                  <div className="flex min-w-0 gap-3">
-                    <span className="material-symbols-outlined notranslate shrink-0 text-[var(--app-brand)]">
-                      auto_awesome
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-[var(--app-brand)]">Interaction Check</p>
-                      <p className="mt-1 text-[10px] leading-relaxed text-[var(--app-text-secondary)]">
-                        No contraindications detected between selected items for this patient
-                        profile.
-                      </p>
+                {isPharmacyStore ? (
+                  <div className="rounded-2xl border border-[rgba(0,106,101,0.1)] bg-[rgba(0,106,101,0.05)] p-4">
+                    <div className="flex min-w-0 gap-3">
+                      <span className="material-symbols-outlined notranslate shrink-0 text-[var(--app-brand)]">
+                        auto_awesome
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-[var(--app-brand)]">Interaction Check</p>
+                        <p className="mt-1 text-[10px] leading-relaxed text-[var(--app-text-secondary)]">
+                          No contraindications detected between selected items for this patient profile.
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : null}
               </div>
             </div>
           </aside>
@@ -1862,12 +1874,18 @@ export function NewSaleContent() {
             <input
               id="momoNumber"
               type="tel"
+              inputMode="numeric"
+              autoComplete="tel-national"
               value={momoNumber}
               disabled={momoPending}
               onChange={(e) => setMomoNumber(e.target.value)}
-              placeholder="260..."
+              placeholder="260971234567"
               className={inputClass}
             />
+            <p className="mt-1.5 text-xs text-[var(--app-text-muted)]">
+              Lipila requires Zambia international format: <span className="font-mono">260</span> and 9 digits (12
+              total). Spaces or a leading + are fine.
+            </p>
 
             <label className="mt-4 flex items-start gap-3 rounded-2xl border border-[rgba(0,0,0,0.06)] bg-[rgba(99,102,241,0.06)] p-4">
               <input

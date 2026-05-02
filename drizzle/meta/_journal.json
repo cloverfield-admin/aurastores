@@ -239,6 +239,48 @@
       "when": 1780100000000,
       "tag": "0033_expenses",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1780200000000,
+      "tag": "0034_store_vertical",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1780200000001,
+      "tag": "0035_app_role_aurastores_admin",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1780200000002,
+      "tag": "0036_branch_professional_staff_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1780200000003,
+      "tag": "0037_onboarding_step_location_details",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1780200000004,
+      "tag": "0038_document_type_retail",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1780200000005,
+      "tag": "0039_sales_monthly_lock_aurastores",
+      "breakpoints": true
     }
   ]
 }

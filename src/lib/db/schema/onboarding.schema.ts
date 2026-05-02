@@ -15,7 +15,7 @@ import { branches } from "./branch.schema";
 
 export const onboardingStepEnum = pgEnum("onboarding_step", [
   "identity",
-  "pharmacy_details",
+  "location_details",
   "license",
   "review",
 ]);
@@ -33,6 +33,8 @@ export const documentTypeEnum = pgEnum("document_type", [
   "dea_registration",
   "state_board_license",
   "liability_insurance",
+  "business_registration",
+  "trade_license",
   "other",
 ]);
 

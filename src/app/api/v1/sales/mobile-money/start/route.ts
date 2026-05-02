@@ -9,6 +9,7 @@ import { calculateCollectionFee } from "@/lib/lipila/fees";
 import { buildLipilaReference, maskAccountNumber } from "@/lib/lipila/utils";
 import { processLipilaPaymentCallback } from "@/lib/lipila/payment-processing";
 import { getSiteUrl } from "@/lib/site-url";
+import { PAYMENT_REFERENCE_PREFIX } from "@/lib/brand";
 import { normalizeLipilaStatus } from "@/lib/validation/lipila";
 import { startSaleMobileMoneySchema } from "@/lib/validation/sales";
 import { eq } from "drizzle-orm";
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
       const lipilaPayload = {
         referenceId,
         amount: fee.grossAmountCents / 100,
-        narration: `AuraPharma sale ${pendingSale.saleNumber}`,
+        narration: `${PAYMENT_REFERENCE_PREFIX} sale ${pendingSale.saleNumber}`,
         accountNumber: parsed.data.mobileMoneyNumber,
         currency: "ZMW",
         email: gate.context.user.email,
