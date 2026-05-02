@@ -25,6 +25,9 @@ public/swe-worker*
 # production
 /build
 
+# Cursor MCP (may contain OAuth tokens; keep local only)
+.cursor/mcp.json
+
 # misc
 .DS_Store
 *.pem
