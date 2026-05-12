@@ -421,8 +421,7 @@ const StockInventoryMobileCard = memo(function StockInventoryMobileCard({
                     : "text-[#e11d48]"
               }`}
             >
-              {row.quantityAvailable.toLocaleString()} /{" "}
-              {row.quantityReceived.toLocaleString()} units
+              {row.quantityAvailable.toLocaleString()} units
             </p>
           </div>
 
@@ -1468,8 +1467,7 @@ export function StockInventoryContent() {
                                         : "text-[#e11d48]"
                                   }`}
                                 >
-                                  {row.quantityAvailable.toLocaleString()} /{" "}
-                                  {row.quantityReceived.toLocaleString()} Units
+                                  {row.quantityAvailable.toLocaleString()} units available
                                 </p>
                               </div>
                             </td>

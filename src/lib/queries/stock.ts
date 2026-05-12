@@ -631,6 +631,7 @@ export function useAdjustStockMutation() {
         queryClient.invalidateQueries({ queryKey: stockCatalogQueryKey }),
         queryClient.invalidateQueries({ queryKey: stockBranchesQueryKey }),
         queryClient.invalidateQueries({ queryKey: stockBatchDetailQueryKey }),
+        queryClient.invalidateQueries({ queryKey: stockProductBatchesQueryKey }),
       ]);
     },
   });
