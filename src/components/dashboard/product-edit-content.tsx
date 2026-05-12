@@ -6,11 +6,13 @@ import { useMemo, useState } from "react";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { useAllProductCategoriesQuery } from "@/lib/queries/product-categories";
 import {
+  useAdjustStockMutation,
   useStockProductBatchesQuery,
   useStockProductQuery,
   useUpdateStockBatchMutation,
   useUpdateStockProductMutation,
 } from "@/lib/queries/stock";
+import { isOfflineQueuedError } from "@/lib/offline/offline-queued-error";
 import { ROUTES } from "@/lib/routes";
 
 const fieldLabel =
@@ -29,6 +31,7 @@ export function ProductEditContent({ productId }: { productId: string }) {
   const productQuery = useStockProductQuery(productId);
   const updateMutation = useUpdateStockProductMutation();
   const updateBatchMutation = useUpdateStockBatchMutation();
+  const adjustStockMutation = useAdjustStockMutation();
   const categoriesQuery = useAllProductCategoriesQuery({ includeArchived: false });
 
   const branchId = searchParams.get("branch") ?? undefined;
@@ -44,7 +47,8 @@ export function ProductEditContent({ productId }: { productId: string }) {
   }, [categoriesQuery.data]);
 
   const isLoading = productQuery.isLoading && !productQuery.data;
-  const isSaving = updateMutation.isPending || updateBatchMutation.isPending;
+  const isSaving =
+    updateMutation.isPending || updateBatchMutation.isPending || adjustStockMutation.isPending;
 
   if (isLoading) {
     return (
@@ -90,7 +94,8 @@ export function ProductEditContent({ productId }: { productId: string }) {
       categoryOptions={categoryOptions}
       isSaving={isSaving}
       canSave={!isSaving}
-      onSave={async ({ productPayload, batchId, batchPatch }) => {
+      onSave={async ({ productPayload, batchId, batchPatch, quantityAdjustment }) => {
+        let offlineQuantityQueued = false;
         await withLoading("dashboard-edit-product", "Saving product...", async () => {
           if (batchId && batchPatch) {
             await updateBatchMutation.mutateAsync({
@@ -104,7 +109,24 @@ export function ProductEditContent({ productId }: { productId: string }) {
           if (Object.keys(productPayload).length > 0) {
             await updateMutation.mutateAsync({ productId, payload: productPayload });
           }
+          if (quantityAdjustment && quantityAdjustment.quantityDelta !== 0) {
+            try {
+              await adjustStockMutation.mutateAsync({
+                idempotencyKey: crypto.randomUUID(),
+                branchId,
+                batchIds: [quantityAdjustment.batchId],
+                quantityDelta: quantityAdjustment.quantityDelta,
+              });
+            } catch (err) {
+              if (isOfflineQueuedError(err)) {
+                offlineQuantityQueued = true;
+              } else {
+                throw err;
+              }
+            }
+          }
         });
+        return { offlineQuantityQueued };
       }}
       onCancel={() => router.back()}
       onDone={() => router.push(ROUTES.dashboard.stock)}
@@ -160,7 +182,8 @@ function ProductEditForm({
       notes?: string | null;
       status?: "draft" | "active" | "quarantined" | "expired" | "disposed" | "depleted";
     };
-  }) => Promise<void>;
+    quantityAdjustment?: { batchId: string; quantityDelta: number };
+  }) => Promise<{ offlineQuantityQueued?: boolean }>;
   onCancel: () => void;
   onDone: () => void;
   notify: (args: { variant: "error" | "info" | "success"; title: string; description: string }) => void;
@@ -185,6 +208,7 @@ function ProductEditForm({
   const [batchStatusById, setBatchStatusById] = useState<
     Record<string, "draft" | "active" | "quarantined" | "expired" | "disposed" | "depleted">
   >({});
+  const [batchQuantityById, setBatchQuantityById] = useState<Record<string, string>>({});
 
   const effectiveBatchId = selectedBatchId || batches[0]?.id || "";
   const selectedBatch = useMemo(
@@ -206,6 +230,10 @@ function ProductEditForm({
   const notes = (effectiveBatchId ? batchNotesById[effectiveBatchId] : undefined) ?? "";
   const batchStatus =
     (effectiveBatchId ? batchStatusById[effectiveBatchId] : undefined) ?? "active";
+  const defaultQuantityOnHand =
+    selectedBatch != null ? String(selectedBatch.quantityAvailable) : "";
+  const quantityOnHand =
+    (effectiveBatchId ? batchQuantityById[effectiveBatchId] : undefined) ?? defaultQuantityOnHand;
 
   const hasChanges = useMemo(() => {
     const nextName = name.trim();
@@ -221,6 +249,11 @@ function ProductEditForm({
 
     const batchNumberChanged = selectedBatch != null && batchNumber.trim() !== selectedBatch.batchNumber;
 
+    const quantityFieldDirty =
+      selectedBatch != null &&
+      selectedBatch.status !== "disposed" &&
+      quantityOnHand.trim() !== String(selectedBatch.quantityAvailable);
+
     return (
       nextName !== product.name ||
       (nextCategory || "") !== (product.categoryName === "Uncategorized" ? "" : product.categoryName) ||
@@ -235,7 +268,8 @@ function ProductEditForm({
       unitOrderPrice.trim() !== "" ||
       unitSellingPrice.trim() !== "" ||
       notes.trim() !== "" ||
-      batchStatus !== "active"
+      batchStatus !== "active" ||
+      quantityFieldDirty
     );
   }, [
     barcode,
@@ -247,6 +281,7 @@ function ProductEditForm({
     unitSellingPrice,
     notes,
     batchStatus,
+    quantityOnHand,
     categoryName,
     defaultBatchExpiry,
     defaultSellingPrice,
@@ -304,6 +339,7 @@ function ProductEditForm({
                   const trimmedUnitOrderPrice = unitOrderPrice.trim();
                   const trimmedUnitSellingPrice = unitSellingPrice.trim();
                   const trimmedNotes = notes.trim();
+                  const trimmedQuantityOnHand = quantityOnHand.trim();
 
                   if (!trimmedName || trimmedName.length < 2) {
                     notify({
@@ -414,6 +450,31 @@ function ProductEditForm({
                     }
                   }
 
+                  const disposingThisBatch =
+                    Boolean(selectedBatch) &&
+                    (selectedBatch!.status === "disposed" || batchPatch.status === "disposed");
+
+                  let quantityAdjustment: { batchId: string; quantityDelta: number } | undefined;
+                  if (
+                    selectedBatch &&
+                    selectedBatch.status !== "disposed" &&
+                    trimmedQuantityOnHand !== String(selectedBatch.quantityAvailable)
+                  ) {
+                    const parsedQty = Number.parseInt(trimmedQuantityOnHand, 10);
+                    if (!Number.isFinite(parsedQty) || parsedQty < 0 || parsedQty > 1_000_000) {
+                      notify({
+                        variant: "error",
+                        title: "Invalid quantity",
+                        description: "Enter a whole number from 0 to 1,000,000.",
+                      });
+                      return;
+                    }
+                    const quantityDelta = parsedQty - selectedBatch.quantityAvailable;
+                    if (quantityDelta !== 0 && !disposingThisBatch) {
+                      quantityAdjustment = { batchId: selectedBatch.id, quantityDelta };
+                    }
+                  }
+
                   if (!selectedBatch && (trimmedBatchExpiry || trimmedBatchNumber)) {
                     notify({
                       variant: "error",
@@ -424,7 +485,9 @@ function ProductEditForm({
                   }
 
                   const hasBatchPatch = Object.keys(batchPatch).length > 0;
-                  if (Object.keys(payload).length === 0 && !hasBatchPatch) {
+                  const hasQuantityAdjustment =
+                    quantityAdjustment != null && quantityAdjustment.quantityDelta !== 0;
+                  if (Object.keys(payload).length === 0 && !hasBatchPatch && !hasQuantityAdjustment) {
                     notify({
                       variant: "info",
                       title: "No changes",
@@ -434,14 +497,17 @@ function ProductEditForm({
                   }
 
                   try {
-                    await onSave({
+                    const saveResult = await onSave({
                       productPayload: payload,
-                      ...(hasBatchPatch ? { batchId: selectedBatch!.id, batchPatch } : null),
+                      ...(hasBatchPatch ? { batchId: selectedBatch!.id, batchPatch } : {}),
+                      ...(hasQuantityAdjustment ? { quantityAdjustment } : {}),
                     });
                     notify({
                       variant: "success",
                       title: "Saved changes",
-                      description: "Your changes have been saved.",
+                      description: saveResult?.offlineQuantityQueued
+                        ? "Your updates were saved. The quantity change will sync when you are back online."
+                        : "Your changes have been saved.",
                     });
                     onDone();
                   } catch (err) {
@@ -588,6 +654,34 @@ function ProductEditForm({
                           </option>
                         ))}
                       </select>
+                    </div>
+
+                    <div>
+                      <label className={fieldLabel} htmlFor="batch-quantity">
+                        Quantity on hand
+                      </label>
+                      <input
+                        id="batch-quantity"
+                        type="number"
+                        min={0}
+                        max={1_000_000}
+                        step={1}
+                        inputMode="numeric"
+                        value={quantityOnHand}
+                        disabled={!selectedBatch || selectedBatch.status === "disposed"}
+                        onChange={(e) =>
+                          setBatchQuantityById((prev) => ({
+                            ...prev,
+                            ...(effectiveBatchId ? { [effectiveBatchId]: e.target.value } : null),
+                          }))
+                        }
+                        className={inputClass}
+                      />
+                      <p className="mt-2 text-[11px] text-[#6c7a78]">
+                        {selectedBatch?.status === "disposed"
+                          ? "Disposed batches cannot be quantity-adjusted."
+                          : "Applies to the selected batch in the current branch when you save."}
+                      </p>
                     </div>
 
                     <div>
