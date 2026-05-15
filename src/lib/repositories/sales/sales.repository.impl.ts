@@ -18,6 +18,7 @@ import type { CreateSaleInput } from "@/lib/validation/sales";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 import { assertWithinLimit } from "@/lib/billing/entitlements";
 import { utcMonthRangeForInstant } from "@/lib/dates/utc-month-range";
+import { computeExcessRestockingCents, computeGrossProfitCents } from "@/lib/finance/gross-profit";
 import { filterBranchesForContext } from "@/lib/rbac/branch-access";
 import type {
   SalesCatalogData,
@@ -171,7 +172,7 @@ export class SalesRepositoryImpl implements SalesRepository {
     const [
       metricsRows,
       cogsRows,
-      chargeExpenseRows,
+      expenseMetricsRows,
       topProductsRows,
       branchRevenueRows,
       unitsRows,
@@ -218,10 +219,14 @@ export class SalesRepositoryImpl implements SalesRepository {
           ),
         db
           .select({
-            totalExpensesCents:
-              sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseDate} >= ${startIso}::timestamptz and ${expenses.expenseDate} < ${endExclusiveIso}::timestamptz), 0)::int`,
-            previousExpensesCents:
-              sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseDate} >= ${prevStartIso}::timestamptz and ${expenses.expenseDate} < ${prevEndExclusiveIso}::timestamptz), 0)::int`,
+            totalOperatingExpensesCents:
+              sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseType} in ('general', 'charge') and ${expenses.expenseDate} >= ${startIso}::timestamptz and ${expenses.expenseDate} < ${endExclusiveIso}::timestamptz), 0)::int`,
+            previousOperatingExpensesCents:
+              sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseType} in ('general', 'charge') and ${expenses.expenseDate} >= ${prevStartIso}::timestamptz and ${expenses.expenseDate} < ${prevEndExclusiveIso}::timestamptz), 0)::int`,
+            totalRestockingCents:
+              sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseType} = 'restocking' and ${expenses.expenseDate} >= ${startIso}::timestamptz and ${expenses.expenseDate} < ${endExclusiveIso}::timestamptz), 0)::int`,
+            previousRestockingCents:
+              sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseType} = 'restocking' and ${expenses.expenseDate} >= ${prevStartIso}::timestamptz and ${expenses.expenseDate} < ${prevEndExclusiveIso}::timestamptz), 0)::int`,
             totalChargeExpensesCents:
               sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseType} = 'charge' and ${expenses.expenseDate} >= ${startIso}::timestamptz and ${expenses.expenseDate} < ${endExclusiveIso}::timestamptz), 0)::int`,
             previousChargeExpensesCents:
@@ -341,9 +346,11 @@ export class SalesRepositoryImpl implements SalesRepository {
       totalCogsCents: 0,
       previousCogsCents: 0,
     };
-    const chargeMetrics = chargeExpenseRows[0] ?? {
-      totalExpensesCents: 0,
-      previousExpensesCents: 0,
+    const expenseMetrics = expenseMetricsRows[0] ?? {
+      totalOperatingExpensesCents: 0,
+      previousOperatingExpensesCents: 0,
+      totalRestockingCents: 0,
+      previousRestockingCents: 0,
       totalChargeExpensesCents: 0,
       previousChargeExpensesCents: 0,
     };
@@ -378,6 +385,19 @@ export class SalesRepositoryImpl implements SalesRepository {
     const branchTotalRevenueExpanded = branchDistributionExpanded.reduce((sum, row) => sum + row.amountCents, 0);
     const grossProfitBeforeExpensesCents = metrics.totalRevenueCents - cogsMetrics.totalCogsCents;
     const previousGrossProfitBeforeExpensesCents = metrics.previousRevenueCents - cogsMetrics.previousCogsCents;
+    const { excessRestockingCents, grossProfitCents } = computeGrossProfitCents({
+      revenueCents: metrics.totalRevenueCents,
+      cogsCents: cogsMetrics.totalCogsCents,
+      operatingExpensesCents: expenseMetrics.totalOperatingExpensesCents,
+      restockingCents: expenseMetrics.totalRestockingCents,
+    });
+    const { excessRestockingCents: previousExcessRestockingCents, grossProfitCents: previousGrossProfitCents } =
+      computeGrossProfitCents({
+        revenueCents: metrics.previousRevenueCents,
+        cogsCents: cogsMetrics.previousCogsCents,
+        operatingExpensesCents: expenseMetrics.previousOperatingExpensesCents,
+        restockingCents: expenseMetrics.previousRestockingCents,
+      });
 
     return {
       branch: {
@@ -394,15 +414,18 @@ export class SalesRepositoryImpl implements SalesRepository {
         previousRevenueCents: metrics.previousRevenueCents,
         totalCogsCents: cogsMetrics.totalCogsCents,
         previousCogsCents: cogsMetrics.previousCogsCents,
-        totalExpensesCents: chargeMetrics.totalExpensesCents,
-        previousExpensesCents: chargeMetrics.previousExpensesCents,
-        totalChargeExpensesCents: chargeMetrics.totalChargeExpensesCents,
-        previousChargeExpensesCents: chargeMetrics.previousChargeExpensesCents,
+        totalExpensesCents: expenseMetrics.totalOperatingExpensesCents,
+        previousExpensesCents: expenseMetrics.previousOperatingExpensesCents,
+        totalRestockingCents: expenseMetrics.totalRestockingCents,
+        previousRestockingCents: expenseMetrics.previousRestockingCents,
+        excessRestockingCents,
+        previousExcessRestockingCents,
+        totalChargeExpensesCents: expenseMetrics.totalChargeExpensesCents,
+        previousChargeExpensesCents: expenseMetrics.previousChargeExpensesCents,
         grossProfitBeforeExpensesCents,
         previousGrossProfitBeforeExpensesCents,
-        grossProfitCents: grossProfitBeforeExpensesCents - chargeMetrics.totalExpensesCents,
-        previousGrossProfitCents:
-          previousGrossProfitBeforeExpensesCents - chargeMetrics.previousExpensesCents,
+        grossProfitCents,
+        previousGrossProfitCents,
         totalSalesCount: metrics.totalSalesCount,
         averageOrderValueCents: metrics.averageOrderValueCents,
         unitsSoldLast30Days: units.unitsSoldLast30Days,

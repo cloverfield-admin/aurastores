@@ -39,6 +39,10 @@ export type SalesDashboardResponse = {
     previousCogsCents: number;
     totalExpensesCents: number;
     previousExpensesCents: number;
+    totalRestockingCents: number;
+    previousRestockingCents: number;
+    excessRestockingCents: number;
+    previousExcessRestockingCents: number;
     totalChargeExpensesCents: number;
     previousChargeExpensesCents: number;
     grossProfitBeforeExpensesCents: number;
