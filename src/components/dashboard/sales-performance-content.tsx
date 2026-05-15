@@ -270,7 +270,14 @@ export function SalesPerformanceContent() {
     {
       label: "Gross Profit",
       value: currencyFormatter.format((metrics?.grossProfitCents ?? 0) / 100),
-      sub: `COGS ${currencyFormatter.format((metrics?.totalCogsCents ?? 0) / 100)} • Expenses ${currencyFormatter.format((metrics?.totalExpensesCents ?? 0) / 100)} (${rangeDays}d)`,
+      sub: [
+        `COGS ${currencyFormatter.format((metrics?.totalCogsCents ?? 0) / 100)}`,
+        `Operating ${currencyFormatter.format((metrics?.totalExpensesCents ?? 0) / 100)}`,
+        ...(metrics && metrics.excessRestockingCents > 0
+          ? [`Excess restocking ${currencyFormatter.format(metrics.excessRestockingCents / 100)}`]
+          : []),
+        `(${rangeDays}d)`,
+      ].join(" • "),
       badge: `${rangeDays}d`,
       badgeClass: "bg-[#eff6ff] text-[#2563eb]",
       icon: "trending_up",

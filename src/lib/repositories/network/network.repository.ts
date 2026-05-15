@@ -9,6 +9,7 @@ export type NetworkBranchSummary = {
   revenueCents30d: number;
   cogsCents30d: number;
   expensesCents30d: number;
+  restockingCents30d: number;
   chargeExpensesCents30d: number;
   grossProfitCents30d: number;
   lowStockSkuCount: number;
@@ -23,6 +24,8 @@ export type NetworkDashboardData = {
     previousRevenueCents30d: number;
     totalCogsCents30d: number;
     totalExpensesCents30d: number;
+    totalRestockingCents30d: number;
+    excessRestockingCents30d: number;
     totalChargeExpensesCents30d: number;
     totalGrossProfitCents30d: number;
     totalLowStockSkuCount: number;

@@ -175,8 +175,15 @@ export function NetworkOverviewContent() {
               {networkQuery.isPending || !totals ? "—" : money.format(totals.totalGrossProfitCents30d / 100)}
             </p>
             <p className="mt-2 text-xs text-[var(--app-text-muted)]">
-              COGS {networkQuery.isPending || !totals ? "—" : money.format(totals.totalCogsCents30d / 100)} • Expenses{" "}
-              {networkQuery.isPending || !totals ? "—" : money.format(totals.totalExpensesCents30d / 100)}
+              {networkQuery.isPending || !totals
+                ? "—"
+                : [
+                    `COGS ${money.format(totals.totalCogsCents30d / 100)}`,
+                    `Operating ${money.format(totals.totalExpensesCents30d / 100)}`,
+                    ...(totals.excessRestockingCents30d > 0
+                      ? [`Excess restocking ${money.format(totals.excessRestockingCents30d / 100)}`]
+                      : []),
+                  ].join(" • ")}
             </p>
           </article>
 

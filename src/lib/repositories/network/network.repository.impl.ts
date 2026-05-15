@@ -15,6 +15,7 @@ import {
 } from "@/lib/db/schema";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 import { resolveDashboardUtcRangeWindow } from "@/lib/dates/dashboard-range-window";
+import { computeGrossProfitCents } from "@/lib/finance/gross-profit";
 import type { SalesDateRange } from "@/lib/repositories/sales/sales.repository";
 import { filterBranchesForContext } from "@/lib/rbac/branch-access";
 import type {
@@ -98,12 +99,14 @@ export class NetworkRepositoryImpl implements NetworkRepository {
       salesTotalsRows,
       cogsTotalsRows,
       expensesTotalsRows,
+      restockingTotalsRows,
       chargeTotalsRows,
       staffMetricRows,
       staffPreviewRows,
       branchRevenueRows,
       branchCogsRows,
       branchExpensesRows,
+      branchRestockingRows,
       branchChargeRows,
       branchUnitsRows,
       branchLowStockRows,
@@ -143,8 +146,21 @@ export class NetworkRepositoryImpl implements NetworkRepository {
         ),
       db
         .select({
-          totalExpensesCents30d:
-            sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseDate} >= ${startIso}::timestamptz and ${expenses.expenseDate} < ${endExclusiveIso}::timestamptz), 0)::int`,
+          totalOperatingExpensesCents30d:
+            sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseType} in ('general', 'charge') and ${expenses.expenseDate} >= ${startIso}::timestamptz and ${expenses.expenseDate} < ${endExclusiveIso}::timestamptz), 0)::int`,
+        })
+        .from(expenses)
+        .where(
+          and(
+            eq(expenses.organizationId, orgId),
+            sql`${expenses.expenseDate} >= ${prevStartIso}::timestamptz`,
+            ...(branchScopeWhere(context, expenses.branchId) ? [branchScopeWhere(context, expenses.branchId)!] : []),
+          ),
+        ),
+      db
+        .select({
+          totalRestockingCents30d:
+            sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseType} = 'restocking' and ${expenses.expenseDate} >= ${startIso}::timestamptz and ${expenses.expenseDate} < ${endExclusiveIso}::timestamptz), 0)::int`,
         })
         .from(expenses)
         .where(
@@ -231,8 +247,23 @@ export class NetworkRepositoryImpl implements NetworkRepository {
       db
         .select({
           branchId: expenses.branchId,
-          expensesCents30d:
-            sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseDate} >= ${startIso}::timestamptz and ${expenses.expenseDate} < ${endExclusiveIso}::timestamptz), 0)::int`,
+          operatingExpensesCents30d:
+            sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseType} in ('general', 'charge') and ${expenses.expenseDate} >= ${startIso}::timestamptz and ${expenses.expenseDate} < ${endExclusiveIso}::timestamptz), 0)::int`,
+        })
+        .from(expenses)
+        .where(
+          and(
+            eq(expenses.organizationId, orgId),
+            sql`${expenses.expenseDate} >= ${prevStartIso}::timestamptz`,
+            ...(branchScopeWhere(context, expenses.branchId) ? [branchScopeWhere(context, expenses.branchId)!] : []),
+          ),
+        )
+        .groupBy(expenses.branchId),
+      db
+        .select({
+          branchId: expenses.branchId,
+          restockingCents30d:
+            sql<number>`coalesce(sum(${expenses.amountCents}) filter (where ${expenses.expenseType} = 'restocking' and ${expenses.expenseDate} >= ${startIso}::timestamptz and ${expenses.expenseDate} < ${endExclusiveIso}::timestamptz), 0)::int`,
         })
         .from(expenses)
         .where(
@@ -346,20 +377,41 @@ export class NetworkRepositoryImpl implements NetworkRepository {
     const totalRevenueCents30d = Number(salesTotals?.totalRevenueCents30d ?? 0);
     const previousRevenueCents30d = Number(salesTotals?.previousRevenueCents30d ?? 0);
     const totalCogsCents30d = Number(cogsTotals?.totalCogsCents30d ?? 0);
-    const totalExpensesCents30d = Number(expensesTotalsRows[0]?.totalExpensesCents30d ?? 0);
+    const totalExpensesCents30d = Number(expensesTotalsRows[0]?.totalOperatingExpensesCents30d ?? 0);
+    const totalRestockingCents30d = Number(restockingTotalsRows[0]?.totalRestockingCents30d ?? 0);
+    const { excessRestockingCents: excessRestockingCents30d, grossProfitCents: totalGrossProfitCents30d } =
+      computeGrossProfitCents({
+        revenueCents: totalRevenueCents30d,
+        cogsCents: totalCogsCents30d,
+        operatingExpensesCents: totalExpensesCents30d,
+        restockingCents: totalRestockingCents30d,
+      });
     const totalChargeExpensesCents30d = Number(chargeTotalsRows[0]?.totalChargeExpensesCents30d ?? 0);
-    const totalGrossProfitCents30d = totalRevenueCents30d - totalCogsCents30d - totalExpensesCents30d;
     const activeStaffCount = Number(staffMetrics?.activeStaffCount ?? 0);
     const totalStaffCount = Number(staffMetrics?.totalStaffCount ?? 0);
     const staffPreviewNames = staffPreviewRows.map((row) => row.fullName);
-    const expensesByBranchId = numberByBranchId(branchExpensesRows, (row) => Number(row.expensesCents30d ?? 0));
+    const operatingByBranchId = numberByBranchId(
+      branchExpensesRows,
+      (row) => Number(row.operatingExpensesCents30d ?? 0),
+    );
+    const restockingByBranchId = numberByBranchId(
+      branchRestockingRows,
+      (row) => Number(row.restockingCents30d ?? 0),
+    );
     const chargeByBranchId = numberByBranchId(branchChargeRows, (row) => Number(row.chargeExpensesCents30d ?? 0));
 
     const branchSummaries: NetworkBranchSummary[] = branchRows.map((branch) => {
       const revenueCents30d = revenueByBranchId.get(branch.id) ?? 0;
       const cogsCents30d = cogsByBranchId.get(branch.id) ?? 0;
-      const expensesCents30d = expensesByBranchId.get(branch.id) ?? 0;
+      const expensesCents30d = operatingByBranchId.get(branch.id) ?? 0;
+      const restockingCents30d = restockingByBranchId.get(branch.id) ?? 0;
       const chargeExpensesCents30d = chargeByBranchId.get(branch.id) ?? 0;
+      const { grossProfitCents: grossProfitCents30d } = computeGrossProfitCents({
+        revenueCents: revenueCents30d,
+        cogsCents: cogsCents30d,
+        operatingExpensesCents: expensesCents30d,
+        restockingCents: restockingCents30d,
+      });
 
       return {
         id: branch.id,
@@ -369,8 +421,9 @@ export class NetworkRepositoryImpl implements NetworkRepository {
         revenueCents30d,
         cogsCents30d,
         expensesCents30d,
+        restockingCents30d,
         chargeExpensesCents30d,
-        grossProfitCents30d: revenueCents30d - cogsCents30d - expensesCents30d,
+        grossProfitCents30d,
         lowStockSkuCount: lowStockByBranchId.get(branch.id) ?? 0,
         healthyBatchRatio: healthByBranchId.get(branch.id)?.healthyBatchRatio ?? 0,
         unitsSold30d: unitsByBranchId.get(branch.id) ?? 0,
@@ -392,6 +445,8 @@ export class NetworkRepositoryImpl implements NetworkRepository {
         previousRevenueCents30d,
         totalCogsCents30d,
         totalExpensesCents30d,
+        totalRestockingCents30d,
+        excessRestockingCents30d,
         totalChargeExpensesCents30d,
         totalGrossProfitCents30d,
         totalLowStockSkuCount,
