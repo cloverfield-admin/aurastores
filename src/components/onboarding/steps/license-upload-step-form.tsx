@@ -119,18 +119,7 @@ export function LicenseUploadStepForm() {
     e.preventDefault();
     setSubmitError(null);
 
-    if (vertical === "pharmacy") {
-      if (!pharmacyFile || !picFile) {
-        const message = "Upload both required compliance documents to continue.";
-        setSubmitError(message);
-        notify({
-          variant: "warning",
-          title: "Missing documents",
-          description: message,
-        });
-        return;
-      }
-    } else {
+    if (vertical !== "pharmacy") {
       if (!retailRegFile || !retailTradeFile) {
         const message = "Upload both business registration and trade license documents to continue.";
         setSubmitError(message);
@@ -146,20 +135,28 @@ export function LicenseUploadStepForm() {
     try {
       const formData = new FormData();
       if (vertical === "pharmacy") {
-        formData.set("pharmacyLicense", pharmacyFile!);
-        formData.set("picCertificate", picFile!);
+        if (pharmacyFile) formData.set("pharmacyLicense", pharmacyFile);
+        if (picFile) formData.set("picCertificate", picFile);
       } else {
         formData.set("businessRegistration", retailRegFile!);
         formData.set("tradeLicense", retailTradeFile!);
       }
 
-      await withLoading("onboarding-license-upload", "Uploading and verifying your documents...", () =>
-        uploadLicenseMutation.mutateAsync(formData),
+      const hasPharmacyUploads = Boolean(pharmacyFile || picFile);
+      await withLoading(
+        "onboarding-license-upload",
+        vertical === "pharmacy" && !hasPharmacyUploads
+          ? "Continuing to final review..."
+          : "Uploading and verifying your documents...",
+        () => uploadLicenseMutation.mutateAsync(formData),
       );
       notify({
         variant: "success",
-        title: "Documents uploaded",
-        description: "Compliance files were received successfully. Continue to final review.",
+        title: hasPharmacyUploads || vertical !== "pharmacy" ? "Documents uploaded" : "Step saved",
+        description:
+          hasPharmacyUploads || vertical !== "pharmacy"
+            ? "Compliance files were received successfully. Continue to final review."
+            : "You can add compliance documents later. Continue to final review.",
       });
       router.push(ROUTES.dashboard.onboarding.review);
     } catch (submitError) {
@@ -204,7 +201,7 @@ export function LicenseUploadStepForm() {
             </h1>
             <p className="max-w-2xl text-base leading-relaxed text-[#3c4948]">
               {vertical === "pharmacy"
-                ? "To ensure regulatory compliance and secure our network, please provide high-resolution copies of your active pharmaceutical licenses."
+                ? "Upload high-resolution copies of your active pharmaceutical licenses when available. You can skip this step and add documents later."
                 : "Upload clear copies of your business registration and trade license so we can verify your retail operation."}
             </p>
           </div>

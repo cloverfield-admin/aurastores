@@ -24,18 +24,13 @@ export async function POST(request: Request) {
     if (vertical === "pharmacy") {
       const pharmacyLicense = formData.get("pharmacyLicense");
       const picCertificate = formData.get("picCertificate");
-
-      if (!isValidFile(pharmacyLicense) || !isValidFile(picCertificate)) {
-        return NextResponse.json(
-          { error: "Both the pharmacy operation license and PIC certificate are required." },
-          { status: 400 },
-        );
-      }
+      const hasPharmacyLicense = isValidFile(pharmacyLicense);
+      const hasPicCertificate = isValidFile(picCertificate);
 
       const updatedOnboarding = await services.onboarding.uploadComplianceDocuments(authUser.id, {
         kind: "pharmacy",
-        pharmacyLicense,
-        picCertificate,
+        ...(hasPharmacyLicense ? { pharmacyLicense } : {}),
+        ...(hasPicCertificate ? { picCertificate } : {}),
       });
       return NextResponse.json(updatedOnboarding);
     }

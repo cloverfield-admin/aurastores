@@ -190,6 +190,10 @@ async function hasCompletedRequiredOnboarding(context: AuthContext) {
     return false;
   }
 
+  if (context.organization.storeVertical === "pharmacy") {
+    return true;
+  }
+
   const [documentCount] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(complianceDocuments)
