@@ -1,5 +1,8 @@
 import type { DocumentStorageRepository } from "@/lib/repositories/document-storage/document-storage.repository";
-import type { OnboardingRepository } from "@/lib/repositories/onboarding/onboarding.repository";
+import type {
+  OnboardingComplianceDocumentPayload,
+  OnboardingRepository,
+} from "@/lib/repositories/onboarding/onboarding.repository";
 import type { IdentityInput, LocationDetailsInput } from "@/lib/validation/onboarding";
 
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -7,8 +10,8 @@ const ALLOWED_TYPES = new Set(["application/pdf", "image/jpeg", "image/png"]);
 
 export type PharmacyComplianceUploadFiles = {
   kind: "pharmacy";
-  pharmacyLicense: File;
-  picCertificate: File;
+  pharmacyLicense?: File;
+  picCertificate?: File;
 };
 
 export type RetailComplianceUploadFiles = {
@@ -65,34 +68,36 @@ export class OnboardingService {
       if (vertical !== "pharmacy") {
         throw new Error("Pharmacy license uploads are only for pharmacy organizations.");
       }
-      this.validateComplianceFile(files.pharmacyLicense);
-      this.validateComplianceFile(files.picCertificate);
 
-      const [savedLicense, savedPic] = await Promise.all([
-        this.repos.documentStorage.upload({
-          organizationId: currentOnboarding.organization.id,
-          userId: authUserId,
-          file: files.pharmacyLicense,
-          prefix: "pharmacy-operation-license",
-        }),
-        this.repos.documentStorage.upload({
-          organizationId: currentOnboarding.organization.id,
-          userId: authUserId,
-          file: files.picCertificate,
-          prefix: "pharmacist-in-charge-certificate",
-        }),
-      ]);
+      const docs: OnboardingComplianceDocumentPayload[] = [];
 
-      return this.repos.onboarding.saveComplianceDocuments(authUserId, [
-        {
+      if (files.pharmacyLicense) {
+        this.validateComplianceFile(files.pharmacyLicense);
+        docs.push({
           documentType: "pharmacy_operation_license",
-          ...savedLicense,
-        },
-        {
+          ...(await this.repos.documentStorage.upload({
+            organizationId: currentOnboarding.organization.id,
+            userId: authUserId,
+            file: files.pharmacyLicense,
+            prefix: "pharmacy-operation-license",
+          })),
+        });
+      }
+
+      if (files.picCertificate) {
+        this.validateComplianceFile(files.picCertificate);
+        docs.push({
           documentType: "pharmacist_in_charge_certificate",
-          ...savedPic,
-        },
-      ]);
+          ...(await this.repos.documentStorage.upload({
+            organizationId: currentOnboarding.organization.id,
+            userId: authUserId,
+            file: files.picCertificate,
+            prefix: "pharmacist-in-charge-certificate",
+          })),
+        });
+      }
+
+      return this.repos.onboarding.saveComplianceDocuments(authUserId, docs);
     }
 
     if (vertical !== "general_retail") {

@@ -325,7 +325,9 @@ export class OnboardingRepositoryImpl implements OnboardingRepository {
       throw new Error("Complete branch setup before finishing onboarding.");
     }
 
-    if ((documentCount[0]?.count ?? 0) < 2) {
+    const requiredDocumentCount =
+      context.organization.storeVertical === "pharmacy" ? 0 : 2;
+    if ((documentCount[0]?.count ?? 0) < requiredDocumentCount) {
       throw new Error("Upload the required compliance documents before finishing onboarding.");
     }
 
