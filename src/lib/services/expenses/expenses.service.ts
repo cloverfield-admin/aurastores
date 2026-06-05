@@ -14,5 +14,11 @@ export class ExpensesService {
   ): ReturnType<ExpensesRepository["createExpense"]> {
     return this.repos.expenses.createExpense(...args);
   }
+
+  deleteExpense(
+    ...args: Parameters<ExpensesRepository["deleteExpense"]>
+  ): ReturnType<ExpensesRepository["deleteExpense"]> {
+    return this.repos.expenses.deleteExpense(...args);
+  }
 }
 

@@ -275,6 +275,17 @@ export class ExpensesRepositoryImpl implements ExpensesRepository {
 
     return created;
   }
+
+  async deleteExpense(context: AuthContext, expenseId: string): Promise<void> {
+    const [deleted] = await db
+      .delete(expenses)
+      .where(and(eq(expenses.id, expenseId), eq(expenses.organizationId, context.organization.id)))
+      .returning({ id: expenses.id });
+
+    if (!deleted) {
+      throw new Error("Expense not found.");
+    }
+  }
 }
 
 export const expensesRepository = new ExpensesRepositoryImpl();
