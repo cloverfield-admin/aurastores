@@ -102,3 +102,24 @@ export function useCreateExpenseMutation() {
   });
 }
 
+export function useDeleteExpenseMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (expenseId: string) => {
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 20_000);
+      try {
+        return await fetchJson<{ ok: true }>(apiUrl(`/expenses/${expenseId}`), {
+          method: "DELETE",
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: expensesDashboardQueryKey });
+    },
+  });
+}
+
