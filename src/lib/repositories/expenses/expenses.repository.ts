@@ -68,5 +68,6 @@ export type CreateExpenseInput = {
 export interface ExpensesRepository {
   getDashboard(context: AuthContext, input: ExpensesDashboardInput): Promise<ExpensesDashboardData>;
   createExpense(context: AuthContext, input: CreateExpenseInput): Promise<{ id: string }>;
+  deleteExpense(context: AuthContext, expenseId: string): Promise<void>;
 }
 

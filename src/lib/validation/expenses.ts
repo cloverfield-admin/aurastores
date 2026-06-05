@@ -20,3 +20,7 @@ export const createExpenseSchema = z.object({
 
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
 
+export const expenseIdParamSchema = z.object({
+  expenseId: z.string().uuid(),
+});
+

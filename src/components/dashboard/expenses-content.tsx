@@ -9,7 +9,9 @@ import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import {
   type ExpenseType,
   type ExpensesDateRangeInput,
+  type ExpensesDashboardResponse,
   useCreateExpenseMutation,
+  useDeleteExpenseMutation,
   useExpensesDashboardQuery,
 } from "@/lib/queries/expenses";
 import { hasCapability } from "@/lib/rbac/capabilities";
@@ -81,13 +83,74 @@ function clampSeries(series: Array<{ totalCents: number }>) {
   return { max };
 }
 
+type ExpenseRow = ExpensesDashboardResponse["expenses"][number];
+
+function ExpenseRowActions({
+  row,
+  openActionsMenuId,
+  onToggleMenu,
+  onCloseMenu,
+  onRequestDelete,
+  isRowBusy,
+}: {
+  row: ExpenseRow;
+  openActionsMenuId: string | null;
+  onToggleMenu: (id: string) => void;
+  onCloseMenu: () => void;
+  onRequestDelete: (row: ExpenseRow) => void;
+  isRowBusy: boolean;
+}) {
+  const menuOpen = openActionsMenuId === row.id;
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        className="rounded-lg p-2 text-[var(--app-text-muted)] hover:bg-[var(--app-surface-subtle)] disabled:cursor-not-allowed disabled:opacity-50"
+        aria-label="Actions"
+        aria-expanded={menuOpen}
+        disabled={isRowBusy}
+        onClick={() => onToggleMenu(row.id)}
+      >
+        {isRowBusy ? (
+          <span
+            className="inline-block size-4 animate-spin rounded-full border-2 border-[var(--app-text-muted)] border-t-transparent"
+            aria-hidden
+          />
+        ) : (
+          <span className="material-symbols-outlined notranslate text-base">more_vert</span>
+        )}
+      </button>
+      {menuOpen ? (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-10 cursor-default bg-transparent"
+            aria-label="Close menu"
+            onClick={onCloseMenu}
+          />
+          <div className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-lg border border-[var(--app-border-ui)] bg-[var(--app-surface)] py-1 shadow-lg">
+            <button
+              type="button"
+              className="block w-full px-4 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+              onClick={() => onRequestDelete(row)}
+            >
+              Delete
+            </button>
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 export function ExpensesContent() {
   const searchParams = useSearchParams();
   const workspace = useDashboardWorkspaceAccess();
   const canPay = hasCapability(workspace.capabilities, "pay");
   const locked = !canPay;
   const branchId = searchParams.get("branch") ?? undefined;
-  const { notify, withLoading } = useAuraFeedback();
+  const { notify, withLoading, isLoading } = useAuraFeedback();
 
   const now = useMemo(() => new Date(), []);
   const thisMonthStart = useMemo(() => toIsoDateUtc(startOfMonthUtc(now)), [now]);
@@ -122,6 +185,7 @@ export function ExpensesContent() {
 
   const expensesQuery = useExpensesDashboardQuery(branchId, canPay, range, type, page, pageSize);
   const createExpenseMutation = useCreateExpenseMutation();
+  const deleteExpenseMutation = useDeleteExpenseMutation();
 
   const data = expensesQuery.data;
   const series = useMemo(() => data?.series ?? [], [data?.series]);
@@ -131,6 +195,8 @@ export function ExpensesContent() {
   );
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [openActionsMenuId, setOpenActionsMenuId] = useState<string | null>(null);
+  const [expensePendingDelete, setExpensePendingDelete] = useState<ExpenseRow | null>(null);
   const [newType, setNewType] = useState<"general" | "restocking">("general");
   const [newDate, setNewDate] = useState(todayIso);
   const [newAmount, setNewAmount] = useState("");
@@ -171,6 +237,39 @@ export function ExpensesContent() {
       notify({
         variant: "error",
         title: "Unable to save expense",
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
+    }
+  }
+
+  function isExpenseRowBusy(expenseId: string) {
+    return isLoading(`expense-del-${expenseId}`) || (deleteExpenseMutation.isPending && deleteExpenseMutation.variables === expenseId);
+  }
+
+  function requestExpenseDelete(row: ExpenseRow) {
+    setOpenActionsMenuId(null);
+    setExpensePendingDelete(row);
+  }
+
+  async function confirmExpenseDelete() {
+    if (!expensePendingDelete) return;
+
+    const expenseId = expensePendingDelete.id;
+    const wasLastOnPage = data?.expenses.length === 1;
+
+    try {
+      await withLoading(`expense-del-${expenseId}`, "Deleting expense...", async () => {
+        await deleteExpenseMutation.mutateAsync(expenseId);
+      });
+      setExpensePendingDelete(null);
+      if (wasLastOnPage && page > 1) {
+        setPage((current) => Math.max(1, current - 1));
+      }
+      notify({ variant: "success", title: "Expense deleted", description: "The expense has been removed." });
+    } catch (error) {
+      notify({
+        variant: "error",
+        title: "Unable to delete expense",
         description: error instanceof Error ? error.message : "Please try again.",
       });
     }
@@ -495,15 +594,25 @@ export function ExpensesContent() {
                     key={row.id}
                     className="rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] p-4 shadow-sm"
                   >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <span className="text-xs font-semibold text-[var(--app-text-muted)]">
-                        {row.expenseDate.slice(0, 10)}
-                      </span>
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-bold ${typeColor(row.expenseType).badge}`}
-                      >
-                        {row.expenseType}
-                      </span>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-semibold text-[var(--app-text-muted)]">
+                          {row.expenseDate.slice(0, 10)}
+                        </span>
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-bold ${typeColor(row.expenseType).badge}`}
+                        >
+                          {row.expenseType}
+                        </span>
+                      </div>
+                      <ExpenseRowActions
+                        row={row}
+                        openActionsMenuId={openActionsMenuId}
+                        onToggleMenu={(id) => setOpenActionsMenuId((current) => (current === id ? null : id))}
+                        onCloseMenu={() => setOpenActionsMenuId(null)}
+                        onRequestDelete={requestExpenseDelete}
+                        isRowBusy={isExpenseRowBusy(row.id)}
+                      />
                     </div>
                     <p className="mt-2 font-semibold text-[var(--app-text)]">{row.description}</p>
                     {row.chargeType ? (
@@ -523,6 +632,7 @@ export function ExpensesContent() {
                       <th className="px-5 py-3">Type</th>
                       <th className="px-5 py-3">Description</th>
                       <th className="px-5 py-3 text-right">Amount</th>
+                      <th className="px-5 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--app-border-ui)]">
@@ -548,6 +658,16 @@ export function ExpensesContent() {
                         </td>
                         <td className="px-5 py-4 text-right font-bold text-[var(--app-text)]">
                           {currencyFormatter.format(row.amountCents / 100)}
+                        </td>
+                        <td className="relative px-5 py-4 text-right">
+                          <ExpenseRowActions
+                            row={row}
+                            openActionsMenuId={openActionsMenuId}
+                            onToggleMenu={(id) => setOpenActionsMenuId((current) => (current === id ? null : id))}
+                            onCloseMenu={() => setOpenActionsMenuId(null)}
+                            onRequestDelete={requestExpenseDelete}
+                            isRowBusy={isExpenseRowBusy(row.id)}
+                          />
                         </td>
                       </tr>
                     ))}
@@ -671,6 +791,87 @@ export function ExpensesContent() {
                   onClick={submitManualExpense}
                 >
                   {createExpenseMutation.isPending ? "Saving..." : "Save Expense"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {expensePendingDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+            <div
+              className="w-full max-w-md rounded-2xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] p-6 shadow-xl"
+              role="dialog"
+              aria-labelledby="delete-expense-title"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2
+                    id="delete-expense-title"
+                    className="font-[family-name:var(--font-manrope)] text-xl font-bold text-[var(--app-text)]"
+                  >
+                    Delete expense?
+                  </h2>
+                  <p className="mt-1 text-sm text-[var(--app-text-muted)]">
+                    This action cannot be undone. The expense will be permanently removed.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="rounded-lg p-2 text-[var(--app-text-muted)] hover:bg-[var(--app-surface-muted)] disabled:opacity-50"
+                  onClick={() => setExpensePendingDelete(null)}
+                  disabled={deleteExpenseMutation.isPending}
+                  aria-label="Close delete expense dialog"
+                >
+                  <span className="material-symbols-outlined notranslate">close</span>
+                </button>
+              </div>
+
+              <div className="mt-6 space-y-3 rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface-muted)] p-4 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[var(--app-text-muted)]">Date</span>
+                  <span className="font-semibold text-[var(--app-text)]">
+                    {expensePendingDelete.expenseDate.slice(0, 10)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[var(--app-text-muted)]">Type</span>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-xs font-bold ${typeColor(expensePendingDelete.expenseType).badge}`}
+                  >
+                    {expensePendingDelete.expenseType}
+                  </span>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <span className="shrink-0 text-[var(--app-text-muted)]">Description</span>
+                  <span className="text-right font-semibold text-[var(--app-text)]">
+                    {expensePendingDelete.description}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3 border-t border-[var(--app-border-ui)] pt-3">
+                  <span className="text-[var(--app-text-muted)]">Amount</span>
+                  <span className="font-bold text-[var(--app-text)]">
+                    {currencyFormatter.format(expensePendingDelete.amountCents / 100)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  className="rounded-xl border border-[var(--app-border-ui)] px-4 py-2.5 text-sm font-semibold text-[var(--app-text)] disabled:opacity-50"
+                  onClick={() => setExpensePendingDelete(null)}
+                  disabled={deleteExpenseMutation.isPending}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:opacity-50"
+                  disabled={deleteExpenseMutation.isPending}
+                  onClick={() => void confirmExpenseDelete()}
+                >
+                  {deleteExpenseMutation.isPending ? "Deleting..." : "Delete"}
                 </button>
               </div>
             </div>
