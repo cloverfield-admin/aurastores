@@ -14,6 +14,8 @@ import type { CreateSaleInput } from "@/lib/validation/sales";
 export const salesDashboardQueryKey = ["sales", "dashboard"] as const;
 export const salesCatalogQueryKey = ["sales", "catalog"] as const;
 export const salesRecentQueryKey = ["sales", "recent"] as const;
+export const salesDetailQueryKey = ["sales", "detail"] as const;
+export const salesSoldItemsQueryKey = ["sales", "sold-items"] as const;
 
 export type SalesDateRangeInput = {
   start: string; // YYYY-MM-DD
@@ -81,6 +83,72 @@ export type SalesRecentSalesResponse = {
     createdAt: string;
     totalCents: number;
   }>;
+};
+
+export type SalesDetailResponse = {
+  id: string;
+  saleNumber: string;
+  status: string;
+  paymentStatus: string;
+  patientName: string | null;
+  branchName: string;
+  servedByName: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  subtotalCents: number;
+  taxCents: number;
+  discountCents: number;
+  totalCents: number;
+  items: Array<{
+    id: string;
+    productName: string;
+    description: string;
+    batchNumber: string | null;
+    quantity: number;
+    unitPriceCents: number;
+    lineSubtotalCents: number;
+    lineTotalCents: number;
+  }>;
+  payments: Array<{
+    id: string;
+    method: string;
+    status: string;
+    reference: string | null;
+    amountCents: number;
+    paidAt: string | null;
+  }>;
+};
+
+export type DeleteSaleResponse = {
+  id: string;
+  saleNumber: string;
+  restoredItemCount: number;
+};
+
+export type SalesSoldItemsResponse = {
+  branch: {
+    id: string;
+    name: string;
+  };
+  branches: SalesBranch[];
+  items: Array<{
+    id: string;
+    saleId: string;
+    saleNumber: string;
+    soldAt: string;
+    productName: string;
+    quantity: number;
+    unitPriceCents: number;
+    lineTotalCents: number;
+    paymentMethod: string | null;
+    customerName: string | null;
+  }>;
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
 };
 
 export type SalesCatalogResponse = {
@@ -179,6 +247,44 @@ export function useSalesRecentSalesQuery(branchId?: string, enabled = true) {
   });
 }
 
+export function useSalesDetailQuery(saleId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: [...salesDetailQueryKey, { saleId }],
+    queryFn: () =>
+      fetchJson<SalesDetailResponse>(apiUrl(`/sales/${encodeURIComponent(saleId as string)}`), {
+        method: "GET",
+      }),
+    enabled: enabled && Boolean(saleId),
+  });
+}
+
+export function useSalesSoldItemsQuery(
+  branchId: string | undefined,
+  enabled = true,
+  range?: SalesDateRangeInput,
+  page = 1,
+  pageSize = 20,
+) {
+  return useQuery({
+    queryKey: [...salesSoldItemsQueryKey, { branchId, start: range?.start, end: range?.end, page, pageSize }],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      params.set("branch", branchId ?? "");
+      params.set("page", String(page));
+      params.set("pageSize", String(pageSize));
+      if (range?.start && range?.end) {
+        params.set("start", range.start);
+        params.set("end", range.end);
+      }
+      return fetchJson<SalesSoldItemsResponse>(`${apiUrl("/sales/sold-items")}?${params.toString()}`, {
+        method: "GET",
+      });
+    },
+    enabled,
+    placeholderData: (previousData) => previousData,
+  });
+}
+
 export function useSalesCatalogQuery(branchId?: string, enabled = true) {
   return useQuery({
     queryKey: [...salesCatalogQueryKey, { branchId }],
@@ -254,6 +360,30 @@ export function useCreateSaleMutation() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: salesDashboardQueryKey }),
+        queryClient.invalidateQueries({ queryKey: salesRecentQueryKey }),
+        queryClient.invalidateQueries({ queryKey: salesSoldItemsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: salesCatalogQueryKey }),
+        queryClient.invalidateQueries({ queryKey: ["stock", "dashboard"] }),
+        queryClient.invalidateQueries({ queryKey: appMeQueryKey }),
+      ]);
+    },
+  });
+}
+
+export function useDeleteSaleMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (saleId: string) =>
+      fetchJson<DeleteSaleResponse>(apiUrl(`/sales/${encodeURIComponent(saleId)}`), {
+        method: "DELETE",
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: salesDashboardQueryKey }),
+        queryClient.invalidateQueries({ queryKey: salesRecentQueryKey }),
+        queryClient.invalidateQueries({ queryKey: salesDetailQueryKey }),
+        queryClient.invalidateQueries({ queryKey: salesSoldItemsQueryKey }),
         queryClient.invalidateQueries({ queryKey: salesCatalogQueryKey }),
         queryClient.invalidateQueries({ queryKey: ["stock", "dashboard"] }),
         queryClient.invalidateQueries({ queryKey: appMeQueryKey }),
@@ -280,6 +410,8 @@ export function useStartSaleMobileMoneyMutation() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: salesDashboardQueryKey }),
+        queryClient.invalidateQueries({ queryKey: salesRecentQueryKey }),
+        queryClient.invalidateQueries({ queryKey: salesSoldItemsQueryKey }),
         queryClient.invalidateQueries({ queryKey: salesCatalogQueryKey }),
         queryClient.invalidateQueries({ queryKey: ["stock", "dashboard"] }),
         queryClient.invalidateQueries({ queryKey: appMeQueryKey }),

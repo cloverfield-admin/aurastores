@@ -62,6 +62,69 @@ export type SalesRecentSalesData = Array<{
   totalCents: number;
 }>;
 
+export type SalesDetailData = {
+  id: string;
+  saleNumber: string;
+  status: string;
+  paymentStatus: string;
+  patientName: string | null;
+  branchName: string;
+  servedByName: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  subtotalCents: number;
+  taxCents: number;
+  discountCents: number;
+  totalCents: number;
+  items: Array<{
+    id: string;
+    productName: string;
+    description: string;
+    batchNumber: string | null;
+    quantity: number;
+    unitPriceCents: number;
+    lineSubtotalCents: number;
+    lineTotalCents: number;
+  }>;
+  payments: Array<{
+    id: string;
+    method: string;
+    status: string;
+    reference: string | null;
+    amountCents: number;
+    paidAt: string | null;
+  }>;
+};
+
+export type SalesSoldItemsData = {
+  branch: SalesBranchContext;
+  branches: SalesBranchOption[];
+  items: Array<{
+    id: string;
+    saleId: string;
+    saleNumber: string;
+    soldAt: string;
+    productName: string;
+    quantity: number;
+    unitPriceCents: number;
+    lineTotalCents: number;
+    paymentMethod: string | null;
+    customerName: string | null;
+  }>;
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+};
+
+export type DeleteSaleResult = {
+  id: string;
+  saleNumber: string;
+  restoredItemCount: number;
+};
+
 export type SalesDateRange = {
   start: Date;
   end: Date;
@@ -96,6 +159,12 @@ export type CreateSaleResult = {
 export interface SalesRepository {
   getDashboard(context: AuthContext, branchId?: string, range?: SalesDateRange): Promise<SalesDashboardData>;
   getRecentSales(context: AuthContext, branchId?: string): Promise<SalesRecentSalesData>;
+  getSaleById(context: AuthContext, saleId: string): Promise<SalesDetailData | null>;
+  getSoldItems(
+    context: AuthContext,
+    options?: { branchId?: string; range?: SalesDateRange; page?: number; pageSize?: number },
+  ): Promise<SalesSoldItemsData>;
   getCatalog(context: AuthContext, branchId?: string, q?: string): Promise<SalesCatalogData>;
   createSale(context: AuthContext, input: CreateSaleInput): Promise<CreateSaleResult>;
+  deleteSale(context: AuthContext, saleId: string): Promise<DeleteSaleResult>;
 }
