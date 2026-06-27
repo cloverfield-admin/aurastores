@@ -7,7 +7,14 @@ import { DashboardDateRangeMenu } from "@/components/dashboard/dashboard-date-ra
 import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
 import { LockedCapabilityTease } from "@/components/dashboard/locked-capability-tease";
-import { type SalesDateRangeInput, useSalesDashboardQuery, useSalesRecentSalesQuery } from "@/lib/queries/sales";
+import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
+import {
+  type SalesDateRangeInput,
+  useDeleteSaleMutation,
+  useSalesDashboardQuery,
+  useSalesDetailQuery,
+  useSalesRecentSalesQuery,
+} from "@/lib/queries/sales";
 import { useAppMeQuery } from "@/lib/queries/staff";
 import { ROUTES } from "@/lib/routes";
 import { hasCapability } from "@/lib/rbac/capabilities";
@@ -51,6 +58,25 @@ function formatRelativeTime(isoString: string) {
 
   const diffDays = Math.round(diffHours / 24);
   return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
+}
+
+function formatDateTime(isoString: string | null) {
+  if (!isoString) {
+    return "—";
+  }
+  return new Date(isoString).toLocaleString("en-ZM", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function formatEnumLabel(value: string) {
+  return value
+    .split("_")
+    .join(" ")
+    .split("-")
+    .join(" ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function formatSignedPct(value: number) {
@@ -188,12 +214,16 @@ function TrendSparkline({
 
 export function SalesPerformanceContent() {
   const searchParams = useSearchParams();
+  const { notify, withLoading } = useAuraFeedback();
   const workspace = useDashboardWorkspaceAccess();
   const canSales = hasCapability(workspace.capabilities, "sales");
   const locked = !canSales;
   const meQuery = useAppMeQuery();
   const branch = searchParams.get("branch") ?? undefined;
   const addSaleHref = branch ? `${ROUTES.dashboard.salesAdd}?branch=${branch}` : ROUTES.dashboard.salesAdd;
+  const unitsSoldHref = branch
+    ? `${ROUTES.dashboard.salesUnitsSold}?branch=${encodeURIComponent(branch)}`
+    : ROUTES.dashboard.salesUnitsSold;
 
   const todayUtc = useMemo(() => {
     const now = new Date();
@@ -208,11 +238,15 @@ export function SalesPerformanceContent() {
   const [range, setRange] = useState<SalesDateRangeInput>(thisMonthRange);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [exportingFormat, setExportingFormat] = useState<null | "csv" | "xlsx" | "pdf">(null);
+  const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const rangeDays = useMemo(() => daysBetweenInclusiveUtc(range.start, range.end), [range.end, range.start]);
 
   const salesDashboardQuery = useSalesDashboardQuery(branch, canSales, range);
   const salesRecentQuery = useSalesRecentSalesQuery(branch, canSales);
+  const saleDetailQuery = useSalesDetailQuery(selectedSaleId, canSales && Boolean(selectedSaleId));
+  const deleteSaleMutation = useDeleteSaleMutation();
 
   const salesLimit = meQuery.data?.entitlements?.limits?.salesTransactions ?? null;
   const salesUsage = meQuery.data?.usage?.salesTransactions ?? null;
@@ -283,20 +317,21 @@ export function SalesPerformanceContent() {
       icon: "trending_up",
     },
     {
-      label: "Total Orders",
-      value: (metrics?.totalSalesCount ?? 0).toLocaleString(),
-      sub: `Avg. order ${currencyFormatter.format((metrics?.averageOrderValueCents ?? 0) / 100)}`,
-      badge: "Live",
-      badgeClass: "bg-[#f0fdfa] text-[var(--app-link-teal)]",
-      icon: "receipt_long",
-    },
-    {
       label: "Units Sold",
       value: (metrics?.unitsSoldLast30Days ?? 0).toLocaleString(),
       sub: `Total dispensed in the last ${rangeDays} days`,
       badge: `${rangeDays}d`,
       badgeClass: "bg-[#eff6ff] text-[#2563eb]",
       icon: "inventory_2",
+      href: unitsSoldHref,
+    },
+    {
+      label: "Total Orders",
+      value: (metrics?.totalSalesCount ?? 0).toLocaleString(),
+      sub: `Avg. order ${currencyFormatter.format((metrics?.averageOrderValueCents ?? 0) / 100)}`,
+      badge: "Live",
+      badgeClass: "bg-[#f0fdfa] text-[var(--app-link-teal)]",
+      icon: "receipt_long",
     },
   ] as const;
 
@@ -320,6 +355,33 @@ export function SalesPerformanceContent() {
     metrics && previousUnitsSoldLast30Days > 0
       ? ((metrics.unitsSoldLast30Days - previousUnitsSoldLast30Days) / previousUnitsSoldLast30Days) * 100
       : 0;
+
+  const selectedSale = saleDetailQuery.data ?? null;
+
+  const handleDeleteSelectedSale = async () => {
+    if (!selectedSale) {
+      return;
+    }
+
+    try {
+      const result = await withLoading("sales-delete-sale", "Deleting sale and restoring stock...", () =>
+        deleteSaleMutation.mutateAsync(selectedSale.id),
+      );
+      notify({
+        variant: "success",
+        title: "Sale deleted",
+        description: `${result.saleNumber} was deleted and ${result.restoredItemCount} item${result.restoredItemCount === 1 ? "" : "s"} restored to stock.`,
+      });
+      setDeleteDialogOpen(false);
+      setSelectedSaleId(null);
+    } catch (error) {
+      notify({
+        variant: "error",
+        title: "Unable to delete sale",
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
+    }
+  };
 
   const content = (
     <div className="relative px-4 pb-24 sm:px-6 lg:px-8">
@@ -412,30 +474,41 @@ export function SalesPerformanceContent() {
 
         {/* KPI row */}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {SALES_KPIS.map((m) => (
-            <article
-              key={m.label}
-              className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-sm"
-            >
-              <div className="mb-4 flex items-start justify-between">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-[var(--app-surface-subtle)]">
-                  <span className="material-symbols-outlined notranslate text-xl text-[var(--app-text-muted)]">
-                    {m.icon}
-                  </span>
+          {SALES_KPIS.map((m) => {
+            const card = (
+              <article
+                className={`rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-6 shadow-sm ${
+                  "href" in m
+                    ? "transition hover:-translate-y-0.5 hover:border-[var(--app-brand)] hover:shadow-md"
+                    : ""
+                }`}
+              >
+                <div className="mb-4 flex items-start justify-between">
+                  <div className="flex size-9 items-center justify-center rounded-lg bg-[var(--app-surface-subtle)]">
+                    <span className="material-symbols-outlined notranslate text-xl text-[var(--app-text-muted)]">
+                      {m.icon}
+                    </span>
+                  </div>
+                  <span className={`rounded-full px-2 py-1 text-xs font-semibold ${m.badgeClass}`}>{m.badge}</span>
                 </div>
-                <span className={`rounded-full px-2 py-1 text-xs font-semibold ${m.badgeClass}`}>
-                  {m.badge}
-                </span>
-              </div>
-              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--app-text-secondary)]">
-                {m.label}
-              </p>
-              <p className="mt-1 font-[family-name:var(--font-manrope)] text-2xl font-extrabold text-[var(--app-text)]">
-                {m.value}
-              </p>
-              <p className="mt-2 text-[10px] text-[var(--app-text-faint)]">{m.sub}</p>
-            </article>
-          ))}
+                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--app-text-secondary)]">
+                  {m.label}
+                </p>
+                <p className="mt-1 font-[family-name:var(--font-manrope)] text-2xl font-extrabold text-[var(--app-text)]">
+                  {m.value}
+                </p>
+                <p className="mt-2 text-[10px] text-[var(--app-text-faint)]">{m.sub}</p>
+              </article>
+            );
+
+            return "href" in m ? (
+              <Link key={m.label} href={m.href} className="block rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--app-brand)]/20">
+                {card}
+              </Link>
+            ) : (
+              <div key={m.label}>{card}</div>
+            );
+          })}
         </div>
 
         {/* Main content grid */}
@@ -599,7 +672,7 @@ export function SalesPerformanceContent() {
                     Recent Transactions
                   </h2>
                   <Link
-                    href="#"
+                    href={ROUTES.dashboard.pay}
                     className="text-xs font-semibold text-[var(--app-link-teal)] underline decoration-[rgba(20,184,166,0.3)] hover:text-[var(--app-link-teal)]"
                   >
                     View All
@@ -609,26 +682,33 @@ export function SalesPerformanceContent() {
                   {RECENT_TXS.map((tx) => (
                     <li
                       key={tx.id}
-                      className="flex items-center justify-between rounded-lg bg-[var(--app-surface-muted)] px-4 py-3"
+                      className="rounded-lg bg-[var(--app-surface-muted)]"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="flex size-8 items-center justify-center rounded-lg bg-[#e0f2fe]">
-                          <span className="material-symbols-outlined notranslate text-base text-[#0369a1]">
-                            receipt_long
-                          </span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSaleId(tx.id)}
+                        className="flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 text-left transition hover:bg-[var(--app-surface-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--app-brand)]/20"
+                        aria-label={`Open details for sale ${tx.saleNumber}`}
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#e0f2fe]">
+                            <span className="material-symbols-outlined notranslate text-base text-[#0369a1]">
+                              receipt_long
+                            </span>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-[var(--app-text)]">
+                              {tx.patientName ?? "Walk-in Customer"}
+                            </p>
+                            <p className="truncate text-[10px] text-[var(--app-text-faint)]">
+                              {formatRelativeTime(tx.createdAt)} · {tx.saleNumber}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-semibold text-[var(--app-text)]">
-                            {tx.patientName ?? "Walk-in Customer"}
-                          </p>
-                          <p className="text-[10px] text-[var(--app-text-faint)]">
-                            {formatRelativeTime(tx.createdAt)} · {tx.saleNumber}
-                          </p>
-                        </div>
-                      </div>
-                      <p className="text-sm font-bold text-[var(--app-text)]">
-                        {currencyFormatter.format(tx.totalCents / 100)}
-                      </p>
+                        <p className="shrink-0 text-sm font-bold text-[var(--app-text)]">
+                          {currencyFormatter.format(tx.totalCents / 100)}
+                        </p>
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -665,12 +745,6 @@ export function SalesPerformanceContent() {
                   </li>
                 ))}
               </ul>
-              <button
-                type="button"
-                className="mt-4 w-full rounded-lg border border-[var(--app-border-ui)] bg-[var(--app-surface)] py-2.5 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-surface-muted)]"
-              >
-                Download Full Inventory Report
-              </button>
             </section>
 
             {/* Branch Distribution */}
@@ -729,6 +803,224 @@ export function SalesPerformanceContent() {
           </div>
         </footer>
       </div>
+
+      {selectedSaleId ? (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-[var(--app-surface)] p-5 shadow-xl sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--app-text-faint)]">
+                  Sale Details
+                </p>
+                <h2 className="mt-1 font-[family-name:var(--font-manrope)] text-xl font-extrabold text-[var(--app-text)]">
+                  {selectedSale?.saleNumber ?? "Loading sale..."}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedSaleId(null)}
+                className="rounded-xl p-2 text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface-muted)] hover:text-[var(--app-text)]"
+                aria-label="Close sale details"
+              >
+                <span className="material-symbols-outlined notranslate text-xl">close</span>
+              </button>
+            </div>
+
+            {saleDetailQuery.isLoading ? (
+              <div className="mt-6 rounded-xl bg-[var(--app-surface-muted)] p-5 text-sm text-[var(--app-text-muted)]">
+                Loading sale details...
+              </div>
+            ) : saleDetailQuery.isError ? (
+              <div className="mt-6 rounded-xl border border-[#fecaca] bg-[#fff7f7] p-5 text-sm text-[#ba1a1a]">
+                {saleDetailQuery.error instanceof Error ? saleDetailQuery.error.message : "Unable to load sale details."}
+              </div>
+            ) : selectedSale ? (
+              <div className="mt-6 space-y-6">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-xl bg-[var(--app-surface-muted)] p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--app-text-faint)]">
+                      Customer
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-[var(--app-text)]">
+                      {selectedSale.patientName ?? "Walk-in Customer"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-[var(--app-surface-muted)] p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--app-text-faint)]">
+                      Branch
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-[var(--app-text)]">{selectedSale.branchName}</p>
+                  </div>
+                  <div className="rounded-xl bg-[var(--app-surface-muted)] p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--app-text-faint)]">
+                      Status
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-[var(--app-text)]">
+                      {formatEnumLabel(selectedSale.status)} · {formatEnumLabel(selectedSale.paymentStatus)}
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-[var(--app-surface-muted)] p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--app-text-faint)]">
+                      Completed
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-[var(--app-text)]">
+                      {formatDateTime(selectedSale.completedAt ?? selectedSale.createdAt)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-[var(--app-border-ui)]">
+                  <table className="w-full min-w-[640px] border-collapse text-left">
+                    <thead className="bg-[var(--app-surface-muted)]">
+                      <tr>
+                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
+                          Item
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
+                          Qty
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
+                          Unit
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.06em] text-[var(--app-text-faint)]">
+                          Total
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedSale.items.map((item) => (
+                        <tr key={item.id} className="border-t border-[var(--app-border-ui)]">
+                          <td className="px-4 py-3">
+                            <p className="text-sm font-semibold text-[var(--app-text)]">{item.productName}</p>
+                            <p className="text-[11px] text-[var(--app-text-faint)]">
+                              {item.batchNumber ? `Batch ${item.batchNumber}` : item.description}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3 text-right text-sm text-[var(--app-text)]">{item.quantity}</td>
+                          <td className="px-4 py-3 text-right text-sm text-[var(--app-text)]">
+                            {currencyFormatter.format(item.unitPriceCents / 100)}
+                          </td>
+                          <td className="px-4 py-3 text-right text-sm font-semibold text-[var(--app-text)]">
+                            {currencyFormatter.format(item.lineTotalCents / 100)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl border border-[var(--app-border-ui)] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--app-text-faint)]">
+                      Payment
+                    </p>
+                    <div className="mt-3 space-y-2">
+                      {selectedSale.payments.map((payment) => (
+                        <div key={payment.id} className="flex justify-between gap-3 text-sm">
+                          <span className="text-[var(--app-text-muted)]">
+                            {formatEnumLabel(payment.method)} · {formatEnumLabel(payment.status)}
+                          </span>
+                          <span className="font-semibold text-[var(--app-text)]">
+                            {currencyFormatter.format(payment.amountCents / 100)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-[var(--app-border-ui)] p-4">
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-[var(--app-text-muted)]">Subtotal</span>
+                        <span className="font-medium text-[var(--app-text)]">
+                          {currencyFormatter.format(selectedSale.subtotalCents / 100)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[var(--app-text-muted)]">Tax</span>
+                        <span className="font-medium text-[var(--app-text)]">
+                          {currencyFormatter.format(selectedSale.taxCents / 100)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-t border-[var(--app-border-ui)] pt-2">
+                        <span className="font-semibold text-[var(--app-text)]">Total</span>
+                        <span className="font-bold text-[var(--app-text)]">
+                          {currencyFormatter.format(selectedSale.totalCents / 100)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col-reverse gap-3 border-t border-[var(--app-border-ui)] pt-5 sm:flex-row sm:items-center sm:justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteDialogOpen(true)}
+                    disabled={deleteSaleMutation.isPending}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#fecaca] px-4 py-2.5 text-sm font-semibold text-[#b91c1c] transition hover:bg-[#fff1f2] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <span className="material-symbols-outlined notranslate text-lg">delete</span>
+                    Delete Sale
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSaleId(null)}
+                    className="rounded-xl bg-[var(--app-brand)] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-95"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {deleteDialogOpen && selectedSale ? (
+        <div
+          className="fixed inset-0 z-[140] flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-sale-dialog-title"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] p-5 shadow-xl sm:p-6">
+            <div className="flex items-start gap-3">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#fee2e2] text-[#b91c1c]">
+                <span className="material-symbols-outlined notranslate text-xl">delete</span>
+              </div>
+              <div className="min-w-0">
+                <h3 id="delete-sale-dialog-title" className="font-[family-name:var(--font-manrope)] text-lg font-extrabold text-[var(--app-text)]">
+                  Delete sale?
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--app-text-muted)]">
+                  {selectedSale.saleNumber} will be deleted, and all sold product quantities from this sale will be
+                  restored to stock.
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setDeleteDialogOpen(false)}
+                disabled={deleteSaleMutation.isPending}
+                className="rounded-xl border border-[var(--app-border-ui)] px-4 py-2.5 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-surface-muted)] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteSelectedSale}
+                disabled={deleteSaleMutation.isPending}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#b91c1c] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#991b1b] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="material-symbols-outlined notranslate text-lg">
+                  {deleteSaleMutation.isPending ? "progress_activity" : "delete"}
+                </span>
+                Delete Sale
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 

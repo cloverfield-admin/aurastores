@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, sql, or, ilike } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql, or, ilike, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   branches,
@@ -11,6 +11,7 @@ import {
   products,
   saleItems,
   sales,
+  users,
   walletAccounts,
   walletLedgerEntries,
 } from "@/lib/db/schema";
@@ -18,14 +19,17 @@ import type { CreateSaleInput } from "@/lib/validation/sales";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 import { assertWithinLimit } from "@/lib/billing/entitlements";
 import { utcMonthRangeForInstant } from "@/lib/dates/utc-month-range";
-import { computeExcessRestockingCents, computeGrossProfitCents } from "@/lib/finance/gross-profit";
-import { filterBranchesForContext } from "@/lib/rbac/branch-access";
+import { computeGrossProfitCents } from "@/lib/finance/gross-profit";
+import { assertBranchAllowedForContext, filterBranchesForContext } from "@/lib/rbac/branch-access";
 import type {
+  DeleteSaleResult,
   SalesCatalogData,
   SalesDashboardData,
+  SalesDetailData,
   SalesDateRange,
   SalesRecentSalesData,
   SalesRepository,
+  SalesSoldItemsData,
 } from "@/lib/repositories/sales/sales.repository";
 
 type ResolvedBranch = Pick<typeof branches.$inferSelect, "id" | "name" | "isPrimary">;
@@ -485,6 +489,192 @@ export class SalesRepositoryImpl implements SalesRepository {
       createdAt: row.createdAt.toISOString(),
       totalCents: row.totalCents,
     }));
+  }
+
+  async getSaleById(context: AuthContext, saleId: string): Promise<SalesDetailData | null> {
+    const saleRows = await db
+      .select({
+        id: sales.id,
+        saleNumber: sales.saleNumber,
+        branchId: sales.branchId,
+        branchName: branches.name,
+        status: sales.status,
+        paymentStatus: sales.paymentStatus,
+        patientName: patients.fullName,
+        servedByName: users.fullName,
+        subtotalCents: sales.subtotalCents,
+        taxCents: sales.taxCents,
+        discountCents: sales.discountCents,
+        totalCents: sales.totalCents,
+        createdAt: sales.createdAt,
+        completedAt: sales.completedAt,
+      })
+      .from(sales)
+      .innerJoin(branches, eq(branches.id, sales.branchId))
+      .leftJoin(patients, eq(patients.id, sales.patientId))
+      .leftJoin(users, eq(users.id, sales.servedByUserId))
+      .where(and(eq(sales.id, saleId), eq(sales.organizationId, context.organization.id)))
+      .limit(1);
+
+    const sale = saleRows[0];
+    if (!sale) {
+      return null;
+    }
+
+    assertBranchAllowedForContext(context, sale.branchId);
+
+    const [itemRows, paymentRows] = await Promise.all([
+      db
+        .select({
+          id: saleItems.id,
+          productName: products.name,
+          description: saleItems.description,
+          batchNumber: inventoryBatches.batchNumber,
+          quantity: saleItems.quantity,
+          unitPriceCents: saleItems.unitPriceCents,
+          lineSubtotalCents: saleItems.lineSubtotalCents,
+          lineTotalCents: saleItems.lineTotalCents,
+        })
+        .from(saleItems)
+        .leftJoin(products, eq(products.id, saleItems.productId))
+        .leftJoin(inventoryBatches, eq(inventoryBatches.id, saleItems.batchId))
+        .where(eq(saleItems.saleId, sale.id)),
+      db
+        .select({
+          id: payments.id,
+          method: payments.method,
+          status: payments.status,
+          reference: payments.reference,
+          amountCents: payments.amountCents,
+          paidAt: payments.paidAt,
+        })
+        .from(payments)
+        .where(eq(payments.saleId, sale.id)),
+    ]);
+
+    return {
+      id: sale.id,
+      saleNumber: sale.saleNumber,
+      status: sale.status,
+      paymentStatus: sale.paymentStatus,
+      patientName: sale.patientName,
+      branchName: sale.branchName,
+      servedByName: sale.servedByName,
+      createdAt: sale.createdAt.toISOString(),
+      completedAt: sale.completedAt?.toISOString() ?? null,
+      subtotalCents: sale.subtotalCents,
+      taxCents: sale.taxCents,
+      discountCents: sale.discountCents,
+      totalCents: sale.totalCents,
+      items: itemRows.map((item) => ({
+        id: item.id,
+        productName: item.productName ?? item.description,
+        description: item.description,
+        batchNumber: item.batchNumber,
+        quantity: item.quantity,
+        unitPriceCents: item.unitPriceCents,
+        lineSubtotalCents: item.lineSubtotalCents,
+        lineTotalCents: item.lineTotalCents,
+      })),
+      payments: paymentRows.map((payment) => ({
+        id: payment.id,
+        method: payment.method,
+        status: payment.status,
+        reference: payment.reference,
+        amountCents: payment.amountCents,
+        paidAt: payment.paidAt?.toISOString() ?? null,
+      })),
+    };
+  }
+
+  async getSoldItems(
+    context: AuthContext,
+    options: { branchId?: string; range?: SalesDateRange; page?: number; pageSize?: number } = {},
+  ): Promise<SalesSoldItemsData> {
+    const { branch, branchOptions } = await resolveBranchContext(context, options.branchId);
+    const endInclusive = normalizeDate(options.range?.end ?? startOfTodayUtc());
+    const startInclusive = normalizeDate(options.range?.start ?? endInclusive);
+    const endExclusive = addDaysUtc(endInclusive, 1);
+    const startIso = startInclusive.toISOString();
+    const endExclusiveIso = endExclusive.toISOString();
+    const pageSize = clampPageSize(options.pageSize, 20);
+    const page = Math.max(1, Math.floor(options.page ?? 1));
+    const offset = (page - 1) * pageSize;
+    const conditions: SQL[] = [
+      eq(sales.organizationId, context.organization.id),
+      eq(sales.branchId, branch.id),
+      eq(sales.status, "completed"),
+      sql`${sales.createdAt} >= ${startIso}::timestamptz`,
+      sql`${sales.createdAt} < ${endExclusiveIso}::timestamptz`,
+    ];
+
+    const [totalRows, itemRows] = await Promise.all([
+      db
+        .select({ value: count() })
+        .from(saleItems)
+        .innerJoin(sales, eq(saleItems.saleId, sales.id))
+        .where(and(...conditions)),
+      db
+        .select({
+          id: saleItems.id,
+          saleId: sales.id,
+          saleNumber: sales.saleNumber,
+          soldAt: sales.createdAt,
+          productName: sql<string>`coalesce(${products.name}, ${saleItems.description})`,
+          quantity: saleItems.quantity,
+          unitPriceCents: saleItems.unitPriceCents,
+          lineTotalCents: saleItems.lineTotalCents,
+          paymentMethod: sql<string | null>`(
+            select ${payments.method}
+            from ${payments}
+            where ${payments.saleId} = ${sales.id}
+            order by ${payments.createdAt} asc
+            limit 1
+          )`,
+          customerName: patients.fullName,
+        })
+        .from(saleItems)
+        .innerJoin(sales, eq(saleItems.saleId, sales.id))
+        .leftJoin(products, eq(products.id, saleItems.productId))
+        .leftJoin(patients, eq(patients.id, sales.patientId))
+        .where(and(...conditions))
+        .orderBy(desc(sales.createdAt), asc(products.name), asc(saleItems.description))
+        .limit(pageSize)
+        .offset(offset),
+    ]);
+
+    const totalItems = Number(totalRows[0]?.value ?? 0);
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+    return {
+      branch: {
+        id: branch.id,
+        name: branch.name,
+      },
+      branches: branchOptions.map((branchOption) => ({
+        id: branchOption.id,
+        name: branchOption.name,
+        isPrimary: branchOption.isPrimary,
+      })),
+      items: itemRows.map((item) => ({
+        id: item.id,
+        saleId: item.saleId,
+        saleNumber: item.saleNumber,
+        soldAt: item.soldAt.toISOString(),
+        productName: item.productName,
+        quantity: item.quantity,
+        unitPriceCents: item.unitPriceCents,
+        lineTotalCents: item.lineTotalCents,
+        paymentMethod: item.paymentMethod,
+        customerName: item.customerName,
+      })),
+      pagination: {
+        page,
+        pageSize,
+        totalItems,
+        totalPages,
+      },
+    };
   }
 
   async getCatalog(context: AuthContext, branchId?: string, q?: string): Promise<SalesCatalogData> {
@@ -949,6 +1139,189 @@ export class SalesRepositoryImpl implements SalesRepository {
         saleNumber: sale.saleNumber,
         status: sale.status,
         totalCents: sale.totalCents,
+      };
+    });
+  }
+
+  async deleteSale(context: AuthContext, saleId: string): Promise<DeleteSaleResult> {
+    return db.transaction(async (tx) => {
+      const saleRows = await tx
+        .select({
+          id: sales.id,
+          saleNumber: sales.saleNumber,
+          branchId: sales.branchId,
+          status: sales.status,
+        })
+        .from(sales)
+        .where(and(eq(sales.id, saleId), eq(sales.organizationId, context.organization.id)))
+        .limit(1);
+
+      const sale = saleRows[0];
+      if (!sale) {
+        throw new Error("Sale not found.");
+      }
+
+      assertBranchAllowedForContext(context, sale.branchId);
+
+      const itemRows = await tx
+        .select({
+          productId: saleItems.productId,
+          batchId: saleItems.batchId,
+          quantity: saleItems.quantity,
+          unitOrderPriceCents: inventoryBatches.unitOrderPriceCents,
+          batchStatus: inventoryBatches.status,
+          batchExpiresAt: inventoryBatches.expiresAt,
+          quantityAvailable: inventoryBatches.quantityAvailable,
+        })
+        .from(saleItems)
+        .leftJoin(inventoryBatches, eq(inventoryBatches.id, saleItems.batchId))
+        .where(eq(saleItems.saleId, sale.id));
+
+      const restorableItems = itemRows.filter(
+        (item): item is typeof item & {
+          productId: string;
+          batchId: string;
+          unitOrderPriceCents: number;
+          batchStatus: string;
+          batchExpiresAt: string | Date;
+          quantityAvailable: number;
+        } => Boolean(item.productId && item.batchId),
+      );
+
+      if (sale.status === "completed" && restorableItems.length > 0) {
+        const today = startOfTodayUtc();
+        const restoreByBatch = new Map<
+          string,
+          {
+            productId: string;
+            quantity: number;
+            unitOrderPriceCents: number;
+            batchStatus: string;
+            batchExpiresAt: string | Date;
+            quantityAvailable: number;
+          }
+        >();
+
+        for (const item of restorableItems) {
+          const existing = restoreByBatch.get(item.batchId);
+          if (existing) {
+            existing.quantity += item.quantity;
+          } else {
+            restoreByBatch.set(item.batchId, {
+              productId: item.productId,
+              quantity: item.quantity,
+              unitOrderPriceCents: item.unitOrderPriceCents,
+              batchStatus: item.batchStatus,
+              batchExpiresAt: item.batchExpiresAt,
+              quantityAvailable: item.quantityAvailable,
+            });
+          }
+        }
+
+        for (const [batchId, item] of restoreByBatch) {
+          const nextQuantity = item.quantityAvailable + item.quantity;
+          await tx
+            .update(inventoryBatches)
+            .set({
+              quantityAvailable: nextQuantity,
+              status: deriveBatchStatus(item.batchStatus, item.batchExpiresAt, nextQuantity, today),
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(inventoryBatches.id, batchId),
+                eq(inventoryBatches.organizationId, context.organization.id),
+                eq(inventoryBatches.branchId, sale.branchId),
+              ),
+            );
+        }
+
+        await tx.insert(inventoryTransactions).values(
+          restorableItems.map((item) => ({
+            organizationId: context.organization.id,
+            branchId: sale.branchId,
+            productId: item.productId,
+            batchId: item.batchId,
+            performedByUserId: context.user.id,
+            transactionType: "adjustment" as const,
+            quantityDelta: item.quantity,
+            unitOrderPriceCents: item.unitOrderPriceCents,
+            referenceType: "sale_delete",
+            referenceId: sale.id,
+            note: `Deleted sale ${sale.saleNumber}`,
+          })),
+        );
+      }
+
+      const paymentRows = await tx
+        .select({
+          id: payments.id,
+          method: payments.method,
+          status: payments.status,
+          amountCents: payments.amountCents,
+        })
+        .from(payments)
+        .where(eq(payments.saleId, sale.id));
+
+      const paidWalletPayments = paymentRows.filter(
+        (payment) => payment.status === "paid" && (payment.method === "card" || payment.method === "mobile_money"),
+      );
+      const walletPaymentTotalCents = paidWalletPayments.reduce((sum, payment) => sum + payment.amountCents, 0);
+
+      if (walletPaymentTotalCents > 0) {
+        const [wallet] = await tx
+          .update(walletAccounts)
+          .set({
+            balanceCents: sql`${walletAccounts.balanceCents} - ${walletPaymentTotalCents}`,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(walletAccounts.organizationId, context.organization.id),
+              eq(walletAccounts.branchId, sale.branchId),
+              eq(walletAccounts.status, "active"),
+            ),
+          )
+          .returning();
+
+        if (wallet) {
+          await tx.insert(walletLedgerEntries).values({
+            walletId: wallet.id,
+            organizationId: context.organization.id,
+            branchId: sale.branchId,
+            paymentId: paidWalletPayments[0]?.id,
+            entryType: "refund",
+            sourceMethod: "manual",
+            status: "posted",
+            amountCents: -walletPaymentTotalCents,
+            currency: "ZMW",
+            reference: sale.saleNumber,
+            note: `Deleted sale ${sale.saleNumber}`,
+            metadata: {
+              saleId: sale.id,
+              saleNumber: sale.saleNumber,
+            },
+            postedAt: new Date(),
+          });
+        }
+      }
+
+      await tx
+        .delete(inventoryTransactions)
+        .where(
+          and(
+            eq(inventoryTransactions.organizationId, context.organization.id),
+            eq(inventoryTransactions.referenceType, "sale"),
+            eq(inventoryTransactions.referenceId, sale.id),
+          ),
+        );
+
+      await tx.delete(sales).where(and(eq(sales.id, sale.id), eq(sales.organizationId, context.organization.id)));
+
+      return {
+        id: sale.id,
+        saleNumber: sale.saleNumber,
+        restoredItemCount: sale.status === "completed" ? restorableItems.length : 0,
       };
     });
   }

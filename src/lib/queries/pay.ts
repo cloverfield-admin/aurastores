@@ -3,6 +3,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/api/client";
 import { apiUrl } from "@/lib/api/version";
+import { appMeQueryKey } from "@/lib/queries/staff";
+import {
+  salesCatalogQueryKey,
+  salesDashboardQueryKey,
+  salesDetailQueryKey,
+  salesRecentQueryKey,
+  salesSoldItemsQueryKey,
+} from "@/lib/queries/sales";
 
 export const payDashboardQueryKey = ["pay", "dashboard"] as const;
 export const payTransactionQueryKey = ["pay", "transaction"] as const;
@@ -114,6 +122,13 @@ export type PayTransactionDetailResponse = {
   }>;
 };
 
+export type DeletePayTransactionResponse = {
+  id: string;
+  saleId: string;
+  saleNumber: string;
+  restoredItemCount: number;
+};
+
 export function usePayDashboardQuery(
   branchId?: string,
   enabled = true,
@@ -152,6 +167,30 @@ export function usePayTransactionQuery(paymentId?: string, enabled = true) {
         method: "GET",
       }),
     enabled: enabled && Boolean(paymentId),
+  });
+}
+
+export function useDeletePayTransactionMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (paymentId: string) =>
+      fetchJson<DeletePayTransactionResponse>(apiUrl(`/pay/transactions/${encodeURIComponent(paymentId)}`), {
+        method: "DELETE",
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: payDashboardQueryKey }),
+        queryClient.invalidateQueries({ queryKey: payTransactionQueryKey }),
+        queryClient.invalidateQueries({ queryKey: salesDashboardQueryKey }),
+        queryClient.invalidateQueries({ queryKey: salesRecentQueryKey }),
+        queryClient.invalidateQueries({ queryKey: salesDetailQueryKey }),
+        queryClient.invalidateQueries({ queryKey: salesSoldItemsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: salesCatalogQueryKey }),
+        queryClient.invalidateQueries({ queryKey: ["stock", "dashboard"] }),
+        queryClient.invalidateQueries({ queryKey: appMeQueryKey }),
+      ]);
+    },
   });
 }
 

@@ -1,10 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 import { LockedCapabilityTease } from "@/components/dashboard/locked-capability-tease";
 import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
-import { usePayTransactionQuery, type PayPaymentMethod } from "@/lib/queries/pay";
+import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
+import {
+  useDeletePayTransactionMutation,
+  usePayTransactionQuery,
+  type PayPaymentMethod,
+} from "@/lib/queries/pay";
 import { hasCapability } from "@/lib/rbac/capabilities";
 import { ROUTES } from "@/lib/routes";
 
@@ -42,11 +49,40 @@ function formatDateTime(isoString: string | null) {
 }
 
 export function AuraPayTransactionDetailContent({ paymentId }: { paymentId: string }) {
+  const router = useRouter();
+  const { notify, withLoading } = useAuraFeedback();
   const workspace = useDashboardWorkspaceAccess();
   const canPay = hasCapability(workspace.capabilities, "pay");
   const locked = !canPay;
   const detailQuery = usePayTransactionQuery(paymentId, canPay);
+  const deleteTransactionMutation = useDeletePayTransactionMutation();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const detail = detailQuery.data;
+
+  const handleDeleteTransaction = async () => {
+    if (!detail) {
+      return;
+    }
+
+    try {
+      const result = await withLoading("pay-delete-transaction", "Deleting transaction and restoring stock...", () =>
+        deleteTransactionMutation.mutateAsync(paymentId),
+      );
+      notify({
+        variant: "success",
+        title: "Transaction deleted",
+        description: `${result.saleNumber} was deleted and ${result.restoredItemCount} item${result.restoredItemCount === 1 ? "" : "s"} restored to stock.`,
+      });
+      setDeleteDialogOpen(false);
+      router.push(ROUTES.dashboard.pay);
+    } catch (error) {
+      notify({
+        variant: "error",
+        title: "Unable to delete transaction",
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
+    }
+  };
 
   const content = (
     <div className="relative px-4 pb-24 sm:px-6 lg:px-8">
@@ -69,6 +105,17 @@ export function AuraPayTransactionDetailContent({ paymentId }: { paymentId: stri
                 Payment, sale, and purchased item quantities for this transaction.
               </p>
             </div>
+            {detail ? (
+              <button
+                type="button"
+                onClick={() => setDeleteDialogOpen(true)}
+                disabled={deleteTransactionMutation.isPending}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/15 px-4 py-2.5 text-sm font-semibold text-white ring-1 ring-white/25 transition hover:bg-white/25 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="material-symbols-outlined notranslate text-lg">delete</span>
+                Delete Transaction
+              </button>
+            ) : null}
           </div>
         </div>
 
@@ -264,6 +311,53 @@ export function AuraPayTransactionDetailContent({ paymentId }: { paymentId: stri
           </>
         )}
       </div>
+
+      {deleteDialogOpen && detail ? (
+        <div
+          className="fixed inset-0 z-[140] flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-pay-transaction-dialog-title"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] p-5 shadow-xl sm:p-6">
+            <div className="flex items-start gap-3">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#fee2e2] text-[#b91c1c]">
+                <span className="material-symbols-outlined notranslate text-xl">delete</span>
+              </div>
+              <div className="min-w-0">
+                <h3 id="delete-pay-transaction-dialog-title" className="font-[family-name:var(--font-manrope)] text-lg font-extrabold text-[var(--app-text)]">
+                  Delete transaction?
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--app-text-muted)]">
+                  {detail.sale.saleNumber} will be deleted from Aura Pay, and all sold product quantities from the linked
+                  sale will be restored to stock.
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setDeleteDialogOpen(false)}
+                disabled={deleteTransactionMutation.isPending}
+                className="rounded-xl border border-[var(--app-border-ui)] px-4 py-2.5 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-surface-muted)] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteTransaction}
+                disabled={deleteTransactionMutation.isPending}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#b91c1c] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#991b1b] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="material-symbols-outlined notranslate text-lg">
+                  {deleteTransactionMutation.isPending ? "progress_activity" : "delete"}
+                </span>
+                Delete Transaction
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 
