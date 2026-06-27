@@ -28,7 +28,7 @@ import type {
   SalesRepository,
 } from "@/lib/repositories/sales/sales.repository";
 
-type ResolvedBranch = typeof branches.$inferSelect;
+type ResolvedBranch = Pick<typeof branches.$inferSelect, "id" | "name" | "isPrimary">;
 
 function clampPageSize(value: number | undefined, fallback: number) {
   if (!value || value < 1) {
@@ -70,6 +70,11 @@ function uniqueStrings(values: string[]) {
 
 async function loadBranchesForOrg(organizationId: string) {
   return db.query.branches.findMany({
+    columns: {
+      id: true,
+      name: true,
+      isPrimary: true,
+    },
     where: eq(branches.organizationId, organizationId),
     orderBy: (branchTable, { desc: orderDesc, asc: orderAsc }) => [
       orderDesc(branchTable.isPrimary),

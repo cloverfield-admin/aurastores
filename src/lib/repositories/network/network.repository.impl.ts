@@ -3,6 +3,7 @@ import type { Column } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   branches,
+  branchStaffAssignments,
   expenses,
   inventoryBatches,
   inventoryTransactions,
@@ -35,18 +36,50 @@ function toDateStringUtc(date: Date) {
 }
 
 async function listOrganizationBranches(organizationId: string) {
-  return db
+  const branchRows = await db
     .select({
       id: branches.id,
       name: branches.name,
       isPrimary: branches.isPrimary,
       status: branches.status,
-      leadStaffName: users.fullName,
     })
     .from(branches)
-    .leftJoin(users, eq(users.id, branches.leadStaffUserId))
     .where(eq(branches.organizationId, organizationId))
     .orderBy(desc(branches.isPrimary), asc(branches.name));
+
+  if (branchRows.length === 0) {
+    return [];
+  }
+
+  const leadRows = await db
+    .select({
+      branchId: branchStaffAssignments.branchId,
+      fullName: users.fullName,
+    })
+    .from(branchStaffAssignments)
+    .innerJoin(users, eq(users.id, branchStaffAssignments.userId))
+    .where(
+      and(
+        inArray(
+          branchStaffAssignments.branchId,
+          branchRows.map((branch) => branch.id),
+        ),
+        eq(branchStaffAssignments.status, "active"),
+        eq(branchStaffAssignments.isLead, true),
+      ),
+    );
+
+  const leadNameByBranchId = new Map<string, string>();
+  for (const lead of leadRows) {
+    if (!leadNameByBranchId.has(lead.branchId)) {
+      leadNameByBranchId.set(lead.branchId, lead.fullName);
+    }
+  }
+
+  return branchRows.map((branch) => ({
+    ...branch,
+    leadStaffName: leadNameByBranchId.get(branch.id) ?? null,
+  }));
 }
 
 function branchScopeWhere(context: AuthContext, branchColumn: Column) {
