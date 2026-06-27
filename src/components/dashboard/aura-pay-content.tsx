@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useDashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
 import { MissingCapabilityNotice } from "@/components/dashboard/missing-capability-notice";
@@ -11,6 +10,7 @@ import {
   type PayDateRangeInput,
   type PayPaymentMethod,
   useActivatePayWalletMutation,
+  useDeletePayTransactionMutation,
   usePayDashboardQuery,
   useWithdrawPayWalletMutation,
 } from "@/lib/queries/pay";
@@ -123,9 +123,10 @@ function formatDateTime(isoString: string | null) {
 }
 
 export function AuraPayContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const workspace = useDashboardWorkspaceAccess();
-  const { notify } = useAuraFeedback();
+  const { notify, withLoading } = useAuraFeedback();
   const canPay = hasCapability(workspace.capabilities, "pay");
   const locked = !canPay;
   const branch = searchParams.get("branch") ?? undefined;
@@ -136,6 +137,8 @@ export function AuraPayContent() {
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawMobile, setWithdrawMobile] = useState("");
+  const [actionsOpenForId, setActionsOpenForId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; saleNumber: string } | null>(null);
 
   const todayUtc = useMemo(() => {
     const now = new Date();
@@ -189,10 +192,41 @@ export function AuraPayContent() {
   const payDashboardQuery = usePayDashboardQuery(branch, canPay, range, method, page, pageSize);
   const activateWalletMutation = useActivatePayWalletMutation();
   const withdrawWalletMutation = useWithdrawPayWalletMutation();
+  const deleteTransactionMutation = useDeletePayTransactionMutation();
 
   const data = payDashboardQuery.data;
   const wallet = data?.wallet ?? null;
   const transactions = data?.transactions ?? [];
+  const openTransaction = (paymentId: string) => {
+    router.push(ROUTES.dashboard.payTransaction(paymentId));
+  };
+  const openDeleteDialog = (transaction: { id: string; saleNumber: string }) => {
+    setActionsOpenForId(null);
+    setDeleteTarget({ id: transaction.id, saleNumber: transaction.saleNumber });
+  };
+  const handleDeleteTransaction = async () => {
+    if (!deleteTarget) {
+      return;
+    }
+
+    try {
+      const result = await withLoading("pay-delete-transaction-list", "Deleting transaction and restoring stock...", () =>
+        deleteTransactionMutation.mutateAsync(deleteTarget.id),
+      );
+      notify({
+        variant: "success",
+        title: "Transaction deleted",
+        description: `${result.saleNumber} was deleted and ${result.restoredItemCount} item${result.restoredItemCount === 1 ? "" : "s"} restored to stock.`,
+      });
+      setDeleteTarget(null);
+    } catch (error) {
+      notify({
+        variant: "error",
+        title: "Unable to delete transaction",
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
+    }
+  };
   const byMethod = data?.metrics.byMethod ?? [];
   const methodMetrics = paymentMethodOptions
     .filter((option): option is { value: PayPaymentMethod; label: string; icon: string } => option.value !== "all")
@@ -273,6 +307,14 @@ export function AuraPayContent() {
 
   const content = (
     <div className="relative px-4 pb-24 sm:px-6 lg:px-8">
+      {actionsOpenForId ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-30 cursor-default bg-transparent"
+          aria-label="Close transaction actions"
+          onClick={() => setActionsOpenForId(null)}
+        />
+      ) : null}
       <div className="mx-auto max-w-[1280px] space-y-8">
         <div className="relative overflow-visible rounded-[28px] border border-white/60 bg-gradient-to-br from-[#0fb9b1] via-[#14b8a6] to-[#6366f1] p-6 text-white shadow-[0_25px_70px_-30px_rgba(15,185,177,0.65)] sm:p-8">
           <div className="absolute -right-16 -top-16 size-48 rounded-full bg-white/15 blur-2xl" aria-hidden />
@@ -637,21 +679,60 @@ export function AuraPayContent() {
                 {transactions.map((tx) => (
                   <article
                     key={tx.id}
-                    className="rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] p-4 shadow-sm"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openTransaction(tx.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        openTransaction(tx.id);
+                      }
+                    }}
+                    className="cursor-pointer rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] p-4 shadow-sm transition hover:bg-[var(--app-surface-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--app-brand)]/20"
+                    aria-label={`Open details for transaction ${tx.saleNumber}`}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <Link
-                          href={ROUTES.dashboard.payTransaction(tx.id)}
-                          className="font-bold text-[var(--app-link-teal)] hover:underline"
-                        >
+                        <p className="font-bold text-[var(--app-link-teal)]">
                           {tx.saleNumber}
-                        </Link>
+                        </p>
                         <p className="mt-0.5 text-[11px] text-[var(--app-text-faint)]">{tx.reference ?? "No reference"}</p>
                       </div>
-                      <p className="shrink-0 text-base font-bold text-[var(--app-text)]">
-                        {currencyFormatter.format(tx.amountCents / 100)}
-                      </p>
+                      <div className="relative flex shrink-0 items-start gap-2">
+                        <p className="text-base font-bold text-[var(--app-text)]">
+                          {currencyFormatter.format(tx.amountCents / 100)}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setActionsOpenForId((current) => (current === tx.id ? null : tx.id));
+                          }}
+                          className="inline-flex size-8 items-center justify-center rounded-lg text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface-subtle)] hover:text-[var(--app-text)]"
+                          aria-haspopup="menu"
+                          aria-expanded={actionsOpenForId === tx.id}
+                          aria-label={`Actions for ${tx.saleNumber}`}
+                        >
+                          <span className="material-symbols-outlined notranslate text-xl">more_horiz</span>
+                        </button>
+                        {actionsOpenForId === tx.id ? (
+                          <div
+                            role="menu"
+                            className="absolute right-0 top-9 z-40 min-w-36 rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] p-1 shadow-lg"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => openDeleteDialog(tx)}
+                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-[#b91c1c] transition hover:bg-[#fff1f2]"
+                            >
+                              <span className="material-symbols-outlined notranslate text-lg">delete</span>
+                              Delete
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${paymentColors(tx.method).badge}`}>
@@ -679,15 +760,27 @@ export function AuraPayContent() {
                       <th className="px-5 py-3">Items</th>
                       <th className="px-5 py-3">Paid</th>
                       <th className="px-5 py-3 text-right">Amount</th>
+                      <th className="w-16 px-3 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--app-border-ui)]">
                     {transactions.map((tx) => (
-                      <tr key={tx.id} className="transition hover:bg-[var(--app-surface-muted)]">
+                      <tr
+                        key={tx.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openTransaction(tx.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            openTransaction(tx.id);
+                          }
+                        }}
+                        className="cursor-pointer transition hover:bg-[var(--app-surface-muted)] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[var(--app-brand)]/20"
+                        aria-label={`Open details for transaction ${tx.saleNumber}`}
+                      >
                         <td className="px-5 py-4">
-                          <Link href={ROUTES.dashboard.payTransaction(tx.id)} className="font-bold text-[var(--app-link-teal)]">
-                            {tx.saleNumber}
-                          </Link>
+                          <p className="font-bold text-[var(--app-link-teal)]">{tx.saleNumber}</p>
                           <p className="mt-1 text-[11px] text-[var(--app-text-faint)]">{tx.reference ?? "No reference"}</p>
                         </td>
                         <td className="px-5 py-4">
@@ -700,6 +793,38 @@ export function AuraPayContent() {
                         <td className="px-5 py-4 text-[var(--app-text-muted)]">{formatDateTime(tx.paidAt ?? tx.createdAt)}</td>
                         <td className="px-5 py-4 text-right font-bold text-[var(--app-text)]">
                           {currencyFormatter.format(tx.amountCents / 100)}
+                        </td>
+                        <td className="relative px-3 py-4 text-right">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setActionsOpenForId((current) => (current === tx.id ? null : tx.id));
+                            }}
+                            className="inline-flex size-9 items-center justify-center rounded-lg text-[var(--app-text-muted)] transition hover:bg-[var(--app-surface-subtle)] hover:text-[var(--app-text)]"
+                            aria-haspopup="menu"
+                            aria-expanded={actionsOpenForId === tx.id}
+                            aria-label={`Actions for ${tx.saleNumber}`}
+                          >
+                            <span className="material-symbols-outlined notranslate text-xl">more_horiz</span>
+                          </button>
+                          {actionsOpenForId === tx.id ? (
+                            <div
+                              role="menu"
+                              className="absolute right-3 top-12 z-40 min-w-36 rounded-xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] p-1 text-left shadow-lg"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => openDeleteDialog(tx)}
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-[#b91c1c] transition hover:bg-[#fff1f2]"
+                              >
+                                <span className="material-symbols-outlined notranslate text-lg">delete</span>
+                                Delete
+                              </button>
+                            </div>
+                          ) : null}
                         </td>
                       </tr>
                     ))}
@@ -734,6 +859,53 @@ export function AuraPayContent() {
             </div>
           </div>
         </section>
+
+        {deleteTarget ? (
+          <div
+            className="fixed inset-0 z-[140] flex items-center justify-center bg-black/40 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-pay-list-transaction-dialog-title"
+          >
+            <div className="w-full max-w-md rounded-2xl border border-[var(--app-border-ui)] bg-[var(--app-surface)] p-5 shadow-xl sm:p-6">
+              <div className="flex items-start gap-3">
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#fee2e2] text-[#b91c1c]">
+                  <span className="material-symbols-outlined notranslate text-xl">delete</span>
+                </div>
+                <div className="min-w-0">
+                  <h3 id="delete-pay-list-transaction-dialog-title" className="font-[family-name:var(--font-manrope)] text-lg font-extrabold text-[var(--app-text)]">
+                    Delete transaction?
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-[var(--app-text-muted)]">
+                    {deleteTarget.saleNumber} will be deleted from Aura Pay, and all sold product quantities from the
+                    linked sale will be restored to stock.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={deleteTransactionMutation.isPending}
+                  className="rounded-xl border border-[var(--app-border-ui)] px-4 py-2.5 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-surface-muted)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteTransaction}
+                  disabled={deleteTransactionMutation.isPending}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#b91c1c] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#991b1b] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <span className="material-symbols-outlined notranslate text-lg">
+                    {deleteTransactionMutation.isPending ? "progress_activity" : "delete"}
+                  </span>
+                  Delete Transaction
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {withdrawOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">

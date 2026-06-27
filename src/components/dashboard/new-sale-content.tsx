@@ -607,8 +607,8 @@ export function NewSaleContent() {
     }
 
     const defaultBatch = getPreferredBatch(product.batches);
+    setPinnedCatalogProducts((prev) => (prev[product.id] ? prev : { ...prev, [product.id]: product }));
     setItems((prev) => [
-      ...prev,
       {
         id: `new-${Date.now()}`,
         productId: product.id,
@@ -619,6 +619,7 @@ export function NewSaleContent() {
         qty: 1,
         unitPrice: product.defaultSellingPriceCents / 100,
       },
+      ...prev,
     ]);
   }
 
@@ -665,7 +666,6 @@ export function NewSaleContent() {
 
     const defaultBatch = defaultProduct ? getPreferredBatch(defaultProduct.batches) : undefined;
     setItems((prev) => [
-      ...prev,
       {
         id: `new-${Date.now()}`,
         productId: defaultProduct?.id,
@@ -676,6 +676,7 @@ export function NewSaleContent() {
         qty: 1,
         unitPrice: defaultProduct ? defaultProduct.defaultSellingPriceCents / 100 : 0,
       },
+      ...prev,
     ]);
   }
 
@@ -1330,6 +1331,25 @@ export function NewSaleContent() {
                     Add Item
                   </button>
                 </div>
+              </div>
+
+              <div className="mb-5 rounded-2xl border border-[var(--app-border-ui)] bg-[#fafbfc] p-3 sm:p-4">
+                <label className={fieldLabel} htmlFor="sale-product-search">
+                  Product Search
+                </label>
+                <MedicationCombobox
+                  id="sale-product-search"
+                  value=""
+                  products={productOptions}
+                  disabled={salesCatalogQuery.isLoading || salesCatalogQuery.isError}
+                  placeholder="Search product name..."
+                  onQueryChange={setProductSearch}
+                  queryLoading={isProductSearchLoading}
+                  onChange={(productId) => {
+                    addItemWithProduct(productId);
+                    setProductSearch("");
+                  }}
+                />
               </div>
 
               {items.length === 0 ? (

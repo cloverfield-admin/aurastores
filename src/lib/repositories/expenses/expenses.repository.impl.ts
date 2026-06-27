@@ -12,7 +12,7 @@ import type {
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 import { filterBranchesForContext } from "@/lib/rbac/branch-access";
 
-type ResolvedBranch = typeof branches.$inferSelect;
+type ResolvedBranch = Pick<typeof branches.$inferSelect, "id" | "name" | "isPrimary">;
 
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
@@ -65,6 +65,11 @@ function pickResolvedBranch(context: AuthContext, preferredBranchId: string | un
 
 async function branchesVisibleInContext(context: AuthContext) {
   const allBranches = await db.query.branches.findMany({
+    columns: {
+      id: true,
+      name: true,
+      isPrimary: true,
+    },
     where: eq(branches.organizationId, context.organization.id),
     orderBy: [asc(branches.name)],
   });
@@ -289,4 +294,3 @@ export class ExpensesRepositoryImpl implements ExpensesRepository {
 }
 
 export const expensesRepository = new ExpensesRepositoryImpl();
-

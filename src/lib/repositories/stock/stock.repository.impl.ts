@@ -43,7 +43,7 @@ import type {
   StockRepository,
 } from "@/lib/repositories/stock/stock.repository";
 
-type ResolvedBranch = typeof branches.$inferSelect;
+type ResolvedBranch = Pick<typeof branches.$inferSelect, "id" | "name" | "isPrimary">;
 type QueryableDb = Pick<typeof db, "query">;
 type WritableDb = QueryableDb & Pick<typeof db, "select" | "insert" | "update">;
 
@@ -264,6 +264,11 @@ function deriveBatchUiStatus(
 
 async function loadBranchesForOrg(queryable: QueryableDb, organizationId: string) {
   return queryable.query.branches.findMany({
+    columns: {
+      id: true,
+      name: true,
+      isPrimary: true,
+    },
     where: eq(branches.organizationId, organizationId),
     orderBy: (branchTable, { desc: orderDesc, asc: orderAsc }) => [
       orderDesc(branchTable.isPrimary),

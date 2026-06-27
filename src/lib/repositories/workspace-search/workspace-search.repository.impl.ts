@@ -16,6 +16,11 @@ const LIMIT = 6;
 
 async function resolveDefaultStockBranchIdForContext(context: AuthContext): Promise<string | null> {
   const rows = await db.query.branches.findMany({
+    columns: {
+      id: true,
+      name: true,
+      isPrimary: true,
+    },
     where: eq(branches.organizationId, context.organization.id),
     orderBy: (b, { desc: orderDesc, asc: orderAsc }) => [orderDesc(b.isPrimary), orderAsc(b.name)],
   });

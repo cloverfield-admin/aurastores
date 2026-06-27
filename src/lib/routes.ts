@@ -27,6 +27,7 @@ export const ROUTES = {
     stockExpiring: "/dashboard/stock/expiring",
     sales: "/dashboard/sales",
     salesAdd: "/dashboard/sales/add",
+    salesUnitsSold: "/dashboard/sales/units-sold",
     insights: "/dashboard/insights",
     productCategories: "/dashboard/product-categories",
     pay: "/dashboard/pay",

@@ -281,6 +281,13 @@
       "when": 1780200000005,
       "tag": "0039_sales_monthly_lock_aurastores",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1780300000001,
+      "tag": "0041_repair_branch_staff_columns",
+      "breakpoints": true
     }
   ]
 }

@@ -32,7 +32,7 @@ import type {
 import { getSiteUrl } from "@/lib/site-url";
 import { normalizeLipilaStatus } from "@/lib/validation/lipila";
 
-type ResolvedBranch = typeof branches.$inferSelect;
+type ResolvedBranch = Pick<typeof branches.$inferSelect, "id" | "name" | "isPrimary">;
 
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
@@ -67,6 +67,11 @@ function addDaysUtc(date: Date, days: number) {
 
 async function loadBranchesForOrg(organizationId: string) {
   return db.query.branches.findMany({
+    columns: {
+      id: true,
+      name: true,
+      isPrimary: true,
+    },
     where: eq(branches.organizationId, organizationId),
     orderBy: (branchTable, { desc: orderDesc, asc: orderAsc }) => [
       orderDesc(branchTable.isPrimary),

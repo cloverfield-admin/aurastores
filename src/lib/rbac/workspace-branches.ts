@@ -11,10 +11,16 @@ export type WorkspaceBranchTab = {
 };
 
 export async function loadAccessibleBranchTabs(context: AuthContext): Promise<WorkspaceBranchTab[]> {
-  const rows = await db.query.branches.findMany({
-    where: eq(branches.organizationId, context.organization.id),
-    orderBy: (b, { desc: orderDesc, asc: orderAsc }) => [orderDesc(b.isPrimary), orderAsc(b.name)],
-  });
+  const rows = await db
+    .select({
+      id: branches.id,
+      name: branches.name,
+      isPrimary: branches.isPrimary,
+    })
+    .from(branches)
+    .where(eq(branches.organizationId, context.organization.id))
+    .orderBy(desc(branches.isPrimary), asc(branches.name));
+
   return filterBranchesForContext(context, rows).map((b) => ({
     id: b.id,
     name: b.name,
