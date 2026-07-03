@@ -1204,6 +1204,11 @@ export class StockRepositoryImpl implements StockRepository {
         : options.inventoryStatus === "reorder_attention"
           ? "reorder_attention"
           : "all";
+    // "recent" → last-updated first; default keeps soonest-expiry-first (web).
+    const listOrderBy =
+      options.sort === "recent"
+        ? [desc(inventoryBatches.updatedAt), desc(inventoryBatches.createdAt)]
+        : [asc(inventoryBatches.expiresAt), desc(inventoryBatches.createdAt)];
     const todayStr = toDateStringUtc(today);
 
     const branchBase = and(
@@ -1295,7 +1300,7 @@ export class StockRepositoryImpl implements StockRepository {
     const offsetGuess = (page - 1) * pageSize;
     const pagedQueryGuess = inventoryJoin()
       .where(listWhere)
-      .orderBy(asc(inventoryBatches.expiresAt), desc(inventoryBatches.createdAt))
+      .orderBy(...listOrderBy)
       .limit(pageSize)
       .offset(offsetGuess);
 
@@ -1379,7 +1384,7 @@ export class StockRepositoryImpl implements StockRepository {
     if (offset !== offsetGuess) {
       pagedRows = await inventoryJoin()
         .where(listWhere)
-        .orderBy(asc(inventoryBatches.expiresAt), desc(inventoryBatches.createdAt))
+        .orderBy(...listOrderBy)
         .limit(pageSize)
         .offset(offset);
     }
