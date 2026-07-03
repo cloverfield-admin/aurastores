@@ -22,6 +22,7 @@ export async function GET(request: Request) {
         : "all";
   const page = Number(url.searchParams.get("page") ?? "1");
   const pageSize = Number(url.searchParams.get("pageSize") ?? "10");
+  const sort = url.searchParams.get("sort") === "recent" ? "recent" : "expiry";
 
   const dashboard = await services.stock.getDashboard(context, {
     branchId,
@@ -30,6 +31,7 @@ export async function GET(request: Request) {
     inventoryStatus,
     page,
     pageSize,
+    sort,
   });
   return NextResponse.json(dashboard);
 }
