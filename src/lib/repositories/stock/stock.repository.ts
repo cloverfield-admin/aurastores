@@ -101,6 +101,11 @@ export type StockGetDashboardOptions = {
   pageSize?: number;
   view?: "all" | "expiring";
   inventoryStatus?: "all" | "out_of_stock" | "reorder_attention";
+  /**
+   * List ordering. "expiry" (default) keeps the soonest-expiry-first order the
+   * web dashboard relies on; "recent" orders by last-updated (newest first).
+   */
+  sort?: "expiry" | "recent";
 };
 
 export type StockGetCatalogOptions = {
