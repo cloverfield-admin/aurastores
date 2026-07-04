@@ -17,6 +17,7 @@ import type {
 } from "@/lib/repositories/onboarding/onboarding.repository";
 import { branchCodeFromName } from "@/lib/utils/slug";
 import type { IdentityInput, LocationDetailsInput } from "@/lib/validation/onboarding";
+import { dispatchNotification } from "@/lib/notifications/engine";
 
 const ALWAYS_OPEN_HOURS = [
   { dayOfWeek: 0, opensAt: "00:00:00", closesAt: "23:59:00", isClosed: false },
@@ -363,6 +364,16 @@ export class OnboardingRepositoryImpl implements OnboardingRepository {
     });
 
     await billingRepository.grantIntroTrialAfterOnboardingIfEligible(context.organization.id);
+
+    // Store is now active — notify organization admins (fire-and-forget).
+    await dispatchNotification({
+      type: "license_approved",
+      organizationId: context.organization.id,
+      params: {
+        organization_name: context.organization.displayName,
+        onboarding_id: context.onboarding?.id ?? context.organization.id,
+      },
+    });
 
     const snapshot = await this.getCurrent(authUserId);
     if (!snapshot) {

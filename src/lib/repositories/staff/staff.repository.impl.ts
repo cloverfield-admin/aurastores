@@ -22,6 +22,7 @@ import {
 } from "@/lib/repositories/staff/staff.repository";
 import { mergeCapabilitiesFromInput, normalizeStoredCapabilities } from "@/lib/rbac/capabilities";
 import { getUserAvatarPublicUrl } from "@/lib/supabase/user-avatar-public-url";
+import { dispatchNotification } from "@/lib/notifications/engine";
 
 /** DB or transaction client (drizzle transaction type is narrower than root `db`). */
 type DbExecutor = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -623,6 +624,15 @@ export class StaffRepositoryImpl implements StaffRepository {
       where: eq(staffInvitations.id, invitationId),
     });
     if (after?.status === "accepted" && after.authUserId === params.authUserId) {
+      // Notify staff-capable members that someone joined (fire-and-forget).
+      await dispatchNotification({
+        type: "staff_invite_accepted",
+        organizationId: after.organizationId,
+        params: {
+          staff_name: after.email,
+          membership_id: after.id,
+        },
+      });
       return "provisioned";
     }
     return "skipped";

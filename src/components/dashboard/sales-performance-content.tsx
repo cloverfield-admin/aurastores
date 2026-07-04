@@ -554,7 +554,7 @@ export function SalesPerformanceContent() {
                           ? "bg-[#fff1f2] text-[#e11d48]"
                           : "bg-[#f0fdfa] text-[var(--app-link-teal)]"
                       }`}
-                      aria-label={`Revenue change vs previous 30 days: ${revenueDeltaPct}%`}
+                      aria-label={`Revenue change vs previous period: ${revenueDeltaPct}%`}
                     >
                       {revenueDeltaPct.startsWith("-") ? "" : "+"}
                       {revenueDeltaPct}%
@@ -567,12 +567,12 @@ export function SalesPerformanceContent() {
                         points={trend.map((p) => ({ label: p.label, value: p.revenueCents }))}
                         stroke="rgb(15, 185, 177)"
                         fill="rgb(99, 102, 241)"
-                        title="Daily revenue trend, last 30 days"
+                        title="Daily revenue trend, this month"
                         valueFormatter={(value) => currencyFormatter.format(value / 100)}
                       />
                     ) : (
                       <div className="flex h-16 items-center justify-center rounded-lg bg-[var(--app-surface-muted)] text-[11px] text-[var(--app-text-faint)]">
-                        No sales yet in the last 30 days.
+                        No sales yet this month.
                       </div>
                     )}
                   </div>
@@ -604,7 +604,7 @@ export function SalesPerformanceContent() {
                       className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
                         volumeDeltaPct < 0 ? "bg-[#fff1f2] text-[#e11d48]" : "bg-[#ecfeff] text-[#0891b2]"
                       }`}
-                      aria-label={`Volume change vs previous 30 days: ${formatSignedPct(volumeDeltaPct)}`}
+                      aria-label={`Volume change vs previous period: ${formatSignedPct(volumeDeltaPct)}`}
                     >
                       {formatSignedPct(volumeDeltaPct)}
                     </span>
@@ -616,12 +616,12 @@ export function SalesPerformanceContent() {
                         points={trend.map((p) => ({ label: p.label, value: p.unitsSold }))}
                         stroke="rgb(59, 130, 246)"
                         fill="rgb(16, 185, 129)"
-                        title="Daily volume trend, last 30 days"
+                        title="Daily volume trend, this month"
                         valueFormatter={(value) => `${Math.round(value).toLocaleString()} units`}
                       />
                     ) : (
                       <div className="flex h-16 items-center justify-center rounded-lg bg-[var(--app-surface-muted)] text-[11px] text-[var(--app-text-faint)]">
-                        No sales yet in the last 30 days.
+                        No sales yet this month.
                       </div>
                     )}
                   </div>
