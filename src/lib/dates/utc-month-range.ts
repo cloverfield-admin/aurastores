@@ -14,3 +14,12 @@ export function msUntilNextUtcMonthStart(now: Date = new Date()): number {
   const { endExclusive } = utcMonthRangeForInstant(now);
   return Math.max(0, endExclusive.getTime() - now.getTime());
 }
+
+/**
+ * First instant (UTC midnight) of the calendar month containing `date`. Used as
+ * the default dashboard window start so Sales/Expenses/Pay show month-to-date
+ * data (1st of the month → today) rather than a trailing 30 days.
+ */
+export function startOfUtcMonth(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1, 0, 0, 0, 0));
+}

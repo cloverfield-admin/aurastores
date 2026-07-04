@@ -10,6 +10,7 @@ import type {
   ExpenseType,
 } from "./expenses.repository";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
+import { startOfUtcMonth } from "@/lib/dates/utc-month-range";
 import { filterBranchesForContext } from "@/lib/rbac/branch-access";
 
 type ResolvedBranch = Pick<typeof branches.$inferSelect, "id" | "name" | "isPrimary">;
@@ -90,7 +91,7 @@ async function resolveBranchContext(context: AuthContext, preferredBranchId?: st
 
 function expenseTimestampRangeConditions(range?: ExpensesDateRange): SQL[] {
   const endInclusive = normalizeDate(range?.end ?? startOfTodayUtc());
-  const startInclusive = normalizeDate(range?.start ?? addDaysUtc(endInclusive, -29));
+  const startInclusive = normalizeDate(range?.start ?? startOfUtcMonth(endInclusive));
   const endExclusive = addDaysUtc(endInclusive, 1);
 
   return [
@@ -135,7 +136,7 @@ export class ExpensesRepositoryImpl implements ExpensesRepository {
     const unfilteredConditions = dashboardConditions(context.organization.id, branch.id, input.range);
 
     const endInclusive = normalizeDate(input.range?.end ?? startOfTodayUtc());
-    const startInclusive = normalizeDate(input.range?.start ?? addDaysUtc(endInclusive, -29));
+    const startInclusive = normalizeDate(input.range?.start ?? startOfUtcMonth(endInclusive));
     const endExclusive = addDaysUtc(endInclusive, 1);
 
     const [totalRows, totalsRows, byTypeRows, dayRows, expenseRows] = await Promise.all([

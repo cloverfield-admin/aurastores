@@ -18,7 +18,7 @@ import {
 import type { CreateSaleInput } from "@/lib/validation/sales";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 import { assertWithinLimit } from "@/lib/billing/entitlements";
-import { utcMonthRangeForInstant } from "@/lib/dates/utc-month-range";
+import { startOfUtcMonth, utcMonthRangeForInstant } from "@/lib/dates/utc-month-range";
 import { computeGrossProfitCents } from "@/lib/finance/gross-profit";
 import { assertBranchAllowedForContext, filterBranchesForContext } from "@/lib/rbac/branch-access";
 import type {
@@ -166,7 +166,9 @@ export class SalesRepositoryImpl implements SalesRepository {
     const { branch, branchOptions } = await resolveBranchContext(context, branchId);
 
     const endInclusive = normalizeDate(range?.end ?? startOfTodayUtc());
-    const startInclusive = normalizeDate(range?.start ?? addDaysUtc(endInclusive, -29));
+    // Default window is month-to-date (1st of the current month → today), not a
+    // trailing 30 days.
+    const startInclusive = normalizeDate(range?.start ?? startOfUtcMonth(endInclusive));
     const endExclusive = addDaysUtc(endInclusive, 1);
 
     const windowMs = endExclusive.getTime() - startInclusive.getTime();
