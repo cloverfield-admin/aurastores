@@ -57,7 +57,7 @@ export async function GET() {
     allowedBranchIds,
     role: membership.role,
     organizationId: gate.context.organization.id,
-    organizationName: gate.context.organization.name,
+    organizationName: gate.context.organization.displayName,
     fullName: user.fullName,
     phone: user.phone ?? null,
     email: user.email,
