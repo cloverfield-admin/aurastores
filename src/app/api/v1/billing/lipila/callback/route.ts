@@ -4,6 +4,7 @@ import { subscriptionInvoices } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { services } from "@/lib/di";
 import { lipilaCallbackSchema } from "@/lib/validation/billing";
+import { dispatchNotification, formatMoneyCents } from "@/lib/notifications/engine";
 
 function maskValue(value: string, head = 6, tail = 4): string {
   if (!value) return "";
@@ -209,6 +210,15 @@ export async function POST(request: Request) {
       console.info("[billing][lipila] invoice marked paid + plan activated", {
         logId,
         invoiceId: maskValue(invoice.id),
+      });
+      // Notify org admins their subscription payment cleared (fire-and-forget).
+      await dispatchNotification({
+        type: "subscription_paid",
+        organizationId: fresh.organizationId,
+        params: {
+          amount: formatMoneyCents(fresh.amountCents, fresh.currency),
+          invoice_id: fresh.id,
+        },
       });
     } else {
       console.info("[billing][lipila] successful callback ignored (already paid or invoice missing)", {
