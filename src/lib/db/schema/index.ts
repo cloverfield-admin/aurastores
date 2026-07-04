@@ -9,3 +9,4 @@ export * from "./lipila-payment.schema";
 export * from "./expenses.schema";
 export * from "./onboarding.schema";
 export * from "./billing.schema";
+export * from "./notification.schema";

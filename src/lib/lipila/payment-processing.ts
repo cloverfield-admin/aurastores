@@ -13,6 +13,7 @@ import {
 } from "@/lib/db/schema";
 import type { LipilaPaymentCallbackInput } from "@/lib/validation/lipila";
 import { normalizeLipilaStatus } from "@/lib/validation/lipila";
+import { dispatchNotification, formatMoneyCents } from "@/lib/notifications/engine";
 
 type LipilaPaymentTransaction = typeof lipilaPaymentTransactions.$inferSelect;
 
@@ -393,7 +394,7 @@ export async function processLipilaPaymentCallback(payload: LipilaPaymentCallbac
 
   const status = normalizeLipilaStatus(payload.status);
 
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('lipila-payment|' || ${referenceId}::text))`);
 
     const transaction = await tx.query.lipilaPaymentTransactions.findFirst({
@@ -431,6 +432,71 @@ export async function processLipilaPaymentCallback(payload: LipilaPaymentCallbac
 
     return current;
   });
+
+  // Post-commit, fire-and-forget: tell the engine to notify the relevant staff.
+  await emitLipilaPaymentNotification(result, status);
+
+  return result;
+}
+
+/**
+ * Dispatches an in-app/push notification for a terminal Lipila payment. Never
+ * throws — the callback must succeed regardless. Handles both mobile-money sale
+ * collections (payment received/failed → sales staff of the branch) and wallet
+ * disbursements (payout settled → pay-capable owners).
+ */
+async function emitLipilaPaymentNotification(
+  transaction: LipilaPaymentTransaction,
+  status: string,
+) {
+  try {
+    const amount = formatMoneyCents(transaction.amountCents, transaction.currency);
+
+    if (transaction.operation === "wallet_disbursement") {
+      if (status !== "successful") {
+        return;
+      }
+      await dispatchNotification({
+        type: "payout_settled",
+        organizationId: transaction.organizationId,
+        params: {
+          amount,
+          payment_id: transaction.referenceId,
+          account_label: transaction.identifier ?? "your account",
+        },
+      });
+      return;
+    }
+
+    if (transaction.operation === "sale_collection" && (status === "successful" || status === "failed")) {
+      if (!transaction.paymentId) {
+        return;
+      }
+      const payment = await db.query.payments.findFirst({
+        where: eq(payments.id, transaction.paymentId),
+      });
+      if (!payment) {
+        return;
+      }
+      const sale = await db.query.sales.findFirst({ where: eq(sales.id, payment.saleId) });
+      if (!sale) {
+        return;
+      }
+      await dispatchNotification({
+        type: status === "successful" ? "payment_succeeded" : "payment_failed",
+        organizationId: transaction.organizationId,
+        branchId: sale.branchId ?? undefined,
+        params: {
+          sale_id: sale.id,
+          sale_reference: sale.saleNumber,
+          amount,
+          branch_id: sale.branchId ?? "",
+        },
+      });
+    }
+  } catch {
+    // Notifications must never break the payment callback.
+  }
 }
 
 export async function getLipilaPaymentTransactionForOrg(organizationId: string, referenceId: string) {

@@ -13,6 +13,7 @@ import {
   walletAccounts,
   walletLedgerEntries,
 } from "@/lib/db/schema";
+import { startOfUtcMonth } from "@/lib/dates/utc-month-range";
 import { calculateDisbursementFee } from "@/lib/lipila/fees";
 import { buildLipilaReference, maskAccountNumber } from "@/lib/lipila/utils";
 import { processLipilaPaymentCallback } from "@/lib/lipila/payment-processing";
@@ -132,7 +133,8 @@ function serializeWallet(wallet: typeof walletAccounts.$inferSelect): NonNullabl
 
 function paymentTimestampRangeConditions(range?: PayDateRange): SQL[] {
   const endInclusive = normalizeDate(range?.end ?? startOfTodayUtc());
-  const startInclusive = normalizeDate(range?.start ?? addDaysUtc(endInclusive, -29));
+  // Default window is month-to-date (1st of the current month → today).
+  const startInclusive = normalizeDate(range?.start ?? startOfUtcMonth(endInclusive));
   const endExclusive = addDaysUtc(endInclusive, 1);
 
   return [
