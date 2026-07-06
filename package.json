@@ -8,6 +8,7 @@
     "dev:turbo": "next dev --turbopack",
     "build": "next build --webpack",
     "generate:pwa-icons": "node scripts/generate-pwa-icons.mjs",
+    "generate:favicon": "node scripts/generate-favicon.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",

@@ -2,17 +2,24 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { AppLogo } from "@/components/ui/app-logo";
+import type { CSSProperties } from "react";
 import { ROUTES } from "@/lib/routes";
+import { FONT_BODY, FONT_DISPLAY } from "@/components/marketing/landing/fonts";
+import { Icon, LOGO_MARK } from "@/components/marketing/landing/phone";
 
-const gradientBtnSm =
-  "relative rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-6 py-2.5 text-center text-sm font-semibold text-white shadow-[0_10px_15px_-3px_rgba(15,185,177,0.2),0_4px_6px_-4px_rgba(15,185,177,0.2)] transition hover:opacity-95";
+const NAV_LINKS: Array<{ href: string; label: string }> = [
+  { href: "#ecosystem", label: "Platform" },
+  { href: "#stock", label: "Features" },
+  { href: "#pricing", label: "Pricing" },
+  { href: "#network", label: "Multi-branch" },
+];
 
-const navLinkClass =
-  "block rounded-lg px-4 py-3 text-sm font-semibold text-[#475569] transition hover:bg-[#f1f5f9] hover:text-[#0fb9b1]";
-
-const navLinkActiveClass =
-  "block rounded-lg px-4 py-3 text-sm font-semibold text-[#0fb9b1] bg-[#f0fdfa]";
+const NAV_LINK_STYLE: CSSProperties = {
+  fontSize: 14.5,
+  fontWeight: 500,
+  color: "#46574f",
+  textDecoration: "none",
+};
 
 type HomePageHeaderClientProps = {
   isAuthenticated: boolean;
@@ -24,14 +31,10 @@ export function HomePageHeaderClient({ isAuthenticated }: HomePageHeaderClientPr
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (!open) {
-      return;
-    }
+    if (!open) return;
     const onDocPointer = (event: MouseEvent | TouchEvent) => {
-      const t = event.target as Node;
-      if (panelRef.current?.contains(t) || buttonRef.current?.contains(t)) {
-        return;
-      }
+      const target = event.target as Node;
+      if (panelRef.current?.contains(target) || buttonRef.current?.contains(target)) return;
       setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
@@ -54,97 +57,146 @@ export function HomePageHeaderClient({ isAuthenticated }: HomePageHeaderClientPr
   const authLabel = isAuthenticated ? "Dashboard" : "Login";
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-50 border-b border-black/5 bg-white/80 shadow-sm backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-4 sm:gap-4 sm:px-8">
-        <Link href="/" className="min-w-0 shrink-0 py-0.5">
-          <AppLogo variant="header" />
+    <header
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 50,
+        background: "rgba(245,248,247,0.82)",
+        backdropFilter: "saturate(180%) blur(14px)",
+        WebkitBackdropFilter: "saturate(180%) blur(14px)",
+        borderBottom: "1px solid #e3eae8",
+      }}
+    >
+      <div
+        className="navbar"
+        style={{
+          maxWidth: 1240,
+          margin: "0 auto",
+          padding: "0 28px",
+          height: 68,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 24,
+        }}
+      >
+        <Link
+          href="/"
+          style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}
+          aria-label="AuraStores home"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={LOGO_MARK}
+            alt=""
+            style={{ width: 34, height: 34, display: "block", filter: "drop-shadow(0 4px 12px rgba(13,92,84,0.28))" }}
+          />
+          <span style={{ fontFamily: FONT_DISPLAY, fontSize: 20, letterSpacing: "-0.03em" }}>
+            <span style={{ fontWeight: 800, color: "#07322e" }}>aura</span>
+            <span style={{ fontWeight: 500, color: "#4da899" }}>stores</span>
+          </span>
         </Link>
 
-        <nav
-          className="hidden flex-1 items-center justify-center gap-8 md:flex"
-          aria-label="Primary"
-        >
-          <a
-            href="#ecosystem"
-            className="border-b-2 border-[#0fb9b1] pb-1.5 text-sm font-semibold text-[#0fb9b1]"
-          >
-            Features
-          </a>
-          <a
-            href="#network"
-            className="text-sm font-semibold text-[#475569] transition hover:text-[#0fb9b1]"
-          >
-            Solutions
-          </a>
-          <a
-            href="#pricing"
-            className="text-sm font-semibold text-[#475569] transition hover:text-[#0fb9b1]"
-          >
-            Pricing
-          </a>
+        <nav className="navlinks" style={{ display: "flex", alignItems: "center", gap: 30 }} aria-label="Primary">
+          {NAV_LINKS.map((link) => (
+            <a key={link.href} href={link.href} style={NAV_LINK_STYLE}>
+              {link.label}
+            </a>
+          ))}
         </nav>
 
-        <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-          <div className="relative md:hidden">
-            <button
-              ref={buttonRef}
-              type="button"
-              className="inline-flex size-10 items-center justify-center rounded-lg text-[#475569] hover:bg-[#f1f5f9]"
-              aria-expanded={open}
-              aria-controls="home-mobile-nav"
-              aria-label={open ? "Close menu" : "Open menu"}
-              onClick={() => setOpen((v) => !v)}
-            >
-              <span className="material-symbols-outlined notranslate text-2xl">
-                {open ? "close" : "menu"}
-              </span>
-            </button>
-            {open ? (
-              <div
-                ref={panelRef}
-                id="home-mobile-nav"
-                className="absolute right-0 top-full z-50 mt-2 w-[min(100vw-2rem,16rem)] rounded-xl border border-black/5 bg-white py-2 shadow-lg"
-                role="navigation"
-                aria-label="Primary"
-              >
-                <a
-                  href="#ecosystem"
-                  className={navLinkActiveClass}
-                  onClick={() => setOpen(false)}
-                >
-                  Features
-                </a>
-                <a href="#network" className={navLinkClass} onClick={() => setOpen(false)}>
-                  Solutions
-                </a>
-                <a href="#pricing" className={navLinkClass} onClick={() => setOpen(false)}>
-                  Pricing
-                </a>
-                <div className="mt-2 border-t border-black/5 pt-2">
-                  <Link href={authHref} className={navLinkClass} onClick={() => setOpen(false)}>
-                    {authLabel}
-                  </Link>
-                </div>
-              </div>
-            ) : null}
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <Link href={authHref} style={{ fontSize: 14.5, fontWeight: 600, color: "#0c1c19", textDecoration: "none" }}>
+            {authLabel}
+          </Link>
+          <a
+            href="#download"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              fontSize: 14.5,
+              fontWeight: 600,
+              color: "#fff",
+              background: "#0d5c54",
+              padding: "10px 18px",
+              borderRadius: 10,
+              textDecoration: "none",
+              boxShadow: "0 6px 16px rgba(13,92,84,0.24)",
+            }}
+          >
+            <Icon name="smartphone" size={18} />
+            Get the app
+          </a>
+          <button
+            ref={buttonRef}
+            type="button"
+            className="navtoggle"
+            aria-expanded={open}
+            aria-controls="home-mobile-nav"
+            aria-label={open ? "Close menu" : "Open menu"}
+            onClick={() => setOpen((value) => !value)}
+            style={{
+              width: 42,
+              height: 42,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 11,
+              border: "1px solid #dbe6e2",
+              background: "#fff",
+              color: "#0c1c19",
+              cursor: "pointer",
+            }}
+          >
+            <Icon name={open ? "close" : "menu"} size={22} />
+          </button>
+        </div>
+      </div>
 
+      {open ? (
+        <div
+          ref={panelRef}
+          id="home-mobile-nav"
+          role="navigation"
+          aria-label="Primary"
+          style={{
+            borderTop: "1px solid #e3eae8",
+            background: "#f5f8f7",
+            padding: "10px 20px 18px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+            fontFamily: FONT_BODY,
+          }}
+        >
+          {NAV_LINKS.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              onClick={() => setOpen(false)}
+              style={{ padding: "12px 6px", fontSize: 15, fontWeight: 600, color: "#0c1c19", textDecoration: "none" }}
+            >
+              {link.label}
+            </a>
+          ))}
           <Link
             href={authHref}
-            className={`${gradientBtnSm} whitespace-nowrap px-4 py-2 text-xs sm:px-6 sm:py-2.5 sm:text-sm`}
+            onClick={() => setOpen(false)}
+            style={{
+              marginTop: 6,
+              padding: "12px 6px",
+              fontSize: 15,
+              fontWeight: 600,
+              color: "#0d5c54",
+              textDecoration: "none",
+              borderTop: "1px solid #e3eae8",
+            }}
           >
             {authLabel}
           </Link>
-
-          {/* <Link
-            href={ROUTES.demoSuccess}
-            className={`${gradientBtnSm} whitespace-nowrap px-4 py-2 text-xs sm:px-6 sm:py-2.5 sm:text-sm`}
-          >
-            Book a Demo
-          </Link> */}
         </div>
-      </div>
+      ) : null}
     </header>
   );
 }
-

@@ -567,7 +567,7 @@ export function DashboardShell({ children, workspaceAccess }: DashboardShellProp
             onClick={closeMobileNav}
             className="flex flex-col items-center gap-2 px-2 pb-4 pt-0 lg:pb-8 lg:pt-2"
           >
-            <AppLogo variant="sidebar" className="!h-20 sm:!h-14 lg:!h-16" />
+            <AppLogo variant="sidebar" />
             <p className="text-center text-[10px] font-medium uppercase tracking-[-0.05em] text-[var(--app-text-muted)]">
               {PRODUCT_TAGLINE}
             </p>
