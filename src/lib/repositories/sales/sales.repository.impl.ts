@@ -683,7 +683,10 @@ export class SalesRepositoryImpl implements SalesRepository {
     const { branch, branchOptions } = await resolveBranchContext(context, branchId);
     const trimmed = (q ?? "").trim();
     const isSearching = trimmed.length >= 2;
-    const limit = clampPageSize(isSearching ? 50 : 100, isSearching ? 50 : 100);
+    // New Sale preloads the base catalogue so the picker can filter locally;
+    // longer queries hand off to a server search. The base limit is applied
+    // directly (not via clampPageSize's 50 ceiling) so the preload can be large.
+    const limit = isSearching ? 50 : 500;
     const pattern = `%${trimmed}%`;
 
     const productRows = await db
