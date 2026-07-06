@@ -1,54 +1,52 @@
-import Image from "next/image";
-import Link from "next/link";
+import type { CSSProperties, ReactNode } from "react";
 import type { Metadata } from "next";
 import { HomePageHeader } from "@/components/marketing/home-page-header";
-import { AppLogo } from "@/components/ui/app-logo";
-import { AURA_ASSETS } from "@/lib/aura-assets";
+import { DownloadCta } from "@/components/marketing/landing/download-cta.client";
+import { StockPhone, SalesPhone } from "@/components/marketing/landing/feature-mockups";
+import { HeroCarousel } from "@/components/marketing/landing/hero-carousel.client";
+import type { HeroScreen } from "@/components/marketing/landing/hero-carousel.client";
+import {
+  DashboardSlide,
+  CheckoutSlide,
+  InsightsSlide,
+  ExpensesSlide,
+} from "@/components/marketing/landing/hero-slides";
+import { FONT_DISPLAY, FONT_MONO } from "@/components/marketing/landing/fonts";
+import { Icon, LOGO_MARK } from "@/components/marketing/landing/phone";
+import { PricingCards } from "@/components/marketing/landing/pricing-cards.client";
+import { Reveal } from "@/components/marketing/landing/reveal.client";
+import { buildLandingPlans } from "@/lib/marketing/landing-pricing";
 import { services } from "@/lib/di";
-import { ROUTES } from "@/lib/routes";
 import { getSiteUrl } from "@/lib/site-url";
 
-const homeTitle = "AuraStores — Clarity across every sale";
+const homeTitle = "AuraStores — Every store, in your pocket";
 const homeDescription =
-  "A cloud-based store operations platform for inventory, pricing, payments, and every branch.";
+  "Run inventory, checkout, and payouts from the phone in your hand. Built for pharmacies, retail shops, and growing multi-branch chains across Zambia.";
 
-export const revalidate = 300;
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: { absolute: homeTitle },
   description: homeDescription,
   alternates: { canonical: "/" },
-  openGraph: {
-    title: homeTitle,
-    description: homeDescription,
-    url: "/",
-  },
-  twitter: {
-    title: homeTitle,
-    description: homeDescription,
-  },
+  openGraph: { title: homeTitle, description: homeDescription, url: "/" },
+  twitter: { title: homeTitle, description: homeDescription },
 };
 
-const gradientBtn =
-  "relative rounded-xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-8 py-4 text-center font-bold text-white shadow-[0_20px_25px_-5px_rgba(0,106,101,0.2),0_8px_10px_-6px_rgba(0,106,101,0.2)] transition hover:opacity-95";
+const HERO_SCREENS: HeroScreen[] = [
+  { label: "Dashboard", icon: "space_dashboard", caption: "NETWORK OVERVIEW · EVERY BRANCH, LIVE, AT A GLANCE" },
+  { label: "Checkout", icon: "point_of_sale", caption: "NEW SALE · RING UP A BASKET IN SECONDS" },
+  { label: "Insights", icon: "insights", caption: "AURA INSIGHTS · RISK SIGNALS & REORDER SUGGESTIONS" },
+  { label: "Expenses", icon: "account_balance_wallet", caption: "BRANCH EXPENSES · SPEND, CHARGES & RESTOCKING" },
+];
 
 function HomeJsonLd() {
   const siteUrl = getSiteUrl();
   const payload = {
     "@context": "https://schema.org",
     "@graph": [
-      {
-        "@type": "Organization",
-        name: "AuraStores",
-        url: siteUrl,
-      },
-      {
-        "@type": "WebSite",
-        name: "AuraStores",
-        url: siteUrl,
-        description: homeDescription,
-      },
+      { "@type": "Organization", name: "AuraStores", url: siteUrl },
+      { "@type": "WebSite", name: "AuraStores", url: siteUrl, description: homeDescription },
     ],
   };
   return (
@@ -59,597 +57,800 @@ function HomeJsonLd() {
   );
 }
 
-const zwmFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "ZMW",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
+function Eyebrow({ children, color = "#0d5c54" }: { children: ReactNode; color?: string }) {
+  return (
+    <span
+      style={{
+        fontFamily: FONT_MONO,
+        fontSize: 12,
+        fontWeight: 500,
+        letterSpacing: "0.16em",
+        textTransform: "uppercase",
+        color,
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+const SECTION: CSSProperties = { maxWidth: 1200, margin: "0 auto", padding: "104px 28px 0" };
+
+const ECOSYSTEM_CARD: CSSProperties = {
+  background: "#fff",
+  border: "1px solid #e3eae8",
+  borderRadius: 16,
+  padding: 30,
+};
+
+function FeatureBullet({ icon, title, body }: { icon: string; title: string; body: string }) {
+  return (
+    <div style={{ display: "flex", gap: 16 }}>
+      <div
+        style={{
+          width: 42,
+          height: 42,
+          borderRadius: 11,
+          background: "#eef4f2",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        <Icon name={icon} size={22} color="#0d5c54" />
+      </div>
+      <div>
+        <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 16.5 }}>{title}</div>
+        <p style={{ fontSize: 14.5, lineHeight: 1.55, color: "#46574f", margin: "5px 0 0" }}>{body}</p>
+      </div>
+    </div>
+  );
+}
+
+function NetworkCard({ icon, title, body }: { icon: string; title: string; body: string }) {
+  return (
+    <div
+      style={{
+        background: "rgba(255,255,255,0.05)",
+        border: "1px solid rgba(255,255,255,0.10)",
+        borderRadius: 16,
+        padding: 28,
+      }}
+    >
+      <Icon name={icon} size={26} color="#a9e3d6" />
+      <h3 style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 18, margin: "16px 0 0" }}>{title}</h3>
+      <p style={{ fontSize: 14, lineHeight: 1.55, color: "#a7c5bd", margin: "8px 0 0" }}>{body}</p>
+    </div>
+  );
+}
+
+function TrustPoint({ icon, title, body, divider }: { icon: string; title: string; body: string; divider?: boolean }) {
+  return (
+    <div
+      className={divider ? "trustdiv" : undefined}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        borderLeft: divider ? "1px solid #eef3f1" : undefined,
+        paddingLeft: divider ? 24 : undefined,
+      }}
+    >
+      <Icon name={icon} size={26} color="#0d5c54" />
+      <div>
+        <div style={{ fontWeight: 700, fontSize: 15, fontFamily: FONT_DISPLAY }}>{title}</div>
+        <div style={{ fontSize: 13.5, color: "#5f7771" }}>{body}</div>
+      </div>
+    </div>
+  );
+}
 
 export default async function HomePage() {
   const year = new Date().getFullYear();
   const plans = await services.billing.listPublicPlans("ZMW");
-  const planOrder = ["free", "basic", "pro", "enterprise"] as const;
-  const orderedPlans = [...plans].sort(
-    (a, b) => planOrder.indexOf(a.code) - planOrder.indexOf(b.code),
-  );
-
-  const capabilityBullets: Array<{
-    key: keyof (typeof plans)[number]["features"]["capabilities"];
-    label: string;
-  }> = [
-    { key: "stock", label: "Aura Stock" },
-    { key: "sales", label: "Sales Tracking" },
-    // { key: "catalog", label: "Product Categories" },
-    { key: "insights", label: "Aura Insights" },
-    { key: "pay", label: "Aura Pay" },
-    { key: "staff", label: "Staff Management" },
-    { key: "organization", label: "Organization Controls" },
-  ];
-
-  function limitLabel(kind: "products" | "categories" | "salesTransactions", value: number | null | undefined) {
-    if (kind === "salesTransactions") {
-      return value != null ? `${value} sales / month` : "Unlimited sales";
-    }
-    const suffix = kind === "products" ? "Products" : "Categories";
-    return value != null ? `${value} ${suffix}` : `Unlimited ${suffix}`;
-  }
-
-  function buildPlanBullets(plan: (typeof plans)[number], prev?: (typeof plans)[number]) {
-    const out: string[] = [];
-    if (prev) {
-      out.push(`Everything in ${prev.name}`);
-    }
-
-    const caps = plan.features.capabilities;
-    const prevCaps = prev?.features.capabilities ?? null;
-    const limits = plan.features.limits;
-
-    for (const item of capabilityBullets) {
-      const enabled = Boolean(caps[item.key]);
-      const wasEnabled = prevCaps ? Boolean(prevCaps[item.key]) : false;
-      if (!enabled) continue;
-      if (prev && wasEnabled) continue;
-      out.push(item.label);
-    }
-
-    out.push(limits.branches != null ? `Multi-branch Sync (Up to ${limits.branches})` : "Multi-branch Sync (Unlimited)");
-    out.push(limitLabel("products", limits.products));
-    out.push(limitLabel("categories", limits.categories));
-    out.push(limitLabel("salesTransactions", limits.salesTransactions));
-    out.push(limits.staffUsers != null ? `${limits.staffUsers} Staff Users` : "Unlimited Staff Users");
-
-    return out.slice(0, 7);
-  }
+  const landingPlans = buildLandingPlans(plans);
 
   return (
-    <div className="aura-landing min-h-screen bg-[#f7f9fb] text-[#191c1e]">
+    <div className="aura-landing-v2">
       <HomeJsonLd />
       <HomePageHeader />
 
-      <main className="pt-[72px]">
-        {/* Hero */}
-        <section className="relative overflow-hidden px-4 pb-16 pt-12 sm:px-8 sm:pb-24 sm:pt-16">
+      <main>
+        {/* HERO */}
+        <section style={{ position: "relative", overflow: "hidden" }}>
           <div
-            className="pointer-events-none absolute left-1/2 top-0 size-[500px] -translate-x-1/2 rounded-full opacity-20 blur-[60px]"
-            style={{
-              background:
-                "linear-gradient(135deg, rgb(15, 185, 177) 0%, rgb(99, 102, 241) 100%)",
-            }}
             aria-hidden
+            style={{
+              position: "absolute",
+              top: -180,
+              right: -140,
+              width: 560,
+              height: 560,
+              borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(13,92,84,0.10), transparent 68%)",
+            }}
           />
-          <div className="relative mx-auto flex max-w-7xl flex-col items-center gap-6 text-center">
-            <div className="rounded-full bg-[rgba(0,106,101,0.1)] px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#006a65]">
-              Store operations, unified
-            </div>
-            <h1 className="max-w-4xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl md:text-6xl md:leading-[1.1] lg:text-7xl lg:leading-[72px]">
-              Clarity across every{" "}
-              <span className="bg-gradient-to-r from-[#0fb9b1] to-[#6366f1] bg-clip-text text-transparent">
-                sale & branch
-              </span>
-            </h1>
-            <p className="max-w-2xl text-lg leading-relaxed text-[#3c4948] sm:text-xl">
-              Run inventory, checkout, and payouts from one place—whether you operate a pharmacy,
-              a retail shop, or a growing multi-location chain.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
-              <Link href={ROUTES.auth.register} className={gradientBtn}>
-                Get Started for Free
-              </Link>
-              {/* <Link
-                href={ROUTES.demoSuccess}
-                className="rounded-xl bg-[#e0e3e5] px-8 py-4 text-center font-bold text-[#191c1e] transition hover:bg-[#d5d8db]"
-              >
-                Watch Demo
-              </Link> */}
-            </div>
-
-            <div className="relative mt-10 w-full max-w-6xl pt-4">
+          <div
+            className="herogrid"
+            style={{
+              maxWidth: 1200,
+              margin: "0 auto",
+              padding: "72px 28px 88px",
+              display: "grid",
+              gridTemplateColumns: "1.06fr 1fr",
+              gap: 48,
+              alignItems: "center",
+              position: "relative",
+            }}
+          >
+            <div className="herocopy" style={{ maxWidth: 600 }}>
               <div
-                className="pointer-events-none absolute inset-0 -z-10 scale-105 rounded-2xl opacity-10 blur-xl"
                 style={{
-                  background:
-                    "linear-gradient(135deg, rgb(15, 185, 177) 0%, rgb(99, 102, 241) 100%)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 9,
+                  padding: "7px 14px 7px 11px",
+                  border: "1px solid #d3e2de",
+                  background: "#fff",
+                  borderRadius: 100,
+                  boxShadow: "0 2px 8px rgba(12,28,25,0.04)",
                 }}
-                aria-hidden
-              />
-              <div className="overflow-hidden rounded-2xl border-4 border-white/50 bg-white p-1 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]">
-                <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-[#0f172a]">
-                  <Image
-                    src={AURA_ASSETS.heroDashboard}
-                    alt="AuraStores dashboard preview with analytics and inventory"
-                    fill
-                    className="object-cover object-top"
-                    sizes="(max-width: 1280px) 100vw, 1280px"
-                    priority
-                  />
-                  <div
-                    className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#f7f9fb] via-transparent to-transparent opacity-40"
-                    aria-hidden
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Ecosystem */}
-        <section
-          id="ecosystem"
-          className="scroll-mt-24 bg-[#f2f4f6] px-4 py-20 sm:px-8 sm:py-24"
-        >
-          <div className="mx-auto max-w-7xl space-y-12">
-            <div className="space-y-4">
-              <h2 className="text-3xl font-bold text-[#191c1e] md:text-[30px] md:leading-9">
-                The Aura Ecosystem
-              </h2>
-              <p className="max-w-2xl text-base text-[#3c4948]">
-                Integrated modules for day-to-day store operations and leadership visibility.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:grid-rows-[auto_auto]">
-              <div className="flex flex-col justify-between rounded-xl bg-white p-8 shadow-sm lg:col-span-2">
-                <div className="space-y-4">
-                  <div className="flex size-12 items-center justify-center rounded-lg bg-[rgba(0,106,101,0.1)]">
-                    <span className="material-symbols-outlined notranslate text-[#006a65] text-2xl">
-                      inventory_2
-                    </span>
-                  </div>
-                  <h3 className="text-2xl font-bold">Aura Stock</h3>
-                  <p className="max-w-xl text-base leading-relaxed text-[#3c4948]">
-                    Precision-engineered inventory management with real-time tracking,
-                    product-level precision, and automated reordering logic.
-                  </p>
-                </div>
-                <a
-                  href="#deep-stock"
-                  className="mt-8 inline-flex items-center gap-1 text-sm font-semibold text-[#006a65] hover:underline"
+              >
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    background: "#11756b",
+                    animation: "auraPulse 2.4s ease-out infinite",
+                  }}
+                />
+                <span
+                  style={{
+                    fontFamily: FONT_MONO,
+                    fontSize: 11.5,
+                    fontWeight: 500,
+                    letterSpacing: "0.14em",
+                    textTransform: "uppercase",
+                    color: "#5f7771",
+                  }}
                 >
-                  Learn more
-                  <span className="material-symbols-outlined notranslate text-base">
-                    arrow_forward
-                  </span>
+                  Mobile-first store operations
+                </span>
+              </div>
+              <h1
+                style={{
+                  fontFamily: FONT_DISPLAY,
+                  fontWeight: 700,
+                  fontSize: "clamp(42px,5.6vw,70px)",
+                  lineHeight: 1.02,
+                  letterSpacing: "-0.035em",
+                  margin: "26px 0 0",
+                  textWrap: "balance",
+                }}
+              >
+                Every store,
+                <br />
+                <span style={{ color: "#0d5c54" }}>in your pocket</span>
+              </h1>
+              <p
+                style={{
+                  fontSize: "clamp(17px,2vw,19.5px)",
+                  lineHeight: 1.55,
+                  color: "#46574f",
+                  maxWidth: 520,
+                  margin: "22px 0 0",
+                  textWrap: "pretty",
+                }}
+              >
+                Inventory, checkout, and payouts — run from the phone already in your hand. Built for
+                pharmacies, retail shops, and growing multi-branch chains across Zambia.
+              </p>
+              <div className="herocta" style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 32 }}>
+                <a
+                  href="#download"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 9,
+                    fontSize: 15.5,
+                    fontWeight: 600,
+                    color: "#fff",
+                    background: "#0d5c54",
+                    padding: "15px 26px",
+                    borderRadius: 12,
+                    textDecoration: "none",
+                    boxShadow: "0 10px 26px rgba(13,92,84,0.30)",
+                  }}
+                >
+                  <Icon name="smartphone" size={20} />
+                  Download the app
+                </a>
+                <a
+                  href="#stock"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 9,
+                    fontSize: 15.5,
+                    fontWeight: 600,
+                    color: "#0c1c19",
+                    background: "#fff",
+                    padding: "15px 24px",
+                    borderRadius: 12,
+                    textDecoration: "none",
+                    border: "1px solid #dbe6e2",
+                  }}
+                >
+                  <Icon name="play_circle" size={19} color="#0d5c54" />
+                  See it in action
                 </a>
               </div>
-
-              <div className="rounded-xl bg-white p-8 shadow-sm">
-                <div className="flex size-12 items-center justify-center rounded-lg bg-[rgba(70,72,212,0.1)]">
-                  <span className="material-symbols-outlined notranslate text-[#4648d4] text-2xl">
-                    analytics
-                  </span>
-                </div>
-                <h3 className="mt-6 text-2xl font-bold">Aura Sales</h3>
-                <p className="mt-2 text-base leading-relaxed text-[#3c4948]">
-                  Real-time dashboards that highlight what sells, when it moves, and where margin
-                  is leaking—by branch, category, or payment channel.
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-white p-8 shadow-sm">
-                <div className="flex size-12 items-center justify-center rounded-lg bg-[rgba(242,138,91,0.2)]">
-                  <span className="material-symbols-outlined notranslate text-[#c2410c] text-2xl">
-                    payments
-                  </span>
-                </div>
-                <h3 className="mt-6 text-2xl font-bold">Aura Pay</h3>
-                <p className="mt-2 text-base leading-relaxed text-[#3c4948]">
-                  Unified reconciliation for cash, card, and mobile money transactions without
-                  the paperwork.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:col-span-2">
-                <div className="rounded-xl bg-white p-8 shadow-sm">
-                  <h4 className="text-xl font-bold">Aura Insights</h4>
-                  <p className="mt-2 text-sm text-[#3c4948]">
-                    Predictive analytics for growth.
-                  </p>
-                </div>
-                <div className="rounded-xl bg-white p-8 shadow-sm">
-                  <h4 className="text-xl font-bold">Aura Sync</h4>
-                  <p className="mt-2 text-sm text-[#3c4948]">
-                    Cloud synchronization across all branches.
-                  </p>
-                </div>
-              </div>
+              <p style={{ fontFamily: FONT_MONO, fontSize: 12, color: "#7d918c", marginTop: 18, letterSpacing: "0.02em" }}>
+                iOS &amp; Android · Same account on the web · No card required to start
+              </p>
             </div>
+
+            <HeroCarousel screens={HERO_SCREENS}>
+              <DashboardSlide />
+              <CheckoutSlide />
+              <InsightsSlide />
+              <ExpensesSlide />
+            </HeroCarousel>
           </div>
         </section>
 
-        {/* Deep dives */}
-        <section className="space-y-24 bg-[#f7f9fb] px-4 py-20 sm:px-8 sm:py-32">
+        {/* TRUST POINTS */}
+        <section style={{ background: "#fff", borderTop: "1px solid #e3eae8", borderBottom: "1px solid #e3eae8" }}>
           <div
-            id="deep-stock"
-            className="mx-auto flex max-w-7xl scroll-mt-28 flex-col items-center gap-12 lg:flex-row lg:gap-16"
+            className="trust3"
+            style={{
+              maxWidth: 1200,
+              margin: "0 auto",
+              padding: "34px 28px",
+              display: "grid",
+              gridTemplateColumns: "repeat(3,1fr)",
+              gap: 24,
+            }}
           >
-            <div className="flex-1 space-y-6">
-              <p className="text-base font-semibold uppercase tracking-[0.1em] text-[#006a65]">
-                Precision Control
-              </p>
-              <h2 className="text-3xl font-extrabold leading-tight md:text-4xl">
-                Aura Stock: Master Your Inventory
-              </h2>
-              <ul className="space-y-6">
-                <li className="flex gap-4">
-                  <span className="material-symbols-outlined notranslate mt-0.5 shrink-0 text-[#006a65]">
-                    verified
-                  </span>
-                  <div>
-                    <p className="text-lg font-bold">Product + Expiry Tracking</p>
-                    <p className="mt-1 text-sm leading-relaxed text-[#3c4948]">
-                      Automated alerts for nearing expirations and slow movers so you cut waste
-                      and protect margin.
-                    </p>
-                  </div>
-                </li>
-                <li className="flex gap-4">
-                  <span className="material-symbols-outlined notranslate mt-0.5 shrink-0 text-[#006a65]">
-                    autorenew
-                  </span>
-                  <div>
-                    <p className="text-lg font-bold">Automated Reordering</p>
-                    <p className="mt-1 text-sm leading-relaxed text-[#3c4948]">
-                      Dynamic stock levels that learn from your sales history to prevent
-                      out-of-stock scenarios.
-                    </p>
-                  </div>
-                </li>
-              </ul>
-            </div>
-            <div className="flex-1 w-full">
-              <div className="rounded-2xl bg-[#f2f4f6] p-4">
-                <div className="relative aspect-[4/3] overflow-hidden rounded-xl shadow-lg">
-                  <Image
-                    src={AURA_ASSETS.featurePharmacy}
-                    alt="Organized retail shelves with tracked inventory"
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 1024px) 100vw, 50vw"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mx-auto flex max-w-7xl flex-col-reverse items-center gap-12 lg:flex-row lg:gap-16">
-            <div className="flex-1 w-full">
-              <div className="rounded-2xl bg-[#f2f4f6] p-4">
-                <div className="relative aspect-[4/3] overflow-hidden rounded-xl shadow-lg">
-                  <Image
-                    src={AURA_ASSETS.featureAnalytics}
-                    alt="Sales analytics and data visualization"
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 1024px) 100vw, 50vw"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="flex-1 space-y-6">
-              <p className="text-base font-semibold uppercase tracking-[0.1em] text-[#4648d4]">
-                Growth Insights
-              </p>
-              <h2 className="text-3xl font-extrabold leading-tight md:text-4xl">
-                Aura Sales: Real-time Intelligence
-              </h2>
-              <p className="text-base leading-relaxed text-[#3c4948]">
-                Stop guessing what&apos;s selling. Aura Sales surfaces velocity, basket mix, and
-                branch comparisons so you can act on trends—not spreadsheets.
-              </p>
-              <blockquote className="space-y-4 rounded-xl border-l-4 border-[#4648d4] bg-[#f2f4f6] py-6 pl-7 pr-6">
-                <p className="text-base font-medium text-[#191c1e]">
-                  &ldquo;We increased our margin by 14% in the first quarter by doubling down on
-                  the categories Aura Insights flagged as underpriced and overstocked.&rdquo;
-                </p>
-                <footer className="text-sm font-semibold text-[#6063ee]">
-                  — Zanele Tembo, Owner @ Brightline Stores
-                </footer>
-              </blockquote>
-            </div>
+            <TrustPoint
+              icon="mobile_friendly"
+              title="Built for one hand"
+              body="Every workflow — from checkout to payouts — fits on the shop floor."
+            />
+            <TrustPoint
+              icon="hub"
+              title="One source of truth"
+              body="Head office and the floor see the same data, live."
+              divider
+            />
+            <TrustPoint
+              icon="encrypted"
+              title="Bank-grade security"
+              body="Encrypted in transit and at rest, role-based access."
+              divider
+            />
           </div>
         </section>
 
-        {/* Network / Solutions */}
+        {/* ECOSYSTEM */}
+        <section id="ecosystem" className="sec" style={{ ...SECTION, scrollMarginTop: 90 }}>
+          <Reveal style={{ textAlign: "center", maxWidth: 680, margin: "0 auto" }}>
+            <Eyebrow>The Aura ecosystem</Eyebrow>
+            <h2
+              style={{
+                fontFamily: FONT_DISPLAY,
+                fontWeight: 700,
+                fontSize: "clamp(30px,4vw,46px)",
+                lineHeight: 1.06,
+                letterSpacing: "-0.03em",
+                margin: "14px 0 0",
+              }}
+            >
+              Modules that run the day, and inform the year
+            </h2>
+            <p style={{ fontSize: 17, lineHeight: 1.55, color: "#46574f", margin: "16px 0 0" }}>
+              Integrated tools for day-to-day store operations and leadership visibility — all in the
+              app, no spreadsheets in between.
+            </p>
+          </Reveal>
+
+          <Reveal
+            className="g3"
+            style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20, marginTop: 48 }}
+          >
+            <div style={ECOSYSTEM_CARD}>
+              <div
+                style={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: 12,
+                  background: "#eef4f2",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Icon name="inventory_2" size={24} color="#0d5c54" />
+              </div>
+              <h3 style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 20, margin: "18px 0 0", letterSpacing: "-0.01em" }}>
+                Aura Stock
+              </h3>
+              <p style={{ fontSize: 14.5, lineHeight: 1.55, color: "#46574f", margin: "9px 0 0" }}>
+                Real-time inventory with product-level precision, expiry tracking, and automated
+                reordering logic.
+              </p>
+              <a
+                href="#stock"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "#0d5c54",
+                  textDecoration: "none",
+                  marginTop: 16,
+                }}
+              >
+                Learn more
+                <Icon name="arrow_forward" size={17} />
+              </a>
+            </div>
+
+            <div style={ECOSYSTEM_CARD}>
+              <div
+                style={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: 12,
+                  background: "#eef4f2",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Icon name="analytics" size={24} color="#0d5c54" />
+              </div>
+              <h3 style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 20, margin: "18px 0 0", letterSpacing: "-0.01em" }}>
+                Aura Sales
+              </h3>
+              <p style={{ fontSize: 14.5, lineHeight: 1.55, color: "#46574f", margin: "9px 0 0" }}>
+                Dashboards that show what sells, when it moves, and where margin leaks — by branch,
+                category, or channel.
+              </p>
+              <a
+                href="#sales"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "#0d5c54",
+                  textDecoration: "none",
+                  marginTop: 16,
+                }}
+              >
+                Learn more
+                <Icon name="arrow_forward" size={17} />
+              </a>
+            </div>
+
+            <div style={ECOSYSTEM_CARD}>
+              <div
+                style={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: 12,
+                  background: "#eef4f2",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Icon name="payments" size={24} color="#0d5c54" />
+              </div>
+              <h3 style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 20, margin: "18px 0 0", letterSpacing: "-0.01em" }}>
+                Aura Pay
+              </h3>
+              <p style={{ fontSize: 14.5, lineHeight: 1.55, color: "#46574f", margin: "9px 0 0" }}>
+                Unified reconciliation for cash, card, and mobile money — without the end-of-day
+                paperwork.
+              </p>
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "#bf6a43",
+                  marginTop: 16,
+                  fontFamily: FONT_MONO,
+                  letterSpacing: "0.04em",
+                }}
+              >
+                COMING SOON
+              </span>
+            </div>
+          </Reveal>
+
+          <Reveal className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 20 }}>
+            <div
+              style={{
+                background: "#07322e",
+                borderRadius: 16,
+                padding: 30,
+                display: "flex",
+                alignItems: "center",
+                gap: 20,
+                color: "#fff",
+                overflow: "hidden",
+                position: "relative",
+              }}
+            >
+              <div
+                style={{
+                  width: 50,
+                  height: 50,
+                  borderRadius: 12,
+                  background: "rgba(255,255,255,0.12)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <Icon name="insights" size={26} color="#a9e3d6" />
+              </div>
+              <div>
+                <h3 style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 19, margin: 0 }}>Aura Insights</h3>
+                <p style={{ fontSize: 14, color: "#bcd6cf", margin: "6px 0 0", lineHeight: 1.5 }}>
+                  Predictive analytics that flag underpriced and overstocked categories before they cost
+                  you.
+                </p>
+              </div>
+            </div>
+            <div
+              style={{
+                background: "#fff",
+                border: "1px solid #e3eae8",
+                borderRadius: 16,
+                padding: 30,
+                display: "flex",
+                alignItems: "center",
+                gap: 20,
+              }}
+            >
+              <div
+                style={{
+                  width: 50,
+                  height: 50,
+                  borderRadius: 12,
+                  background: "#eef4f2",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <Icon name="sync_alt" size={26} color="#0d5c54" />
+              </div>
+              <div>
+                <h3 style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 19, margin: 0 }}>Aura Sync</h3>
+                <p style={{ fontSize: 14, color: "#46574f", margin: "6px 0 0", lineHeight: 1.5 }}>
+                  Cloud synchronization that keeps stock, prices, and staff context aligned across every
+                  branch.
+                </p>
+              </div>
+            </div>
+          </Reveal>
+        </section>
+
+        {/* FEATURE: STOCK */}
+        <section id="stock" className="sec" style={{ ...SECTION, scrollMarginTop: 90 }}>
+          <div className="split" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
+            <Reveal>
+              <Eyebrow>Precision control</Eyebrow>
+              <h2
+                style={{
+                  fontFamily: FONT_DISPLAY,
+                  fontWeight: 700,
+                  fontSize: "clamp(28px,3.4vw,40px)",
+                  lineHeight: 1.08,
+                  letterSpacing: "-0.03em",
+                  margin: "14px 0 0",
+                }}
+              >
+                Aura Stock: your stockroom, on your phone
+              </h2>
+              <p style={{ fontSize: 16.5, lineHeight: 1.55, color: "#46574f", margin: "16px 0 0" }}>
+                Cut waste, protect margin, and never lose a sale to an empty shelf. Count, receive, and
+                reorder from the aisle — no back-office trip required.
+              </p>
+              <div style={{ marginTop: 30, display: "flex", flexDirection: "column", gap: 22 }}>
+                <FeatureBullet
+                  icon="verified"
+                  title="Product & expiry tracking"
+                  body="Automated alerts for nearing expirations and slow movers so you cut waste before it hits the books."
+                />
+                <FeatureBullet
+                  icon="autorenew"
+                  title="Automated reordering"
+                  body="Dynamic stock levels that learn from sales history to prevent out-of-stock scenarios."
+                />
+                <FeatureBullet
+                  icon="barcode_scanner"
+                  title="Scan with your camera"
+                  body="Add products, run counts, and ring up sales with the barcode scanner built into the app."
+                />
+              </div>
+            </Reveal>
+
+            <Reveal style={{ position: "relative", display: "flex", justifyContent: "center" }}>
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%,-50%)",
+                  width: 420,
+                  height: 420,
+                  borderRadius: "50%",
+                  background: "radial-gradient(circle, rgba(13,92,84,0.12), transparent 70%)",
+                }}
+              />
+              <StockPhone />
+            </Reveal>
+          </div>
+        </section>
+
+        {/* FEATURE: SALES */}
+        <section id="sales" className="sec" style={{ ...SECTION, scrollMarginTop: 90 }}>
+          <div className="split" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
+            <Reveal className="media2" style={{ position: "relative", display: "flex", justifyContent: "center", order: 1 }}>
+              <div
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%,-50%)",
+                  width: 420,
+                  height: 420,
+                  borderRadius: "50%",
+                  background: "radial-gradient(circle, rgba(13,92,84,0.12), transparent 70%)",
+                }}
+              />
+              <SalesPhone />
+            </Reveal>
+
+            <Reveal className="copy1" style={{ order: 2 }}>
+              <Eyebrow>Growth insights</Eyebrow>
+              <h2
+                style={{
+                  fontFamily: FONT_DISPLAY,
+                  fontWeight: 700,
+                  fontSize: "clamp(28px,3.4vw,40px)",
+                  lineHeight: 1.08,
+                  letterSpacing: "-0.03em",
+                  margin: "14px 0 0",
+                }}
+              >
+                Aura Sales: act on trends, not spreadsheets
+              </h2>
+              <p style={{ fontSize: 16.5, lineHeight: 1.55, color: "#46574f", margin: "16px 0 0" }}>
+                Stop guessing what&apos;s selling. Aura Sales surfaces velocity, basket mix, and branch
+                comparisons the moment they shift — wherever you are.
+              </p>
+              <figure
+                style={{
+                  margin: "28px 0 0",
+                  padding: "24px 26px",
+                  background: "#fff",
+                  borderRadius: "0 14px 14px 0",
+                  border: "1px solid #e3eae8",
+                  borderLeft: "3px solid #0d5c54",
+                }}
+              >
+                <blockquote
+                  style={{
+                    margin: 0,
+                    fontFamily: FONT_DISPLAY,
+                    fontWeight: 500,
+                    fontSize: 18,
+                    lineHeight: 1.5,
+                    letterSpacing: "-0.01em",
+                    color: "#0c1c19",
+                  }}
+                >
+                  &ldquo;We increased our margin by 14% in the first quarter by doubling down on the
+                  categories Aura flagged as underpriced and overstocked.&rdquo;
+                </blockquote>
+                <figcaption style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12 }}>
+                  <div
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: "50%",
+                      background: "#0d5c54",
+                      color: "#fff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontFamily: FONT_DISPLAY,
+                      fontWeight: 700,
+                      fontSize: 14,
+                    }}
+                  >
+                    ZT
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>Zanele Tembo</div>
+                    <div style={{ fontSize: 13, color: "#5f7771" }}>Owner, Health First Pharmacy</div>
+                  </div>
+                </figcaption>
+              </figure>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* NETWORK BAND */}
         <section
           id="network"
-          className="scroll-mt-24 bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] px-4 py-20 sm:px-8 sm:py-24"
+          style={{ marginTop: 104, background: "#07322e", color: "#fff", position: "relative", overflow: "hidden", scrollMarginTop: 68 }}
         >
-          <div className="mx-auto max-w-7xl text-center">
-            <h2 className="text-3xl font-extrabold text-white md:text-4xl">
-              One Network. Complete Control.
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-lg text-white/80">
-              Whether you manage three branches or three hundred, Aura Sync keeps stock levels,
-              prices, and staff context aligned—so head office and the floor see the same truth.
-            </p>
-            <div className="mt-12 grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-8">
-              {[
-                {
-                  icon: "star",
-                  title: "Centralized Hub",
-                  body: "Switch between branch views with a single click in the Aura Toggle.",
-                },
-                {
-                  icon: "sync_alt",
-                  title: "Instant Sync",
-                  body: "Updates to inventory in Branch A are reflected instantly in Head Office reports.",
-                },
-                {
-                  icon: "shield_lock",
-                  title: "Built-in security",
-                  body: "Encryption in transit and at rest, with role-based access for your team.",
-                },
-              ].map((item) => (
-                <div key={item.title} className="flex flex-col items-center text-center">
-                  <div className="flex size-16 items-center justify-center rounded-full bg-white/20 py-3.5">
-                    <span className="material-symbols-outlined notranslate text-3xl text-white">
-                      {item.icon}
-                    </span>
-                  </div>
-                  <h3 className="mt-4 text-xl font-bold text-white">{item.title}</h3>
-                  <p className="mt-2 max-w-xs text-sm leading-relaxed text-white/70">
-                    {item.body}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Pricing */}
-        <section
-          id="pricing"
-          className="scroll-mt-24 bg-[#f2f4f6] px-4 py-20 sm:px-8 sm:py-32"
-        >
-          <div className="mx-auto max-w-7xl space-y-12">
-            <div className="space-y-4 text-center">
-              <p className="text-base font-semibold uppercase tracking-[0.1em] text-[#006a65]">
-                Pricing Plans
-              </p>
-              <h2 className="text-3xl font-extrabold md:text-4xl">
-                Scalable from first store to full chain
-              </h2>
-              <p className="mx-auto max-w-xl text-[#3c4948]">
-                Transparent pricing for every stage of growth—from a single location to a
-                multi-branch operation.
-              </p>
-              <p className="mx-auto max-w-2xl text-sm font-medium text-[#006a65]">
-                Basic and Pro: 7-day free trial on your first paid plan, then regular billing.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 items-stretch gap-8 lg:grid-cols-4">
-              {orderedPlans.map((plan, index) => {
-                const prev = index > 0 ? orderedPlans[index - 1] : undefined;
-                const monthly = plan.prices.monthly;
-                const highlight = plan.code === "pro";
-                const wrapper = highlight
-                  ? "flex h-full flex-col rounded-2xl bg-gradient-to-br from-[#0fb9b1] to-[#6366f1] p-8 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]"
-                  : "flex h-full flex-col rounded-2xl border border-[#bbc9c7] bg-white p-8 shadow-sm";
-                const heading = highlight ? "text-xl font-bold text-white" : "text-xl font-bold";
-                const subText = highlight ? "text-sm text-white/80" : "text-sm text-[#3c4948]";
-                const priceText = highlight
-                  ? "pt-4 font-semibold text-white text-[clamp(1.6rem,2.8vw,2.2rem)] leading-none tracking-tight whitespace-nowrap"
-                  : "pt-4 font-semibold text-[clamp(1.6rem,2.8vw,2.2rem)] leading-none tracking-tight whitespace-nowrap";
-                const divider = highlight ? "border-b border-white/20 pb-8" : "border-b border-[#e2e8f0] pb-8";
-                const listText = highlight ? "flex items-center gap-3 text-sm text-white" : "flex items-center gap-3 text-sm";
-                const checkColor = highlight ? "text-white" : "text-[#006a65]";
-                const cta = highlight
-                  ? "block w-full rounded-xl bg-white py-3 text-center font-bold text-[#006a65] shadow-lg transition hover:bg-white/95"
-                  : "block w-full rounded-xl border-2 border-[#006a65] py-3.5 text-center font-bold text-[#006a65] transition hover:bg-[#006a65]/5";
-                const ctaDisabled =
-                  "block w-full cursor-not-allowed rounded-xl border-2 border-[#bbc9c7] bg-[#f2f4f6] py-3.5 text-center font-bold text-[#6c7a78] opacity-80";
-
-                const bullets = buildPlanBullets(plan, prev);
-                const isEnterprise = plan.code === "enterprise";
-
-                return (
-                  <div key={plan.code} className={plan.code === "pro" ? "relative order-first lg:order-none" : ""}>
-                    {plan.code === "pro" ? (
-                      <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#4648d4] px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-lg">
-                        Most Popular
-                      </div>
-                    ) : null}
-                    <div className={wrapper}>
-                      <div className={`space-y-2 ${divider}`}>
-                        <h3 className={heading}>{plan.name}</h3>
-                        {isEnterprise ? (
-                          <p className={highlight ? "text-xs font-semibold uppercase tracking-[0.12em] text-white/90" : "text-xs font-semibold uppercase tracking-[0.12em] text-[#6063ee]"}>
-                            Coming soon
-                          </p>
-                        ) : null}
-                        <p className={subText}>
-                          {plan.code === "free"
-                            ? "Start with the essentials for a single location."
-                            : plan.code === "basic"
-                              ? "Built for small teams ready to scale."
-                              : plan.code === "pro"
-                                ? "Advanced analytics for growing multi-branch teams."
-                                : "Best for large networks and custom integrations."}
-                        </p>
-                        <p className={priceText}>
-                          {monthly ? (
-                            <>
-                              {zwmFormatter.format(monthly.amountCents / 100)}
-                              <span
-                                className={
-                                  highlight
-                                    ? "ml-1 align-baseline text-base font-normal text-white/80"
-                                    : "ml-1 align-baseline text-base font-normal text-[#3c4948]"
-                                }
-                              >
-                                /month
-                              </span>
-                            </>
-                          ) : (
-                            "Custom"
-                          )}
-                        </p>
-                        {/* {plan.code === "basic" || plan.code === "pro" ? (
-                          <p
-                            className={
-                              highlight
-                                ? "pt-2 text-sm font-semibold leading-snug text-white"
-                                : "pt-2 text-sm font-semibold leading-snug text-[#006a65]"
-                            }
-                          >
-                            7-day free trial
-                            <span
-                              className={
-                                highlight ? "font-normal text-white/85" : "font-normal text-[#3c4948]"
-                              }
-                            >
-                              {" "}
-                              · then billed monthly after trial
-                            </span>
-                          </p>
-                        ) : plan.code === "free" ? (
-                          <p className="pt-2 text-sm text-[#3c4948]">Always free — no trial needed.</p>
-                        ) : null} */}
-                      </div>
-                      <ul className="flex flex-1 flex-col gap-4 py-8">
-                        {bullets.map((t) => (
-                          <li key={t} className={listText}>
-                            <span className={`material-symbols-outlined notranslate text-lg ${checkColor}`}>
-                              check_circle
-                            </span>
-                            <span className="min-w-0 break-words">{t}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      {isEnterprise ? (
-                        <span className={ctaDisabled} aria-disabled="true">
-                          Coming soon
-                        </span>
-                      ) : (
-                        <Link
-                          href={
-                            plan.code === "basic" || plan.code === "pro"
-                              ? `${ROUTES.auth.register}?plan=${plan.code}`
-                              : ROUTES.auth.register
-                          }
-                          className={cta}
-                        >
-                          {plan.code === "free" ? "Get Started" : "Choose Plan"}
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <p className="flex flex-wrap items-center justify-center gap-2 text-center text-sm text-[#3c4948]">
-              <span className="material-symbols-outlined notranslate text-[#006a65] text-lg">
-                lock
-              </span>
-              All plans include strong encryption for data in transit and at rest
-            </p>
-            <p className="mx-auto max-w-2xl text-center text-sm leading-relaxed text-[#3c4948]">
-              Basic and Pro include a <span className="font-semibold text-[#006a65]">7-day free trial</span> on your
-              first paid subscription, then standard billing applies. The Free plan is always free—no trial needed.
-            </p>
-          </div>
-        </section>
-
-        {/* Final CTA */}
-        <section className="px-4 py-20 sm:px-8 sm:py-32">
-          <div className="mx-auto max-w-3xl space-y-8 text-center">
-            <h2 className="text-3xl font-extrabold leading-tight sm:text-4xl sm:leading-tight md:text-5xl md:leading-[1.15]">
-              Ready to run every store with less noise?
-            </h2>
-            <p className="text-lg text-[#3c4948]">
-              Join teams using AuraStores to unify inventory, sales, and payouts—so operators and
-              owners stay on the same page.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
-              <Link
-                href={ROUTES.auth.signIn}
-                className={`${gradientBtn} px-12 py-5 text-lg shadow-[0_25px_50px_-12px_rgba(0,106,101,0.3)]`}
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              top: -120,
+              right: -80,
+              width: 420,
+              height: 420,
+              borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(169,227,214,0.14), transparent 70%)",
+            }}
+          />
+          <div className="secdark" style={{ maxWidth: 1200, margin: "0 auto", padding: "96px 28px", position: "relative" }}>
+            <Reveal style={{ maxWidth: 640 }}>
+              <Eyebrow color="#7fcdbd">Multi-branch</Eyebrow>
+              <h2
+                style={{
+                  fontFamily: FONT_DISPLAY,
+                  fontWeight: 700,
+                  fontSize: "clamp(30px,4vw,46px)",
+                  lineHeight: 1.05,
+                  letterSpacing: "-0.03em",
+                  margin: "14px 0 0",
+                }}
               >
-                Log in
-              </Link>
-            </div>
+                One network. Complete control. Any phone.
+              </h2>
+              <p style={{ fontSize: 17, lineHeight: 1.55, color: "#bcd6cf", margin: "16px 0 0" }}>
+                Whether you manage three branches or three hundred, Aura Sync keeps stock, prices, and
+                staff context aligned — so head office and the floor see the same truth, from the same
+                app.
+              </p>
+            </Reveal>
+            <Reveal className="g3" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20, marginTop: 48 }}>
+              <NetworkCard
+                icon="workspaces"
+                title="Centralized hub"
+                body="Switch between branch views with a single tap in the Aura Toggle."
+              />
+              <NetworkCard
+                icon="sync"
+                title="Instant sync"
+                body="A stock change in Branch A appears in head-office reports immediately."
+              />
+              <NetworkCard
+                icon="shield_lock"
+                title="Built-in security"
+                body="Role-based access for your team, with encryption in transit and at rest."
+              />
+            </Reveal>
           </div>
         </section>
+
+        {/* PRICING */}
+        <section id="pricing" className="sec" style={{ ...SECTION, scrollMarginTop: 90 }}>
+          <Reveal style={{ textAlign: "center", maxWidth: 660, margin: "0 auto" }}>
+            <Eyebrow>Pricing</Eyebrow>
+            <h2
+              style={{
+                fontFamily: FONT_DISPLAY,
+                fontWeight: 700,
+                fontSize: "clamp(30px,4vw,46px)",
+                lineHeight: 1.06,
+                letterSpacing: "-0.03em",
+                margin: "14px 0 0",
+              }}
+            >
+              Scalable from first store to full chain
+            </h2>
+            <p style={{ fontSize: 17, lineHeight: 1.55, color: "#46574f", margin: "16px 0 0" }}>
+              Transparent pricing for every stage of growth — from a single location to a multi-branch
+              operation.
+            </p>
+          </Reveal>
+
+          <PricingCards plans={landingPlans} />
+
+          <p style={{ textAlign: "center", fontFamily: FONT_MONO, fontSize: 12, color: "#7d918c", marginTop: 24 }}>
+            Basic &amp; Pro: 7-day free trial on your first paid plan, then regular billing.
+          </p>
+        </section>
+
+        {/* DOWNLOAD / FINAL CTA */}
+        <DownloadCta />
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-[#e2e8f0] bg-[#f8fafc]">
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-8">
-          <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-5">
-            <div className="lg:col-span-2">
-              <AppLogo variant="footer" />
-              <p className="mt-3 max-w-xs text-sm leading-relaxed text-[#64748b]">
-                One platform for pharmacies, retail, and multi-location chains.
-              </p>
+      {/* FOOTER */}
+      <footer style={{ marginTop: 96, background: "#052420", color: "#fff" }}>
+        <div
+          className="foot"
+          style={{
+            maxWidth: 1200,
+            margin: "0 auto",
+            padding: "64px 28px 40px",
+            display: "grid",
+            gridTemplateColumns: "1.6fr 1fr 1fr 1fr",
+            gap: 40,
+          }}
+        >
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={LOGO_MARK} alt="AuraStores logo" style={{ width: 32, height: 32, display: "block" }} />
+              <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 18 }}>AuraStores</span>
             </div>
-            <div>
-              <p className="text-sm font-bold text-[#0f172a]">Products</p>
-              <ul className="mt-6 space-y-4 text-sm text-[#64748b]">
-                {["Aura Stock", "Aura Sales", "Aura Pay", "Aura Insights", "Aura Sync"].map(
-                  (label) => (
-                    <li key={label}>
-                      <a href="#ecosystem" className="hover:text-[#0fb9b1]">
-                        {label}
-                      </a>
-                    </li>
-                  ),
-                )}
-              </ul>
+            <p style={{ fontSize: 14, lineHeight: 1.6, color: "#8fb0a8", margin: "16px 0 0", maxWidth: 280 }}>
+              One mobile-first platform for pharmacies, retail, and multi-location chains across Zambia.
+            </p>
+          </div>
+
+          <div>
+            <div style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6f928a" }}>
+              Products
             </div>
-            <div>
-              <p className="text-sm font-bold text-[#0f172a]">Company</p>
-              <ul className="mt-6 space-y-4 text-sm text-[#64748b]">
-                <li>
-                  <span className="cursor-default">About Us</span>
-                </li>
-                <li>
-                  <span className="cursor-default">Careers</span>
-                </li>
-              </ul>
+            <div style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 16 }}>
+              <a href="#ecosystem" style={{ fontSize: 14, color: "#cfe2dc", textDecoration: "none" }}>Aura Stock</a>
+              <a href="#sales" style={{ fontSize: 14, color: "#cfe2dc", textDecoration: "none" }}>Aura Sales</a>
+              <a href="#ecosystem" style={{ fontSize: 14, color: "#cfe2dc", textDecoration: "none" }}>Aura Pay</a>
+              <a href="#ecosystem" style={{ fontSize: 14, color: "#cfe2dc", textDecoration: "none" }}>Aura Insights</a>
+              <a href="#download" style={{ fontSize: 14, color: "#cfe2dc", textDecoration: "none" }}>Get the app</a>
             </div>
-            <div>
-              <p className="text-sm font-bold text-[#0f172a]">Legal</p>
-              <ul className="mt-6 space-y-4 text-sm text-[#64748b]">
-                <li>
-                  <span className="cursor-default">Privacy Policy</span>
-                </li>
-                <li>
-                  <span className="cursor-default">Terms of Service</span>
-                </li>
-                <li>
-                  <span className="cursor-default">Security</span>
-                </li>
-              </ul>
+          </div>
+
+          <div>
+            <div style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6f928a" }}>
+              Company
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 16 }}>
+              <span style={{ fontSize: 14, color: "#cfe2dc" }}>About us</span>
+              <span style={{ fontSize: 14, color: "#cfe2dc" }}>Careers</span>
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6f928a" }}>
+              Legal
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 16 }}>
+              <span style={{ fontSize: 14, color: "#cfe2dc" }}>Privacy policy</span>
+              <span style={{ fontSize: 14, color: "#cfe2dc" }}>Terms of service</span>
+              <span style={{ fontSize: 14, color: "#cfe2dc" }}>Security</span>
             </div>
           </div>
         </div>
-        <div className="border-t border-[#e2e8f0]">
-          <p className="px-4 py-8 text-center text-xs text-[#64748b] sm:px-8">
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ maxWidth: 1200, margin: "0 auto", padding: "22px 28px", fontSize: 13, color: "#6f928a" }}>
             © {year} AuraStores. All rights reserved.
-          </p>
+          </div>
         </div>
       </footer>
     </div>
