@@ -464,10 +464,18 @@ gmp-place-autocomplete::part(prediction-list) {
   display: none;
 }
 
+/* Grid/flex children must be allowed to shrink below their content size,
+ * otherwise the fixed-width phone mockups force the whole column (and hero
+ * copy) wider than the viewport on mobile. */
+.aura-landing-v2 .herogrid > *,
+.aura-landing-v2 .split > * {
+  min-width: 0;
+}
+
 /* Responsive layout (ported from the design comp). */
 @media (max-width: 1020px) {
   .aura-landing-v2 .herogrid {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     gap: 56px !important;
     text-align: center;
   }
@@ -477,13 +485,14 @@ gmp-place-autocomplete::part(prediction-list) {
 }
 @media (max-width: 880px) {
   .aura-landing-v2 .navlinks { display: none !important; }
+  .aura-landing-v2 .navcta { display: none !important; }
   .aura-landing-v2 .navtoggle { display: inline-flex !important; }
   .aura-landing-v2 .g3,
   .aura-landing-v2 .g3p,
   .aura-landing-v2 .split,
   .aura-landing-v2 .g2,
   .aura-landing-v2 .trust3 {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
   }
   .aura-landing-v2 .split { gap: 44px !important; }
   .aura-landing-v2 .trustdiv {
@@ -498,13 +507,13 @@ gmp-place-autocomplete::part(prediction-list) {
     padding-bottom: 64px !important;
   }
   .aura-landing-v2 .foot {
-    grid-template-columns: 1fr 1fr !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
     gap: 30px !important;
   }
   .aura-landing-v2 .cta-box { padding: 52px 26px !important; }
 }
 @media (max-width: 540px) {
-  .aura-landing-v2 .foot { grid-template-columns: 1fr !important; }
+  .aura-landing-v2 .foot { grid-template-columns: minmax(0, 1fr) !important; }
   .aura-landing-v2 .navbar {
     padding-left: 18px !important;
     padding-right: 18px !important;

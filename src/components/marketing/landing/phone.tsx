@@ -160,6 +160,7 @@ export function FeaturePhone({ rotate, children }: { rotate: number; children: R
       style={{
         width: 372,
         maxWidth: "100%",
+        minWidth: 0,
         transform: `rotate(${rotate}deg)`,
         position: "relative",
       }}
