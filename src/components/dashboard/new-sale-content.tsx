@@ -63,6 +63,7 @@ type MedicationComboboxProps = {
   className?: string;
   onChange: (nextProductId: string) => void;
   onQueryChange?: (q: string) => void;
+  onFocusChange?: (focused: boolean) => void;
   queryLoading?: boolean;
 };
 
@@ -75,6 +76,7 @@ function MedicationCombobox({
   className,
   onChange,
   onQueryChange,
+  onFocusChange,
   queryLoading = false,
 }: MedicationComboboxProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -256,6 +258,7 @@ function MedicationCombobox({
               setOpen(true);
               setQuery("");
               onQueryChange?.("");
+              onFocusChange?.(true);
               setHighlightedIndex(0);
               updatePanelPosition();
             }
@@ -268,6 +271,7 @@ function MedicationCombobox({
               setHighlightedIndex(-1);
               setQuery("");
               onQueryChange?.("");
+              onFocusChange?.(false);
               setPanelStyle(null);
             }, 0);
           }}
@@ -433,6 +437,14 @@ export function NewSaleContent() {
   >({});
   const [productSearch, setProductSearch] = useState("");
   const [productSearchDebounced, setProductSearchDebounced] = useState("");
+  // Which product combobox currently has focus. Only that one is fed the live
+  // server-search results (and the loading flag); every other combobox gets a
+  // stable options list, so a search response no longer re-runs the O(n) filter
+  // inside every line-item combobox on the screen.
+  const [activeComboboxId, setActiveComboboxId] = useState<string | null>(null);
+  const handleComboboxFocusChange = useCallback((comboboxId: string, focused: boolean) => {
+    setActiveComboboxId((prev) => (focused ? comboboxId : prev === comboboxId ? null : prev));
+  }, []);
   useEffect(() => {
     const handle = window.setTimeout(() => setProductSearchDebounced(productSearch), 200);
     return () => window.clearTimeout(handle);
@@ -557,6 +569,22 @@ export function NewSaleContent() {
       categoryName: p.categoryName,
     }));
   }, [mergedCatalogProducts]);
+
+  // Base catalogue + already-picked (pinned) products, but NOT live search
+  // results. Its identity is stable while the user types, so idle comboboxes
+  // fed this list don't re-filter on every server-search response. Pinned
+  // products keep selected line items showing their name even if the product
+  // came from a server search beyond the preloaded window.
+  const stableProductOptions: ProductOption[] = useMemo(() => {
+    const map = new Map<string, ProductOption>();
+    for (const p of salesCatalogQuery.data?.products ?? []) {
+      map.set(p.id, { id: p.id, name: p.name, categoryName: p.categoryName });
+    }
+    for (const p of Object.values(pinnedCatalogProducts)) {
+      map.set(p.id, { id: p.id, name: p.name, categoryName: p.categoryName });
+    }
+    return Array.from(map.values());
+  }, [salesCatalogQuery.data?.products, pinnedCatalogProducts]);
 
   function getPreferredBatch<T extends { quantityAvailable: number }>(batches: T[]) {
     return batches.find((batch) => batch.quantityAvailable > 0) ?? batches[0];
@@ -1340,11 +1368,16 @@ export function NewSaleContent() {
                 <MedicationCombobox
                   id="sale-product-search"
                   value=""
-                  products={productOptions}
+                  products={
+                    activeComboboxId === "sale-product-search" ? productOptions : stableProductOptions
+                  }
                   disabled={salesCatalogQuery.isLoading || salesCatalogQuery.isError}
                   placeholder="Search product name..."
                   onQueryChange={setProductSearch}
-                  queryLoading={isProductSearchLoading}
+                  onFocusChange={(focused) => handleComboboxFocusChange("sale-product-search", focused)}
+                  queryLoading={
+                    activeComboboxId === "sale-product-search" ? isProductSearchLoading : false
+                  }
                   onChange={(productId) => {
                     addItemWithProduct(productId);
                     setProductSearch("");
@@ -1363,6 +1396,7 @@ export function NewSaleContent() {
               <div className="space-y-4 md:hidden">
                 {items.map((row) => {
                   const rowIssue = getLineItemIssue(row);
+                  const comboboxId = `med-select-${row.id}`;
                   return (
                     <div
                       key={row.id}
@@ -1376,12 +1410,13 @@ export function NewSaleContent() {
                         </label>
                         <div className="grid grid-cols-[1fr,44px] gap-2">
                           <MedicationCombobox
-                            id={`med-select-${row.id}`}
+                            id={comboboxId}
                             value={row.productId ?? ""}
-                            products={productOptions}
+                            products={activeComboboxId === comboboxId ? productOptions : stableProductOptions}
                             disabled={salesCatalogQuery.isLoading || salesCatalogQuery.isError}
                             onQueryChange={setProductSearch}
-                            queryLoading={isProductSearchLoading}
+                            onFocusChange={(focused) => handleComboboxFocusChange(comboboxId, focused)}
+                            queryLoading={activeComboboxId === comboboxId ? isProductSearchLoading : false}
                             onChange={(nextId) => updateItemProduct(row.id, nextId)}
                             className="min-w-0 flex-1"
                           />
@@ -1481,6 +1516,7 @@ export function NewSaleContent() {
                   <tbody>
                     {items.map((row) => {
                       const rowIssue = getLineItemIssue(row);
+                      const comboboxId = `med-select-desktop-${row.id}`;
                       return (
                         <tr
                           key={row.id}
@@ -1490,11 +1526,13 @@ export function NewSaleContent() {
                           <div className="space-y-2">
                             <div className="flex gap-2">
                             <MedicationCombobox
+                              id={comboboxId}
                               value={row.productId ?? ""}
-                              products={productOptions}
+                              products={activeComboboxId === comboboxId ? productOptions : stableProductOptions}
                               disabled={salesCatalogQuery.isLoading || salesCatalogQuery.isError}
                               onQueryChange={setProductSearch}
-                              queryLoading={isProductSearchLoading}
+                              onFocusChange={(focused) => handleComboboxFocusChange(comboboxId, focused)}
+                              queryLoading={activeComboboxId === comboboxId ? isProductSearchLoading : false}
                               onChange={(nextId) => updateItemProduct(row.id, nextId)}
                               className="min-w-0 flex-1"
                             />
