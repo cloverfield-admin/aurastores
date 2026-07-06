@@ -1,6 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
-import { Geist, Geist_Mono, Inter, Manrope } from "next/font/google";
+import {
+  Geist,
+  Geist_Mono,
+  IBM_Plex_Mono,
+  Inter,
+  Manrope,
+  Schibsted_Grotesk,
+} from "next/font/google";
 import { AuraFeedbackProvider } from "@/components/providers/aura-feedback-provider";
 import { AppQueryProvider } from "@/components/providers/query-provider";
 import { ThemeColorMeta } from "@/components/providers/theme-color-meta";
@@ -28,6 +35,19 @@ const manrope = Manrope({
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+});
+
+// Marketing landing typography (Schibsted Grotesk display + IBM Plex Mono eyebrows/labels).
+const schibstedGrotesk = Schibsted_Grotesk({
+  variable: "--font-schibsted",
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
+});
+
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 const defaultTitle = `${PRODUCT_NAME} — ${PRODUCT_TAGLINE}`;
@@ -83,7 +103,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} ${inter.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} ${inter.variable} ${schibstedGrotesk.variable} ${plexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-background text-foreground">
         <ThemeStorageMigrate />

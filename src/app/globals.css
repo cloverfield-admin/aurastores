@@ -380,3 +380,134 @@ gmp-place-autocomplete::part(prediction-list) {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
+
+/* ==========================================================================
+ * Marketing landing v2 ("Every store, in your pocket")
+ * Mobile-first, green palette. Scoped under .aura-landing-v2 so it can't leak
+ * into the app shell. Keyframes + responsive rules ported from the design comp.
+ * ========================================================================== */
+.aura-landing-v2 {
+  font-family: var(--font-manrope), system-ui, sans-serif;
+  color: #0c1c19;
+  background: #f5f8f7;
+  -webkit-font-smoothing: antialiased;
+  /* `clip` (not `hidden`) so the sticky header's scroll container stays the
+   * viewport — `hidden` would force overflow-y:auto and break sticky. */
+  overflow-x: clip;
+}
+
+.aura-landing-v2 ::selection {
+  background: #0d5c54;
+  color: #fff;
+}
+
+/* Material Symbols used inside phone mockups / feature lists. */
+.aura-landing-v2 .ms {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  vertical-align: middle;
+  -webkit-font-feature-settings: "liga";
+  font-feature-settings: "liga";
+  font-variation-settings: "wght" 400, "opsz" 24, "FILL" 0, "GRAD" 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes auraFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-9px); }
+}
+@keyframes auraFloatB {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
+}
+@keyframes auraPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(17, 117, 107, 0.35); }
+  60% { box-shadow: 0 0 0 7px rgba(17, 117, 107, 0); }
+}
+
+/* Scroll reveal (JS toggles [data-reveal] -> [data-revealed]). */
+.aura-landing-v2 [data-reveal] {
+  opacity: 0;
+  transform: translateY(26px);
+  transition:
+    opacity 0.75s ease,
+    transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.aura-landing-v2 [data-reveal][data-revealed] {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .aura-landing-v2 [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .aura-landing-v2 .auraFloat,
+  .aura-landing-v2 .auraFloatB,
+  .aura-landing-v2 .floatpill {
+    animation: none !important;
+  }
+}
+
+/* Mobile nav toggle: hidden on desktop, shown once nav links collapse. */
+.aura-landing-v2 .navtoggle {
+  display: none;
+}
+
+/* Responsive layout (ported from the design comp). */
+@media (max-width: 1020px) {
+  .aura-landing-v2 .herogrid {
+    grid-template-columns: 1fr !important;
+    gap: 56px !important;
+    text-align: center;
+  }
+  .aura-landing-v2 .herocopy { margin: 0 auto; }
+  .aura-landing-v2 .herocta { justify-content: center !important; }
+  .aura-landing-v2 .phonecol { margin: 0 auto; }
+}
+@media (max-width: 880px) {
+  .aura-landing-v2 .navlinks { display: none !important; }
+  .aura-landing-v2 .navtoggle { display: inline-flex !important; }
+  .aura-landing-v2 .g3,
+  .aura-landing-v2 .g3p,
+  .aura-landing-v2 .split,
+  .aura-landing-v2 .g2,
+  .aura-landing-v2 .trust3 {
+    grid-template-columns: 1fr !important;
+  }
+  .aura-landing-v2 .split { gap: 44px !important; }
+  .aura-landing-v2 .trustdiv {
+    border-left: none !important;
+    padding-left: 0 !important;
+  }
+  .aura-landing-v2 .media2 { order: 2 !important; }
+  .aura-landing-v2 .copy1 { order: 1 !important; }
+  .aura-landing-v2 .sec { padding-top: 64px !important; }
+  .aura-landing-v2 .secdark {
+    padding-top: 64px !important;
+    padding-bottom: 64px !important;
+  }
+  .aura-landing-v2 .foot {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 30px !important;
+  }
+  .aura-landing-v2 .cta-box { padding: 52px 26px !important; }
+}
+@media (max-width: 540px) {
+  .aura-landing-v2 .foot { grid-template-columns: 1fr !important; }
+  .aura-landing-v2 .navbar {
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+  }
+  .aura-landing-v2 .floatpill { display: none !important; }
+}
