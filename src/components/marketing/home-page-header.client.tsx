@@ -107,28 +107,31 @@ export function HomePageHeaderClient({ isAuthenticated }: HomePageHeaderClientPr
         </nav>
 
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <Link href={authHref} style={{ fontSize: 14.5, fontWeight: 600, color: "#0c1c19", textDecoration: "none" }}>
-            {authLabel}
-          </Link>
-          <a
-            href="#download"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              fontSize: 14.5,
-              fontWeight: 600,
-              color: "#fff",
-              background: "#0d5c54",
-              padding: "10px 18px",
-              borderRadius: 10,
-              textDecoration: "none",
-              boxShadow: "0 6px 16px rgba(13,92,84,0.24)",
-            }}
-          >
-            <Icon name="smartphone" size={18} />
-            Get the app
-          </a>
+          <div className="navcta" style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <Link href={authHref} style={{ fontSize: 14.5, fontWeight: 600, color: "#0c1c19", textDecoration: "none" }}>
+              {authLabel}
+            </Link>
+            <a
+              href="#download"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                fontSize: 14.5,
+                fontWeight: 600,
+                color: "#fff",
+                background: "#0d5c54",
+                padding: "10px 18px",
+                borderRadius: 10,
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+                boxShadow: "0 6px 16px rgba(13,92,84,0.24)",
+              }}
+            >
+              <Icon name="smartphone" size={18} />
+              Get the app
+            </a>
+          </div>
           <button
             ref={buttonRef}
             type="button"
@@ -180,21 +183,36 @@ export function HomePageHeaderClient({ isAuthenticated }: HomePageHeaderClientPr
               {link.label}
             </a>
           ))}
-          <Link
-            href={authHref}
-            onClick={() => setOpen(false)}
-            style={{
-              marginTop: 6,
-              padding: "12px 6px",
-              fontSize: 15,
-              fontWeight: 600,
-              color: "#0d5c54",
-              textDecoration: "none",
-              borderTop: "1px solid #e3eae8",
-            }}
-          >
-            {authLabel}
-          </Link>
+          <div style={{ marginTop: 6, borderTop: "1px solid #e3eae8", paddingTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
+            <Link
+              href={authHref}
+              onClick={() => setOpen(false)}
+              style={{ padding: "6px 6px", fontSize: 15, fontWeight: 600, color: "#0d5c54", textDecoration: "none" }}
+            >
+              {authLabel}
+            </Link>
+            <a
+              href="#download"
+              onClick={() => setOpen(false)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                fontSize: 15,
+                fontWeight: 600,
+                color: "#fff",
+                background: "#0d5c54",
+                padding: "12px 18px",
+                borderRadius: 10,
+                textDecoration: "none",
+                boxShadow: "0 6px 16px rgba(13,92,84,0.24)",
+              }}
+            >
+              <Icon name="smartphone" size={18} />
+              Get the app
+            </a>
+          </div>
         </div>
       ) : null}
     </header>
