@@ -689,6 +689,24 @@ export class SalesRepositoryImpl implements SalesRepository {
     const limit = isSearching ? 50 : 500;
     const pattern = `%${trimmed}%`;
 
+    // Resolve category-name matches separately so the product query can filter
+    // by an indexed `category_id IN (...)` instead of an ILIKE on the joined
+    // product_categories table. That keeps every OR branch index-eligible and
+    // org-scoped (see migration 0043 org-scoped trigram indexes).
+    const matchedCategoryIds = isSearching
+      ? (
+          await db
+            .select({ id: productCategories.id })
+            .from(productCategories)
+            .where(
+              and(
+                eq(productCategories.organizationId, context.organization.id),
+                ilike(productCategories.name, pattern),
+              ),
+            )
+        ).map((row) => row.id)
+      : [];
+
     const productRows = await db
       .select({
         id: products.id,
@@ -708,7 +726,9 @@ export class SalesRepositoryImpl implements SalesRepository {
                 eq(products.barcode, trimmed),
                 ilike(products.name, pattern),
                 ilike(products.sku, pattern),
-                ilike(productCategories.name, pattern),
+                matchedCategoryIds.length > 0
+                  ? inArray(products.categoryId, matchedCategoryIds)
+                  : undefined,
               )
             : sql`true`,
         ),

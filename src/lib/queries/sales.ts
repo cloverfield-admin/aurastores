@@ -296,6 +296,10 @@ export function useSalesCatalogQuery(branchId?: string, enabled = true) {
       });
     },
     enabled,
+    // The base catalogue is a large preload; keep it fresh for a minute so
+    // remounts/refocuses of the New Sale screen reuse it instead of refetching
+    // up to 500 products every time.
+    staleTime: 60_000,
   });
 }
 
@@ -362,7 +366,10 @@ export function useCreateSaleMutation() {
         queryClient.invalidateQueries({ queryKey: salesDashboardQueryKey }),
         queryClient.invalidateQueries({ queryKey: salesRecentQueryKey }),
         queryClient.invalidateQueries({ queryKey: salesSoldItemsQueryKey }),
-        queryClient.invalidateQueries({ queryKey: salesCatalogQueryKey }),
+        // Mark the preloaded catalogue stale (stock/expiry shift after this
+        // mutation) without forcing an immediate ~500-product refetch; it
+        // refreshes lazily on the next New Sale mount/refocus.
+        queryClient.invalidateQueries({ queryKey: salesCatalogQueryKey, refetchType: "none" }),
         queryClient.invalidateQueries({ queryKey: ["stock", "dashboard"] }),
         queryClient.invalidateQueries({ queryKey: appMeQueryKey }),
       ]);
@@ -384,7 +391,10 @@ export function useDeleteSaleMutation() {
         queryClient.invalidateQueries({ queryKey: salesRecentQueryKey }),
         queryClient.invalidateQueries({ queryKey: salesDetailQueryKey }),
         queryClient.invalidateQueries({ queryKey: salesSoldItemsQueryKey }),
-        queryClient.invalidateQueries({ queryKey: salesCatalogQueryKey }),
+        // Mark the preloaded catalogue stale (stock/expiry shift after this
+        // mutation) without forcing an immediate ~500-product refetch; it
+        // refreshes lazily on the next New Sale mount/refocus.
+        queryClient.invalidateQueries({ queryKey: salesCatalogQueryKey, refetchType: "none" }),
         queryClient.invalidateQueries({ queryKey: ["stock", "dashboard"] }),
         queryClient.invalidateQueries({ queryKey: appMeQueryKey }),
       ]);
@@ -412,7 +422,10 @@ export function useStartSaleMobileMoneyMutation() {
         queryClient.invalidateQueries({ queryKey: salesDashboardQueryKey }),
         queryClient.invalidateQueries({ queryKey: salesRecentQueryKey }),
         queryClient.invalidateQueries({ queryKey: salesSoldItemsQueryKey }),
-        queryClient.invalidateQueries({ queryKey: salesCatalogQueryKey }),
+        // Mark the preloaded catalogue stale (stock/expiry shift after this
+        // mutation) without forcing an immediate ~500-product refetch; it
+        // refreshes lazily on the next New Sale mount/refocus.
+        queryClient.invalidateQueries({ queryKey: salesCatalogQueryKey, refetchType: "none" }),
         queryClient.invalidateQueries({ queryKey: ["stock", "dashboard"] }),
         queryClient.invalidateQueries({ queryKey: appMeQueryKey }),
       ]);
