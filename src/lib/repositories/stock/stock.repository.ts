@@ -187,7 +187,7 @@ export interface StockRepository {
     context: AuthContext,
     preferredBranchId?: string,
   ): Promise<{
-    branch: { id: string; name: string };
+    branch: { id: string; name: string } | null;
     branches: Array<{ id: string; name: string; isPrimary: boolean }>;
   }>;
   createBatch(

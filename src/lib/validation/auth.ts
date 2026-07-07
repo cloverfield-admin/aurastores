@@ -18,6 +18,11 @@ export const signUpSchema = z.object({
   email: normalizedEmail,
   password: z.string().min(8).max(128),
   selectedPlanCode: z.enum(["basic", "pro", "enterprise"]).optional(),
+  // Where Supabase should send the user after they tap the email-confirmation
+  // link. The mobile app passes its `aurastores://` deep link so the link opens
+  // the app; web signups omit it and get the web `/auth/callback` default.
+  // Restricted to the app's own custom scheme to prevent open-redirect abuse.
+  emailRedirectTo: z.string().trim().startsWith("aurastores://").max(512).optional(),
 });
 
 export const forgotPasswordSchema = z.object({

@@ -6,7 +6,7 @@ import type { SubscriptionPlanCode } from "@/lib/repositories/billing/billing.re
  * Used for public pricing, auth entitlements (`/me`), and anywhere else that reads plan JSON from the DB.
  */
 const MONTHLY_SALES_PUBLIC_FALLBACK: Partial<Record<SubscriptionPlanCode, number>> = {
-  free: 100,
+  free: 10,
   basic: 1000,
 };
 

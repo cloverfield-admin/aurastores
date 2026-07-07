@@ -3,8 +3,11 @@ import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 import type { MembershipCapability } from "@/lib/rbac/capabilities";
 import { hasCapability } from "@/lib/rbac/capabilities";
 
-export function forbiddenResponse(message = "Forbidden") {
-  return NextResponse.json({ error: message }, { status: 403 });
+export function forbiddenResponse(
+  message = "Forbidden",
+  extra?: { code?: string; capability?: string },
+) {
+  return NextResponse.json({ error: message, ...extra }, { status: 403 });
 }
 
 export function assertApiCapability(
@@ -12,7 +15,12 @@ export function assertApiCapability(
   capability: MembershipCapability,
 ): NextResponse | null {
   if (!hasCapability(context.capabilities, capability)) {
-    return forbiddenResponse();
+    // Machine-readable so clients can distinguish "your plan doesn't include
+    // this" (offer an upgrade) from a generic authorization failure.
+    return forbiddenResponse("Your plan doesn't include this feature.", {
+      code: "CAPABILITY_REQUIRED",
+      capability,
+    });
   }
   return null;
 }
