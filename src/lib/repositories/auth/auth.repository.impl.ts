@@ -1,9 +1,8 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   branchStaffAssignments,
   branches,
-  complianceDocuments,
   organizationMemberships,
   organizationOnboarding,
   organizations,
@@ -190,16 +189,10 @@ async function hasCompletedRequiredOnboarding(context: AuthContext) {
     return false;
   }
 
-  if (context.organization.storeVertical === "pharmacy") {
-    return true;
-  }
-
-  const [documentCount] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(complianceDocuments)
-    .where(eq(complianceDocuments.organizationId, context.organization.id));
-
-  return (documentCount?.count ?? 0) >= 2;
+  // Compliance-document upload is now optional at onboarding for every
+  // vertical (the mobile flow drops the license step entirely). Reaching the
+  // review step with a branch is enough; documents can be added later.
+  return true;
 }
 
 export class AuthRepositoryImpl implements AuthRepository {
@@ -280,6 +273,12 @@ export class AuthRepositoryImpl implements AuthRepository {
       return existing;
     }
 
+    // The mobile flow omits the business name at sign-up (collected during
+    // onboarding), so provision the org with a safe placeholder that
+    // onboarding overwrites. `uniqueSlug` keeps slugs distinct across
+    // placeholder-named orgs.
+    const businessName = params.businessName?.trim() || "My store";
+
     return db.transaction(async (tx) => {
       const [user] = await tx
         .insert(users)
@@ -294,9 +293,9 @@ export class AuthRepositoryImpl implements AuthRepository {
       const [organization] = await tx
         .insert(organizations)
         .values({
-          slug: uniqueSlug(params.businessName),
-          displayName: params.businessName,
-          legalName: params.businessName,
+          slug: uniqueSlug(businessName),
+          displayName: businessName,
+          legalName: businessName,
           primaryEmail: params.email,
           hqCountry: "ZM",
           storeVertical: params.storeVertical ?? "pharmacy",

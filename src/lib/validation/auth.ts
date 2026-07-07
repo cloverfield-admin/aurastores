@@ -10,7 +10,10 @@ export const signInSchema = z.object({
 
 export const signUpSchema = z.object({
   fullName: z.string().trim().min(2).max(120),
-  businessName: z.string().trim().min(2).max(160),
+  // Optional: the mobile app collects the business/store name during
+  // onboarding (step 2), not at account creation. When omitted, sign-up
+  // provisions the org with a placeholder name that onboarding overwrites.
+  businessName: z.string().trim().min(2).max(160).optional(),
   storeVertical: z.enum(["pharmacy", "general_retail"]).optional().default("pharmacy"),
   email: normalizedEmail,
   password: z.string().min(8).max(128),
