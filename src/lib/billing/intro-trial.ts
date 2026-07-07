@@ -2,6 +2,15 @@ import type { SubscriptionPlanCode } from "@/lib/repositories/billing/billing.re
 
 export const INTRO_TRIAL_DAYS = 7;
 
+/**
+ * Plan trialled for stores that didn't pick a paid plan at signup (i.e. free
+ * signups — the mobile app collects no plan choice). `pro` is the lowest tier
+ * that includes `insights`, which powers the home dashboard, so every new store
+ * gets a working full-featured app during the trial window before settling back
+ * to whatever plan they're actually on.
+ */
+export const DEFAULT_INTRO_TRIAL_PLAN_CODE: SubscriptionPlanCode = "pro";
+
 const MS_PER_DAY = 86400000;
 
 export function introTrialPeriodEnd(start: Date): Date {

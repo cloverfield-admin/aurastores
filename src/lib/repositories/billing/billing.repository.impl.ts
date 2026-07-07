@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
-import { introPaidTrialEligibleForSnapshot, introTrialPeriodEnd, normalizeSignupSelectedPlanCode } from "@/lib/billing/intro-trial";
+import { DEFAULT_INTRO_TRIAL_PLAN_CODE, introPaidTrialEligibleForSnapshot, introTrialPeriodEnd, normalizeSignupSelectedPlanCode } from "@/lib/billing/intro-trial";
 import { withPublicPlanSalesLimitFallback } from "@/lib/billing/plan-feature-defaults";
 import { db } from "@/lib/db";
 import {
@@ -265,13 +265,16 @@ export class BillingRepositoryImpl implements BillingRepository {
         return false;
       }
 
+      // Every new store gets a one-time intro trial. If signup picked a specific
+      // paid plan, trial that; otherwise (free signups, incl. the mobile app,
+      // which collects no plan) default to `pro` so the store still gets the
+      // full app — including `insights`, which powers the home dashboard —
+      // during the trial window.
       const stored = normalizeSignupSelectedPlanCode(org.signupSelectedPlanCode ?? undefined);
-      if (!stored) {
-        return false;
-      }
+      const trialPlanCode = stored ?? DEFAULT_INTRO_TRIAL_PLAN_CODE;
 
       const paidPlan = await tx.query.subscriptionPlans.findFirst({
-        where: eq(subscriptionPlans.code, stored),
+        where: eq(subscriptionPlans.code, trialPlanCode),
       });
       if (!paidPlan) {
         return false;

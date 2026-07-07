@@ -38,7 +38,11 @@ export type RegisteredUserParams = {
   authUserId: string;
   email: string;
   fullName: string;
-  businessName: string;
+  /**
+   * Business/store name. Optional: the mobile app collects it during
+   * onboarding, so sign-up may omit it and a placeholder is provisioned.
+   */
+  businessName?: string;
   /** Defaults to pharmacy for existing signup flows. */
   storeVertical?: "pharmacy" | "general_retail";
   isEmailVerified: boolean;

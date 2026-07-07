@@ -1549,6 +1549,15 @@ export class StockRepositoryImpl implements StockRepository {
 
   async getBranches(context: AuthContext, preferredBranchId?: string) {
     const branchOptions = await branchesVisibleInContext(db, context);
+    // Listing branches is a read: a store with none yet (e.g. right after
+    // sign-up, before onboarding creates the first branch) is a legitimate
+    // empty state, not an error. Return empty instead of throwing so the
+    // switcher degrades to "All branches" rather than the endpoint 500ing.
+    // (Write paths like createBatch still go through resolveBranch, which
+    // rightly refuses when there's no branch to write to.)
+    if (branchOptions.length === 0) {
+      return { branch: null, branches: [] };
+    }
     const selectedBranch = pickResolvedBranch(context, preferredBranchId, branchOptions);
 
     return {
