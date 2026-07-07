@@ -210,10 +210,12 @@ export type StockProductDetailResponse = {
 };
 
 export type StockBranchesResponse = {
+  // Null when the store has no branch yet (e.g. before onboarding); consumers
+  // read `branches` for the switcher and fall back to "All branches".
   branch: {
     id: string;
     name: string;
-  };
+  } | null;
   branches: StockBranch[];
 };
 

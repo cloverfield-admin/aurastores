@@ -205,7 +205,8 @@ export class OnboardingRepositoryImpl implements OnboardingRepository {
           input.latitude != null && input.longitude != null ? input.latitude : null,
         longitude:
           input.latitude != null && input.longitude != null ? input.longitude : null,
-        professionalStaffCount: input.pharmacistCount,
+        professionalStaffCount:
+          input.pharmacistCount ?? existingBranch?.professionalStaffCount ?? 1,
         updatedAt: new Date(),
       };
 
@@ -234,17 +235,38 @@ export class OnboardingRepositoryImpl implements OnboardingRepository {
             })()
           )[0];
 
-      await tx.delete(branchOperatingHours).where(eq(branchOperatingHours.branchId, branch.id));
+      // Operating hours are only rewritten when the caller supplies a mode.
+      // The simplified mobile onboarding omits them, leaving any existing rows
+      // (or none) untouched.
+      if (input.hoursMode != null) {
+        await tx.delete(branchOperatingHours).where(eq(branchOperatingHours.branchId, branch.id));
 
-      await tx.insert(branchOperatingHours).values(
-        hoursRowsForLocationInput(input).map((hours) => ({
-          branchId: branch.id,
-          dayOfWeek: hours.dayOfWeek,
-          opensAt: hours.opensAt,
-          closesAt: hours.closesAt,
-          isClosed: hours.isClosed,
-        })),
-      );
+        await tx.insert(branchOperatingHours).values(
+          hoursRowsForLocationInput(input).map((hours) => ({
+            branchId: branch.id,
+            dayOfWeek: hours.dayOfWeek,
+            opensAt: hours.opensAt,
+            closesAt: hours.closesAt,
+            isClosed: hours.isClosed,
+          })),
+        );
+      }
+
+      // Store type + business name arrive with the branch step in the mobile
+      // flow (Create Account no longer collects them). Web onboarding omits
+      // both, so the org row is left as-is.
+      if (input.businessName != null || input.storeVertical != null) {
+        await tx
+          .update(organizations)
+          .set({
+            ...(input.businessName != null
+              ? { displayName: input.businessName, legalName: input.businessName }
+              : {}),
+            ...(input.storeVertical != null ? { storeVertical: input.storeVertical } : {}),
+            updatedAt: new Date(),
+          })
+          .where(eq(organizations.id, context.organization.id));
+      }
 
       await tx
         .update(organizationOnboarding)
@@ -326,11 +348,10 @@ export class OnboardingRepositoryImpl implements OnboardingRepository {
       throw new Error("Complete branch setup before finishing onboarding.");
     }
 
-    const requiredDocumentCount =
-      context.organization.storeVertical === "pharmacy" ? 0 : 2;
-    if ((documentCount[0]?.count ?? 0) < requiredDocumentCount) {
-      throw new Error("Upload the required compliance documents before finishing onboarding.");
-    }
+    // Compliance-document upload is optional at onboarding for every vertical
+    // now (the mobile flow drops the license step); documents can be added
+    // later. `documentCount` is still read for potential auditing/telemetry.
+    void documentCount;
 
     await db.transaction(async (tx) => {
       await tx

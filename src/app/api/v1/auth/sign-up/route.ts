@@ -37,7 +37,11 @@ export async function POST(request: Request) {
 
   const supabase = await createSupabaseServerClient();
   const confirmNext = encodeURIComponent(ROUTES.dashboard.onboarding.root);
-  const emailRedirectTo = `${getSiteUrl()}/auth/callback?next=${confirmNext}`;
+  // Mobile signups pass an `aurastores://` deep link (validated by the schema)
+  // so the confirmation email opens the app; web signups fall back to the web
+  // `/auth/callback` route.
+  const emailRedirectTo =
+    parsed.data.emailRedirectTo ?? `${getSiteUrl()}/auth/callback?next=${confirmNext}`;
 
   let signUpResult: Awaited<ReturnType<typeof supabase.auth.signUp>> | null = null;
   for (let retry = 0; retry <= SIGNUP_MAX_RETRIES; retry++) {
