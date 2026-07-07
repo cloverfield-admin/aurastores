@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
+import { date, index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 import { organizations, users } from "./account.schema";
 
 /**
@@ -60,6 +60,29 @@ export const notifications = pgTable(
       .on(table.recipientUserId, table.dedupeKey)
       .where(sql`${table.dedupeKey} IS NOT NULL`),
     organizationIdx: index("notifications_org_idx").on(table.organizationId),
+  }),
+);
+
+/**
+ * One row per inventory batch the engine has already sent an expiry alert for.
+ * The expiry sweep excludes any batch present here, so a batch nearing expiry is
+ * notified exactly ONCE instead of every day it sits inside the 30-day window
+ * (the engine upserts with ON CONFLICT (batch_id) DO NOTHING). Written by the
+ * engine; schema owned here. Keep in sync with the engine's `db/schema.sql`.
+ */
+export const batchExpiryAlerts = pgTable(
+  "batch_expiry_alerts",
+  {
+    batchId: uuid("batch_id").primaryKey(),
+    organizationId: uuid("organization_id").notNull(),
+    branchId: uuid("branch_id").notNull(),
+    productId: uuid("product_id").notNull(),
+    /** The batch's expiry date at the time it was alerted (audit/debug only). */
+    expiresAt: date("expires_at").notNull(),
+    notifiedAt: timestamp("notified_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    branchIdx: index("batch_expiry_alerts_branch_idx").on(table.branchId),
   }),
 );
 
