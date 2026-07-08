@@ -12,6 +12,9 @@ export const ROUTES = {
   },
   marketing: {
     pricing: "/#pricing",
+    privacy: "/privacy",
+    terms: "/terms",
+    security: "/security",
   },
   dashboard: {
     main: "/dashboard",
