@@ -12,7 +12,8 @@ import {
   ExpensesSlide,
 } from "@/components/marketing/landing/hero-slides";
 import { FONT_DISPLAY, FONT_MONO } from "@/components/marketing/landing/fonts";
-import { Icon, LOGO_MARK } from "@/components/marketing/landing/phone";
+import { Icon } from "@/components/marketing/landing/phone";
+import { SiteFooter } from "@/components/marketing/site-footer";
 import { PricingCards } from "@/components/marketing/landing/pricing-cards.client";
 import { Reveal } from "@/components/marketing/landing/reveal.client";
 import { buildLandingPlans } from "@/lib/marketing/landing-pricing";
@@ -147,7 +148,6 @@ function TrustPoint({ icon, title, body, divider }: { icon: string; title: strin
 }
 
 export default async function HomePage() {
-  const year = new Date().getFullYear();
   const plans = await services.billing.listPublicPlans("ZMW");
   const landingPlans = buildLandingPlans(plans);
 
@@ -789,70 +789,7 @@ export default async function HomePage() {
         <DownloadCta />
       </main>
 
-      {/* FOOTER */}
-      <footer style={{ marginTop: 96, background: "#052420", color: "#fff" }}>
-        <div
-          className="foot"
-          style={{
-            maxWidth: 1200,
-            margin: "0 auto",
-            padding: "64px 28px 40px",
-            display: "grid",
-            gridTemplateColumns: "1.6fr 1fr 1fr 1fr",
-            gap: 40,
-          }}
-        >
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={LOGO_MARK} alt="AuraStores logo" style={{ width: 32, height: 32, display: "block" }} />
-              <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 18 }}>AuraStores</span>
-            </div>
-            <p style={{ fontSize: 14, lineHeight: 1.6, color: "#8fb0a8", margin: "16px 0 0", maxWidth: 280 }}>
-              One mobile-first platform for pharmacies, retail, and multi-location chains across Zambia.
-            </p>
-          </div>
-
-          <div>
-            <div style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6f928a" }}>
-              Products
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 16 }}>
-              <a href="#ecosystem" style={{ fontSize: 14, color: "#cfe2dc", textDecoration: "none" }}>Aura Stock</a>
-              <a href="#sales" style={{ fontSize: 14, color: "#cfe2dc", textDecoration: "none" }}>Aura Sales</a>
-              <a href="#ecosystem" style={{ fontSize: 14, color: "#cfe2dc", textDecoration: "none" }}>Aura Pay</a>
-              <a href="#ecosystem" style={{ fontSize: 14, color: "#cfe2dc", textDecoration: "none" }}>Aura Insights</a>
-              <a href="#download" style={{ fontSize: 14, color: "#cfe2dc", textDecoration: "none" }}>Get the app</a>
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6f928a" }}>
-              Company
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 16 }}>
-              <span style={{ fontSize: 14, color: "#cfe2dc" }}>About us</span>
-              <span style={{ fontSize: 14, color: "#cfe2dc" }}>Careers</span>
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontFamily: FONT_MONO, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6f928a" }}>
-              Legal
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 16 }}>
-              <span style={{ fontSize: 14, color: "#cfe2dc" }}>Privacy policy</span>
-              <span style={{ fontSize: 14, color: "#cfe2dc" }}>Terms of service</span>
-              <span style={{ fontSize: 14, color: "#cfe2dc" }}>Security</span>
-            </div>
-          </div>
-        </div>
-        <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-          <div style={{ maxWidth: 1200, margin: "0 auto", padding: "22px 28px", fontSize: 13, color: "#6f928a" }}>
-            © {year} AuraStores. All rights reserved.
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
