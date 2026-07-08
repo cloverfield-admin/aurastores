@@ -520,3 +520,159 @@ gmp-place-autocomplete::part(prediction-list) {
   }
   .aura-landing-v2 .floatpill { display: none !important; }
 }
+
+/* ==========================================================================
+ * Marketing legal / trust subpages (privacy, terms, security).
+ * Shares the landing v2 palette; layout + prose typography for LegalShell.
+ * ========================================================================== */
+.aura-landing-v2 .legalgrid {
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr);
+  gap: 48px;
+  align-items: start;
+}
+
+.aura-landing-v2 .legaltoc {
+  position: sticky;
+  top: 92px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: calc(100vh - 116px);
+  overflow-y: auto;
+}
+.aura-landing-v2 .legaltoc a {
+  display: block;
+  padding: 7px 12px;
+  border-left: 2px solid #e3eae8;
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #5f7771;
+  text-decoration: none;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.aura-landing-v2 .legaltoc a:hover {
+  color: #0d5c54;
+  border-left-color: #0d5c54;
+}
+
+.aura-landing-v2 .legalprose {
+  padding: 38px 44px;
+  scroll-margin-top: 92px;
+}
+.aura-landing-v2 .legalprose + .legalprose {
+  border-top: 1px solid #eef3f1;
+}
+.aura-landing-v2 .legalprose h2 {
+  font-family: var(--font-schibsted), "Schibsted Grotesk", sans-serif;
+  font-weight: 700;
+  font-size: 23px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: #0c1c19;
+  margin: 0 0 14px;
+}
+.aura-landing-v2 .legalprose h3 {
+  font-family: var(--font-schibsted), "Schibsted Grotesk", sans-serif;
+  font-weight: 700;
+  font-size: 16.5px;
+  letter-spacing: -0.01em;
+  color: #0c1c19;
+  margin: 24px 0 8px;
+}
+.aura-landing-v2 .legalprose p {
+  font-size: 15px;
+  line-height: 1.68;
+  color: #46574f;
+  margin: 0 0 14px;
+}
+.aura-landing-v2 .legalprose p:last-child,
+.aura-landing-v2 .legalprose ul:last-child {
+  margin-bottom: 0;
+}
+.aura-landing-v2 .legalprose ul {
+  /* Tailwind preflight resets list-style; restore markers for prose lists. */
+  list-style: disc;
+  margin: 0 0 14px;
+  padding-left: 22px;
+  color: #46574f;
+}
+.aura-landing-v2 .legalprose li {
+  font-size: 15px;
+  line-height: 1.62;
+  margin-bottom: 8px;
+}
+.aura-landing-v2 .legalprose li::marker {
+  color: #0d5c54;
+}
+.aura-landing-v2 .legalprose strong {
+  color: #0c1c19;
+  font-weight: 700;
+}
+.aura-landing-v2 .legalprose a {
+  color: #0d5c54;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgba(13, 92, 84, 0.35);
+  text-underline-offset: 3px;
+}
+.aura-landing-v2 .legalprose a:hover {
+  text-decoration-color: #0d5c54;
+}
+
+.aura-landing-v2 .legaltable {
+  overflow-x: auto;
+  margin: 4px 0 18px;
+  border: 1px solid #e3eae8;
+  border-radius: 12px;
+}
+.aura-landing-v2 .legaltable table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.aura-landing-v2 .legaltable th {
+  text-align: left;
+  font-family: var(--font-plex-mono), "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #5f7771;
+  background: #f5f8f7;
+  padding: 11px 14px;
+  border-bottom: 1px solid #e3eae8;
+  white-space: nowrap;
+}
+.aura-landing-v2 .legaltable td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #eef3f1;
+  color: #46574f;
+  line-height: 1.55;
+  vertical-align: top;
+}
+.aura-landing-v2 .legaltable tr:last-child td {
+  border-bottom: none;
+}
+.aura-landing-v2 .legaltable td:first-child {
+  font-weight: 600;
+  color: #0c1c19;
+  white-space: nowrap;
+}
+
+@media (max-width: 880px) {
+  .aura-landing-v2 .legalgrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .aura-landing-v2 .legaltoc {
+    display: none;
+  }
+  .aura-landing-v2 .legalprose {
+    padding: 28px 22px;
+  }
+  .aura-landing-v2 .legalcontact {
+    padding: 32px 24px !important;
+  }
+}
