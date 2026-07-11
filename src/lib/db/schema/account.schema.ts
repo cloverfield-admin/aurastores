@@ -84,6 +84,8 @@ export const organizations = pgTable(
     signupSelectedPlanCode: varchar("signup_selected_plan_code", { length: 32 }),
     /** Set once when the org receives its one-time paid-plan intro trial (landing or billing). */
     paidIntroTrialStartedAt: timestamp("paid_intro_trial_started_at", { withTimezone: true }),
+    /** Set when an owner requests account deletion; the org + all its data is purged at/after this time (30-day grace). Null = not scheduled. */
+    deletionScheduledAt: timestamp("deletion_scheduled_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
@@ -106,6 +108,8 @@ export const users = pgTable(
     /** Path within Supabase Storage bucket `user-avatars` (first segment = user id). */
     avatarStorageKey: text("avatar_storage_key"),
     preferences: jsonb("preferences").$type<UserPreferences | null>(),
+    /** Set when the user requests account deletion; the account is permanently purged at/after this time (30-day grace). Null = not scheduled. */
+    deletionScheduledAt: timestamp("deletion_scheduled_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
