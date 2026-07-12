@@ -44,7 +44,9 @@ export const branches = pgTable(
     country: varchar("country", { length: 2 }).notNull().default("ZM"),
     latitude: doublePrecision("latitude"),
     longitude: doublePrecision("longitude"),
-    timezone: varchar("timezone", { length: 64 }).notNull().default("UTC"),
+    // IANA name. Drives the branch-local delivery hour and day windows for the
+    // daily briefing, the streak and the sales-derived leaderboard.
+    timezone: varchar("timezone", { length: 64 }).notNull().default("Africa/Lusaka"),
     professionalStaffCount: integer("professional_staff_count").notNull().default(1),
     leadStaffUserId: uuid("lead_staff_user_id").references(() => users.id, {
       onDelete: "set null",
