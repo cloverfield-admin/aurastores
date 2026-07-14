@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { boolean, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
-import { organizations } from "./account.schema";
+import { organizations, users } from "./account.schema";
 
 export const subscriptionPlanCodeEnum = pgEnum("subscription_plan_code", [
   "free",
@@ -198,3 +198,84 @@ export const lipilaTransactions = pgTable(
   }),
 );
 
+
+/**
+ * Store billing (Apple / Google in-app purchases, via RevenueCat).
+ *
+ * Mobile must sell plans through the stores — Apple's B2B carve-out only covers
+ * apps sold exclusively to organizations, and AuraStores is self-serve, so a
+ * single-owner shop upgrading is a "single user" sale that requires IAP.
+ *
+ * RevenueCat is only a payment + receipt-validation layer: a store purchase
+ * activates the same `organization_subscriptions` row the Lipila (mobile money)
+ * rail activates, so entitlements stay single-sourced in Postgres regardless of
+ * how the customer paid.
+ */
+
+export const storeEnum = pgEnum("store_kind", ["APP_STORE", "PLAY_STORE"]);
+
+export const storeEnvironmentEnum = pgEnum("store_environment", ["PRODUCTION", "SANDBOX"]);
+
+/**
+ * Maps a RevenueCat customer onto the organization whose plan their purchase funds.
+ *
+ * `rcAppUserId` is the Supabase user id: RevenueCat requires a unique App User ID
+ * per person and explicitly forbids org-level identifiers (a shared id would make
+ * staff inherit each other's subscriptions). The org therefore cannot travel on the
+ * purchase itself — this link is what lets the webhook, which only ever sees an
+ * app_user_id, find the right organization.
+ *
+ * Written by the authenticated `POST /api/v1/billing/store/sync` call, where the
+ * org comes from the caller's JWT.
+ */
+export const storeSubscriptions = pgTable(
+  "store_subscriptions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** RevenueCat App User ID — the Supabase user id. */
+    rcAppUserId: varchar("rc_app_user_id", { length: 128 }).notNull(),
+    store: storeEnum("store").notNull(),
+    productId: varchar("product_id", { length: 128 }).notNull().default(""),
+    entitlementId: varchar("entitlement_id", { length: 64 }).notNull().default(""),
+    planId: uuid("plan_id").references(() => subscriptionPlans.id, { onDelete: "set null" }),
+    periodType: varchar("period_type", { length: 24 }).notNull().default(""),
+    environment: storeEnvironmentEnum("environment").notNull().default("PRODUCTION"),
+    originalTransactionId: varchar("original_transaction_id", { length: 128 }).notNull().default(""),
+    currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    rawPayload: jsonb("raw_payload"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    /** One row per RevenueCat customer: renewals update it in place. */
+    rcUserUnique: uniqueIndex("store_subscriptions_rc_user_unique").on(table.rcAppUserId),
+    orgIdx: index("store_subscriptions_org_idx").on(table.organizationId),
+  }),
+);
+
+/**
+ * Idempotency ledger for RevenueCat webhooks. RevenueCat reuses the same event id
+ * when it retries, so the unique index on `event_id` makes a redelivery a no-op —
+ * without it a retried INITIAL_PURCHASE would grant a second billing period.
+ */
+export const storeWebhookEvents = pgTable(
+  "store_webhook_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    eventId: varchar("event_id", { length: 128 }).notNull(),
+    eventType: varchar("event_type", { length: 48 }).notNull(),
+    appUserId: varchar("app_user_id", { length: 128 }).notNull().default(""),
+    rawPayload: jsonb("raw_payload").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    eventIdUnique: uniqueIndex("store_webhook_events_event_id_unique").on(table.eventId),
+  }),
+);
