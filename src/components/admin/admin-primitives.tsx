@@ -140,15 +140,16 @@ export function AdminTable<T>({
 /**
  * Error state for the console.
  *
- * `engine_not_configured` gets its own copy on purpose: it means
- * NEXT_PUBLIC_ENGINE_URL is unset, and a generic "something went wrong" would send
- * whoever hit it hunting through the code instead of the env file. A CORS failure
- * surfaces as a plain fetch TypeError, which gets the same treatment.
+ * The engine-is-not-there codes get their own copy on purpose: they mean the proxy
+ * has no ENGINE_ORIGIN, or had one and got nothing back, and a generic "something
+ * went wrong" would send whoever hit it hunting through the code instead of the env
+ * file. A dead network surfaces as a plain fetch TypeError, same treatment.
  */
 export function AdminError({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   const engineError = error instanceof EngineApiError ? error : null;
   const misconfigured =
     engineError?.code === "engine_not_configured" ||
+    engineError?.code === "engine_unreachable" ||
     (error instanceof TypeError && /fetch/i.test(error.message));
 
   return (
@@ -161,10 +162,10 @@ export function AdminError({ error, onRetry }: { error: unknown; onRetry?: () =>
       </p>
       {misconfigured ? (
         <p className="mt-2 text-xs">
-          Check that <code className="rounded bg-black/5 px-1">NEXT_PUBLIC_ENGINE_URL</code> points at
-          the engine and that the engine&apos;s{" "}
-          <code className="rounded bg-black/5 px-1">ALLOWED_ORIGINS</code> lists this origin. Both
-          fail only in the browser — curl will look fine.
+          Check that <code className="rounded bg-black/5 px-1">ENGINE_ORIGIN</code> points at the
+          engine and that the engine is actually up. The console reaches it through the{" "}
+          <code className="rounded bg-black/5 px-1">/api/engine</code> proxy, so this is a
+          server-side hop — the browser never talks to the engine itself.
         </p>
       ) : null}
       {onRetry ? (
