@@ -3,20 +3,19 @@
 import { getEngineAccessToken } from "@/lib/supabase/browser-client";
 
 /**
- * Client for the Go engine (`aurestores-engine`).
+ * Client for the Go engine (`aurestores-engine`), which backs the admin console.
  *
- * This is the ONLY part of the web app that calls the engine directly rather than
- * going through a Next.js route handler, and it is deliberate: the admin console's
- * backend lives entirely in the engine, so it is also the pilot for the pending
- * Next→Go cutover.
+ * Calls do not reach the engine directly. They go through the same-origin proxy at
+ * `src/app/api/engine/[...path]/route.ts`, which forwards the path verbatim — the
+ * engine serves plain HTTP, and an HTTPS page may not call http://, so a direct
+ * request is blocked as mixed content. Paths below stay written as the engine's
+ * own (`/api/v1/...`); only the base changes.
  *
- * Two consequences follow, and both bite only in the browser (never under curl):
- *   - the engine's ALLOWED_ORIGINS must list this web origin, or every request
- *     dies at the CORS preflight; and
- *   - auth rides on an `Authorization: Bearer` header, not the Supabase cookie,
- *     because the cookie is not sent cross-origin.
+ * Auth still rides on an `Authorization: Bearer` header rather than the Supabase
+ * cookie, because the engine only knows how to read a bearer token. The proxy
+ * forwards that header untouched.
  */
-const ENGINE_URL = process.env.NEXT_PUBLIC_ENGINE_URL ?? "";
+const ENGINE_URL = "/api/engine";
 
 export type EngineFieldError = { field: string; message: string };
 
@@ -85,14 +84,6 @@ export type EnginePage = {
  * and only this console reads them, so there is nothing to be consistent with.
  */
 export async function adminFetch<T>(path: string, init?: EngineInit): Promise<T> {
-  if (!ENGINE_URL) {
-    throw new EngineApiError(
-      0,
-      "engine_not_configured",
-      "NEXT_PUBLIC_ENGINE_URL is not set, so the admin console has no backend to talk to.",
-    );
-  }
-
   const token = await getEngineAccessToken();
   if (!token) {
     throw new EngineApiError(401, "unauthenticated", "Your session expired. Sign in again.");
@@ -110,7 +101,6 @@ export async function adminFetch<T>(path: string, init?: EngineInit): Promise<T>
   const response = await fetch(`${ENGINE_URL}${path}`, {
     ...init,
     headers,
-    mode: "cors",
     cache: "no-store",
   });
 
@@ -138,9 +128,6 @@ export async function adminFetchPaged<T>(
   path: string,
   init?: EngineInit,
 ): Promise<{ data: T; page: EnginePage | null }> {
-  if (!ENGINE_URL) {
-    throw new EngineApiError(0, "engine_not_configured", "NEXT_PUBLIC_ENGINE_URL is not set.");
-  }
   const token = await getEngineAccessToken();
   if (!token) {
     throw new EngineApiError(401, "unauthenticated", "Your session expired. Sign in again.");
@@ -153,7 +140,6 @@ export async function adminFetchPaged<T>(
   const response = await fetch(`${ENGINE_URL}${path}`, {
     ...init,
     headers,
-    mode: "cors",
     cache: "no-store",
   });
 

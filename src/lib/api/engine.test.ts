@@ -1,13 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// The client reads NEXT_PUBLIC_ENGINE_URL at module scope, and mints its bearer
-// token from the browser Supabase client — both have to be in place before import.
+// The client mints its bearer token from the browser Supabase client, which has to
+// be mocked before the module under test is imported.
 vi.mock("@/lib/supabase/browser-client", () => ({
   getEngineAccessToken: vi.fn(),
 }));
-
-const ENGINE = "http://engine.test";
-process.env.NEXT_PUBLIC_ENGINE_URL = ENGINE;
 
 const { adminFetch, EngineApiError, setImpersonationTarget } = await import("@/lib/api/engine");
 const { getEngineAccessToken } = await import("@/lib/supabase/browser-client");
@@ -41,14 +38,16 @@ describe("adminFetch", () => {
     await expect(adminFetch<{ users: number }>("/api/v1/admin/x")).resolves.toEqual({ users: 42 });
   });
 
-  it("sends the bearer token", async () => {
+  it("sends the bearer token through the same-origin proxy", async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ data: null }));
     vi.stubGlobal("fetch", fetchMock);
 
     await adminFetch("/api/v1/admin/x");
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe(`${ENGINE}/api/v1/admin/x`);
+    // Relative, never the engine's own address: that is plain HTTP, and the browser
+    // blocks an http:// request from an HTTPS page as mixed content.
+    expect(url).toBe("/api/engine/api/v1/admin/x");
     expect((init.headers as Headers).get("Authorization")).toBe("Bearer test-token");
   });
 
