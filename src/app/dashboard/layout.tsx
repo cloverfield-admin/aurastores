@@ -1,62 +1,30 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getCurrentAppContext, requireSupabaseUser } from "@/lib/auth/session";
-import { isSupabaseEmailVerified } from "@/lib/auth/supabase-email-verified";
-import type { DashboardWorkspaceAccess } from "@/components/dashboard/dashboard-workspace";
-import { fullCapabilities } from "@/lib/rbac/capabilities";
-import { formatMembershipRole } from "@/lib/membership-display";
-import { loadAccessibleBranchTabs } from "@/lib/rbac/workspace-branches";
+import { requireSupabaseUser } from "@/lib/auth/session";
+import { services } from "@/lib/di";
 import { ROUTES } from "@/lib/routes";
-import { DashboardLayoutShell } from "@/components/dashboard/dashboard-layout-shell";
-import { getUserAvatarPublicUrl } from "@/lib/supabase/user-avatar-public-url";
-import { DEFAULT_USER_PREFERENCES } from "@/lib/validation/me";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+/**
+ * The store dashboard is CLOSED.
+ *
+ * The web app is the AuraStores platform console; store owners and staff run their
+ * business from the mobile app. Nothing under /dashboard renders any more.
+ *
+ * `src/proxy.ts` already redirects every /dashboard/** request to /admin before a
+ * page can render, so this layout is a BACKSTOP — it exists so the dashboard stays
+ * closed even if the proxy matcher is narrowed later, and so the closure is stated
+ * in the route tree itself rather than only in middleware someone might not read.
+ *
+ * The pages and components below are intentionally left in place rather than
+ * deleted: the Next→Go cutover is still in flight, and they are the reference for
+ * what the tenant API has to keep serving.
+ */
+export default async function DashboardLayout() {
   const user = await requireSupabaseUser();
-  if (!isSupabaseEmailVerified(user)) {
-    const verifyUrl = `${ROUTES.auth.verifyEmail}?${new URLSearchParams(
-      user.email ? { email: user.email } : {},
-    ).toString()}`;
-    redirect(verifyUrl);
-  }
-
-  const appContext = await getCurrentAppContext();
-  const prefs = appContext?.user.preferences;
-  const initialTheme = prefs?.theme ?? DEFAULT_USER_PREFERENCES.theme;
-
-  const workspaceAccess: DashboardWorkspaceAccess = appContext
-    ? {
-        storeVertical: appContext.organization.storeVertical,
-        capabilities: appContext.capabilities,
-        allowedBranchIds: appContext.allowedBranchIds,
-        accessibleBranches: await loadAccessibleBranchTabs(appContext),
-        userDisplayName: appContext.user.fullName?.trim() || appContext.user.email || "User",
-        membershipRole: appContext.membership.role,
-        membershipRoleLabel: formatMembershipRole(appContext.membership.role),
-        userAvatarUrl: appContext.user.avatarStorageKey
-          ? getUserAvatarPublicUrl(appContext.user.avatarStorageKey)
-          : null,
-        initialTheme,
-      }
-    : {
-        storeVertical: "pharmacy",
-        capabilities: fullCapabilities(),
-        allowedBranchIds: [],
-        accessibleBranches: [],
-        userDisplayName: user.email ?? "User",
-        membershipRole: "",
-        membershipRoleLabel: "—",
-        userAvatarUrl: null,
-        initialTheme,
-      };
-
-  return <DashboardLayoutShell workspaceAccess={workspaceAccess}>{children}</DashboardLayoutShell>;
+  const isPlatformAdmin = await services.auth.isPlatformAdmin(user.id);
+  redirect(isPlatformAdmin ? ROUTES.admin.root : ROUTES.auth.webAdminOnly);
 }

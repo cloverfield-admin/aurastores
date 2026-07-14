@@ -35,7 +35,28 @@ function applyCors(response: NextResponse, origin: string | null): NextResponse 
   return response;
 }
 
+/**
+ * The store dashboard is CLOSED. The web app is the platform admin console; store
+ * operators run their business from the mobile app.
+ *
+ * Enforced here rather than only in the dashboard layout because this runs before
+ * any page can render, needs no database round-trip, and catches every route under
+ * /dashboard at once — including ones added later. `/admin` then applies the real
+ * gate (it is the only thing that actually checks who you are), and bounces
+ * non-admins to the explanation page, so this cannot loop.
+ */
+function dashboardIsClosed(request: NextRequest): NextResponse | null {
+  if (!request.nextUrl.pathname.startsWith("/dashboard")) return null;
+  const url = request.nextUrl.clone();
+  url.pathname = "/admin";
+  url.search = "";
+  return NextResponse.redirect(url);
+}
+
 async function handleProxy(request: NextRequest) {
+  const closed = dashboardIsClosed(request);
+  if (closed) return closed;
+
   const isApi = request.nextUrl.pathname.startsWith("/api/");
   const corsOrigin = isApi ? localDevOrigin(request) : null;
 

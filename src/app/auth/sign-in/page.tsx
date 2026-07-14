@@ -8,7 +8,9 @@ import { SignInForm } from "@/components/auth/sign-in-form";
 
 export const metadata: Metadata = {
   title: "Sign in",
-  description: "Sign in to your AuraStores pharmacy workspace.",
+  description: "Sign in to the AuraStores platform console.",
+  // The console must not be indexed or advertised.
+  robots: { index: false, follow: false },
 };
 
 export default function SignInPage() {
