@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isAccountStatusError } from "@/lib/auth/account-status";
 import { getCurrentAppContext } from "@/lib/auth/session";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 import type { MembershipCapability } from "@/lib/rbac/capabilities";
@@ -8,7 +9,20 @@ export async function requireAppApiContext(): Promise<
   | { ok: true; context: AuthContext }
   | { ok: false; response: NextResponse }
 > {
-  const context = await getCurrentAppContext();
+  let context: AuthContext | null;
+  try {
+    context = await getCurrentAppContext();
+  } catch (error) {
+    // 403 with the SAME machine code the engine returns, so a client needs only
+    // one handler for "your account/store was disabled" across both backends.
+    if (isAccountStatusError(error)) {
+      return {
+        ok: false,
+        response: NextResponse.json({ error: error.message, code: error.code }, { status: 403 }),
+      };
+    }
+    throw error;
+  }
   if (!context) {
     return { ok: false, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
   }

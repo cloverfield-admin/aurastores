@@ -11,3 +11,4 @@ export * from "./performance.schema";
 export * from "./onboarding.schema";
 export * from "./billing.schema";
 export * from "./notification.schema";
+export * from "./platform-admin.schema";

@@ -1,7 +1,11 @@
 export const ROUTES = {
   auth: {
+    /**
+     * Still live, but PLATFORM STAFF ONLY and deliberately unlinked: the web app is
+     * now the admin console, and store operators use the mobile app. Nothing on the
+     * marketing site points here — admins navigate to it directly.
+     */
     signIn: "/auth/sign-in",
-    register: "/auth/register",
     verifyEmail: "/auth/verify-email",
     forgotPassword: "/auth/forgot-password",
     /** PKCE redirect target for `resetPasswordForEmail` (email link lands here). */
@@ -9,6 +13,29 @@ export const ROUTES = {
     updatePassword: "/auth/update-password",
     /** @deprecated Use `updatePassword`; kept for bookmarks. */
     changePassword: "/auth/change-password",
+    /** Explains why a disabled/suspended account can't reach the console. */
+    accountDisabled: "/auth/account-disabled",
+    /** Explains that the web app is platform-staff only, and offers a sign-out. */
+    webAdminOnly: "/auth/web-admin-only",
+    // NOTE: there is no `register`. Self-service signup is closed on the web —
+    // store owners sign up in the mobile app, which registers against the Go engine.
+  },
+  /**
+   * The AuraStores platform console (`aurastores_admin` only).
+   *
+   * A top-level group, NOT under /dashboard: the dashboard shell is tenant-scoped
+   * (branch switcher, capability nav, onboarding redirect) and the platform owner
+   * is not a store operator.
+   */
+  admin: {
+    root: "/admin",
+    companies: "/admin/companies",
+    company: (orgId: string) => `/admin/companies/${orgId}`,
+    companyView: (orgId: string) => `/admin/companies/${orgId}/view`,
+    revenue: "/admin/revenue",
+    growth: "/admin/growth",
+    pricing: "/admin/pricing",
+    audit: "/admin/audit",
   },
   marketing: {
     pricing: "/#pricing",

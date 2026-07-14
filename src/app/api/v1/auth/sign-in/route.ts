@@ -41,20 +41,23 @@ export async function POST(request: Request) {
     );
   }
 
-  const emailNormalized = data.user.email?.trim().toLowerCase() ?? "";
-  const invitationIdFromMetadata =
-    typeof data.user.user_metadata?.staff_invitation_id === "string"
-      ? data.user.user_metadata.staff_invitation_id
-      : undefined;
-
-  let context = await services.auth.findByAuthUserId(data.user.id);
-  if (!context && emailNormalized) {
-    await services.staff.acceptStaffInvitationFromAuth({
-      authUserId: data.user.id,
-      emailNormalized,
-      invitationIdFromMetadata,
-    });
-    context = await services.auth.findByAuthUserId(data.user.id);
+  // The web app is the PLATFORM CONSOLE. Store owners and staff run their business
+  // from the mobile app (which authenticates against the Go engine, not this route),
+  // so a correct password from a non-admin is still not a way in here.
+  //
+  // The session is torn down immediately rather than left dangling: a valid cookie
+  // for someone who can reach nothing is just a loose end.
+  const isPlatformAdmin = await services.auth.isPlatformAdmin(data.user.id);
+  if (!isPlatformAdmin) {
+    await supabase.auth.signOut();
+    return NextResponse.json(
+      {
+        error:
+          "The AuraStores web app is for platform staff. Store owners and staff should use the AuraStores mobile app.",
+        code: "WEB_ADMIN_ONLY" as const,
+      },
+      { status: 403 },
+    );
   }
 
   await services.auth.syncEmailVerifiedFromAuth(
@@ -62,6 +65,10 @@ export async function POST(request: Request) {
     Boolean(data.user.email_confirmed_at),
   );
   await services.auth.updateLastLoginAt(data.user.id);
+
+  // getPostAuthRedirect resolves the auth context, which THROWS for a disabled
+  // account — it catches that itself and returns the account-disabled page, so a
+  // disabled admin gets an explanation instead of a 500.
   const redirectTo = await services.auth.getPostAuthRedirect(data.user.id);
 
   return NextResponse.json({

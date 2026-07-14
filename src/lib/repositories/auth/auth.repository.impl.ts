@@ -11,6 +11,12 @@ import {
   subscriptionPlans,
   users,
 } from "@/lib/db/schema";
+import {
+  AccountStatusError,
+  accountDisabledUrl,
+  accountStatusBlock,
+  isAccountStatusError,
+} from "@/lib/auth/account-status";
 import { introPaidTrialEligibleForSnapshot } from "@/lib/billing/intro-trial";
 import { withPublicPlanSalesLimitFallback } from "@/lib/billing/plan-feature-defaults";
 import { ROUTES } from "@/lib/routes";
@@ -172,30 +178,24 @@ async function loadSubscriptionSlice(
   };
 }
 
-async function hasCompletedRequiredOnboarding(context: AuthContext) {
-  if (context.onboarding?.status === "approved" || context.onboarding?.status === "in_review") {
-    return true;
-  }
-
-  if (context.organization.status === "active") {
-    return true;
-  }
-
-  if (!context.onboarding?.mainBranchId) {
-    return false;
-  }
-
-  if (context.onboarding.currentStep !== "review" || context.onboarding.furthestStepIndex < 3) {
-    return false;
-  }
-
-  // Compliance-document upload is now optional at onboarding for every
-  // vertical (the mobile flow drops the license step entirely). Reaching the
-  // review step with a branch is enough; documents can be added later.
-  return true;
-}
+// `hasCompletedRequiredOnboarding` used to gate the post-auth redirect between
+// /dashboard and /dashboard/onboarding. Both are closed — the web app is the
+// platform console and onboarding happens in the mobile app — so the whole
+// branch, and the helper, are gone. See getPostAuthRedirect below.
 
 export class AuthRepositoryImpl implements AuthRepository {
+  async isPlatformAdmin(userId: string): Promise<boolean> {
+    const row = await db.query.organizationMemberships.findFirst({
+      where: and(
+        eq(organizationMemberships.userId, userId),
+        eq(organizationMemberships.role, "aurastores_admin"),
+        eq(organizationMemberships.status, "active"),
+      ),
+      columns: { id: true },
+    });
+    return Boolean(row);
+  }
+
   async findByAuthUserId(authUserId: string): Promise<AuthContext | null> {
     const user = await db.query.users.findFirst({
       where: eq(users.id, authUserId),
@@ -221,6 +221,21 @@ export class AuthRepositoryImpl implements AuthRepository {
 
     if (!organization) {
       return null;
+    }
+
+    const isPlatformAdmin = await this.isPlatformAdmin(user.id);
+
+    // Mirrors assertAccountUsable in the engine — same conditions, same order,
+    // same codes. Without this, the admin console's disable/suspend controls
+    // would be cosmetic on the web: nothing else here reads these columns.
+    const blocked = accountStatusBlock({
+      userStatus: user.status,
+      organizationStatus: organization.status,
+      membershipStatus: membership.status,
+      isPlatformAdmin,
+    });
+    if (blocked) {
+      throw new AccountStatusError(blocked);
     }
 
     const onboarding = await db.query.organizationOnboarding.findFirst({
@@ -252,10 +267,13 @@ export class AuthRepositoryImpl implements AuthRepository {
       membership,
       organization,
       onboarding: onboarding ?? null,
+      isPlatformAdmin,
       ...buildAuthContextSlice(membership, allowedBranchIds),
       ...subscriptionSlice,
     } satisfies Omit<AuthContext, "capabilities"> & { capabilities: AuthContext["capabilities"] };
 
+    // Keyed on the ACTIVE membership, not isPlatformAdmin: an admin who also owns
+    // a personal store must not silently unlock every paid capability inside it.
     const isBypassRole = membership.role === "aurastores_admin";
     const effectiveCapabilities = isBypassRole
       ? fullCapabilities()
@@ -264,6 +282,7 @@ export class AuthRepositoryImpl implements AuthRepository {
     return {
       ...baseContext,
       capabilities: effectiveCapabilities,
+      isPlatformAdmin,
     };
   }
 
@@ -350,6 +369,9 @@ export class AuthRepositoryImpl implements AuthRepository {
         membership,
         organization,
         onboarding,
+        // A brand-new signup owns the org it just created; the platform-admin
+        // membership is only ever granted out-of-band.
+        isPlatformAdmin: false,
         ...buildAuthContextSlice(membership, []),
         entitlements: {
           capabilities: {
@@ -395,19 +417,26 @@ export class AuthRepositoryImpl implements AuthRepository {
   }
 
   async getPostAuthRedirect(authUserId: string) {
-    const context = await this.findByAuthUserId(authUserId);
+    let context: AuthContext | null;
+    try {
+      context = await this.findByAuthUserId(authUserId);
+    } catch (error) {
+      // A disabled/suspended account authenticates fine — the block happens when
+      // resolving its context. Sending them to /dashboard would just bounce.
+      if (isAccountStatusError(error)) {
+        return accountDisabledUrl(error.code);
+      }
+      throw error;
+    }
     if (!context) {
-      return "/auth/sign-in";
+      return ROUTES.auth.signIn;
     }
 
-    if (context.membership.status === "invited") {
-      const nextDash = encodeURIComponent(ROUTES.dashboard.main);
-      return `${ROUTES.auth.updatePassword}?staffInvite=1&next=${nextDash}`;
-    }
-
-    return (await hasCompletedRequiredOnboarding(context))
-      ? "/dashboard"
-      : "/dashboard/onboarding";
+    // The web app is the PLATFORM CONSOLE now. Store owners and staff run their
+    // business from the mobile app, and /dashboard is closed to everyone — so
+    // there is exactly one destination for a successful web sign-in, and exactly
+    // one for anybody else.
+    return context.isPlatformAdmin ? ROUTES.admin.root : ROUTES.auth.webAdminOnly;
   }
 
   async updateUserFullName(userId: string, fullName: string): Promise<void> {

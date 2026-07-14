@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { accountDisabledUrl, isAccountStatusError } from "@/lib/auth/account-status";
 import { ROUTES } from "@/lib/routes";
 import { services } from "@/lib/di";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -44,6 +45,13 @@ export async function requireSupabaseUser() {
   return user;
 }
 
+/**
+ * Resolves the caller's app context.
+ *
+ * THROWS `AccountStatusError` when the account is disabled/suspended — callers
+ * must handle that separately from `null` ("no account"), which redirects to
+ * sign-in. See `requireAppContext` / `requireAppApiContext`.
+ */
 export async function getCurrentAppContext() {
   const authUser = await getCurrentSupabaseUser();
   if (!authUser) {
@@ -53,7 +61,15 @@ export async function getCurrentAppContext() {
 }
 
 export async function requireAppContext() {
-  const context = await getCurrentAppContext();
+  let context: Awaited<ReturnType<typeof getCurrentAppContext>>;
+  try {
+    context = await getCurrentAppContext();
+  } catch (error) {
+    if (isAccountStatusError(error)) {
+      redirect(accountDisabledUrl(error.code));
+    }
+    throw error;
+  }
   if (!context) {
     redirect(ROUTES.auth.signIn);
   }
