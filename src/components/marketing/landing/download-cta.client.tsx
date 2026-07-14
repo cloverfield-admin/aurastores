@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import { ROUTES } from "@/lib/routes";
 import { FONT_BODY, FONT_DISPLAY, FONT_MONO } from "./fonts";
 import { Icon } from "./phone";
 
@@ -154,14 +152,17 @@ function ComingSoonDialog({ platform, onClose }: { platform: Platform; onClose: 
         >
           The {platformName} app is on its way
         </h3>
+        {/* No "continue on the web" any more — the web app is the platform console
+            and there is nothing here for a store owner to continue INTO. Offering it
+            would walk them into a sign-up that no longer exists. */}
         <p id={descId} style={{ fontSize: 15, lineHeight: 1.55, color: "#46574f", margin: "12px 0 0" }}>
-          We&apos;re putting the finishing touches on the AuraStores app for {storeName}. Leave it with
-          us — in the meantime you can run every store from the same account on the web.
+          We&apos;re putting the finishing touches on the AuraStores app for {storeName}. It&apos;s
+          where you&apos;ll run everything — sales, stock, staff and payments — from day one.
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
-          <Link
-            href={ROUTES.auth.register}
+          <button
+            type="button"
             onClick={onClose}
             style={{
               display: "inline-flex",
@@ -174,29 +175,14 @@ function ComingSoonDialog({ platform, onClose }: { platform: Platform; onClose: 
               color: "#fff",
               fontSize: 15,
               fontWeight: 700,
-              textDecoration: "none",
+              cursor: "pointer",
+              border: "none",
+              fontFamily: FONT_BODY,
               boxShadow: "0 10px 24px rgba(13,92,84,0.28)",
             }}
           >
-            <Icon name="language" size={20} color="#a9e3d6" />
-            Continue on the web
-          </Link>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              height: 46,
-              borderRadius: 13,
-              border: "1px solid #dbe6e2",
-              background: "#fff",
-              color: "#0c1c19",
-              fontSize: 14.5,
-              fontWeight: 600,
-              cursor: "pointer",
-              fontFamily: FONT_BODY,
-            }}
-          >
-            Maybe later
+            <Icon name="check" size={20} color="#a9e3d6" />
+            Got it
           </button>
         </div>
       </div>
@@ -276,6 +262,8 @@ export function DownloadCta() {
             />
           </div>
 
+          {/* Was "Same account on the web — get started". There is no web sign-up any
+              more, so the promise was one we could no longer keep. */}
           <p
             style={{
               fontFamily: FONT_MONO,
@@ -285,10 +273,7 @@ export function DownloadCta() {
               letterSpacing: "0.04em",
             }}
           >
-            Prefer a bigger screen? Same account on the web —{" "}
-            <Link href={ROUTES.auth.register} style={{ color: "#a9e3d6" }}>
-              get started
-            </Link>
+            Everything you need to run the store — in your pocket.
           </p>
         </div>
       </div>

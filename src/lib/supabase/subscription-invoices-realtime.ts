@@ -1,34 +1,8 @@
 "use client";
 
-import { createBrowserClient } from "@supabase/ssr";
+import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 
 export type SubscriptionInvoiceTerminalStatus = "paid" | "failed";
-
-let singleton: ReturnType<typeof createBrowserClient> | null = null;
-
-function getSupabaseBrowserClient() {
-  if (singleton) return singleton;
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseAnonKey) {
-    // Don't throw at module-eval time (it can prevent the UI from rendering).
-    // The caller will handle the missing client case.
-    return null;
-  }
-
-  // We rely on the existing Supabase auth session cookies managed by `@supabase/ssr`.
-  // (server sets cookies; browser reads them). This client is only used for Realtime.
-  singleton = createBrowserClient(supabaseUrl!, supabaseAnonKey!, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-    },
-  });
-
-  return singleton;
-}
 
 export function subscribeToSubscriptionInvoiceStatus(
   invoiceId: string,

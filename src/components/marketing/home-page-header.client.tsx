@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import { ROUTES } from "@/lib/routes";
 import { FONT_BODY, FONT_DISPLAY } from "@/components/marketing/landing/fonts";
 import { Icon, LOGO_MARK } from "@/components/marketing/landing/phone";
 
@@ -21,11 +20,7 @@ const NAV_LINK_STYLE: CSSProperties = {
   textDecoration: "none",
 };
 
-type HomePageHeaderClientProps = {
-  isAuthenticated: boolean;
-};
-
-export function HomePageHeaderClient({ isAuthenticated }: HomePageHeaderClientProps) {
+export function HomePageHeaderClient() {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -52,9 +47,6 @@ export function HomePageHeaderClient({ isAuthenticated }: HomePageHeaderClientPr
       window.removeEventListener("keydown", onKey);
     };
   }, [open]);
-
-  const authHref = isAuthenticated ? ROUTES.dashboard.main : ROUTES.auth.signIn;
-  const authLabel = isAuthenticated ? "Dashboard" : "Login";
 
   return (
     <header
@@ -108,9 +100,10 @@ export function HomePageHeaderClient({ isAuthenticated }: HomePageHeaderClientPr
 
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <div className="navcta" style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <Link href={authHref} style={{ fontSize: 14.5, fontWeight: 600, color: "#0c1c19", textDecoration: "none" }}>
-              {authLabel}
-            </Link>
+            {/* No auth link. The web app is the platform console now — the only way in
+                is /auth/sign-in, typed directly by staff. Advertising a login on the
+                public marketing site would invite store owners into a door that is
+                closed to them, and point everyone else at the console. */}
             <a
               href="#download"
               style={{
@@ -184,13 +177,7 @@ export function HomePageHeaderClient({ isAuthenticated }: HomePageHeaderClientPr
             </a>
           ))}
           <div style={{ marginTop: 6, borderTop: "1px solid #e3eae8", paddingTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
-            <Link
-              href={authHref}
-              onClick={() => setOpen(false)}
-              style={{ padding: "6px 6px", fontSize: 15, fontWeight: 600, color: "#0d5c54", textDecoration: "none" }}
-            >
-              {authLabel}
-            </Link>
+            {/* No auth link here either — see the desktop nav above. */}
             <a
               href="#download"
               onClick={() => setOpen(false)}

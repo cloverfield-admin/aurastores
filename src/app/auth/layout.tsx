@@ -11,10 +11,21 @@ export default async function AuthLayout({
   children: React.ReactNode;
 }) {
   const pathname = (await headers()).get(AUTH_PATHNAME_HEADER) ?? "";
+
+  // Pages that must render even for a SIGNED-IN user.
+  //
+  // This layout bounces authenticated users to getPostAuthRedirect(). The last two
+  // below are where that function SENDS people — they exist to explain to someone
+  // who is signed in why they can't get anywhere. Redirecting them away would land
+  // them right back here, forever: /auth/web-admin-only → layout → redirect →
+  // /auth/web-admin-only → … Any future page that getPostAuthRedirect can return
+  // must be added here too.
   const allowAuthenticatedShell =
     pathname === ROUTES.auth.recovery ||
     pathname === ROUTES.auth.updatePassword ||
-    pathname === ROUTES.auth.verifyEmail;
+    pathname === ROUTES.auth.verifyEmail ||
+    pathname === ROUTES.auth.webAdminOnly ||
+    pathname === ROUTES.auth.accountDisabled;
 
   const user = await getCurrentSupabaseUser();
   if (user && !allowAuthenticatedShell) {

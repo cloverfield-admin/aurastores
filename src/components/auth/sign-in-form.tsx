@@ -133,14 +133,15 @@ export function SignInForm() {
         </AuraGradientSubmit>
       </form>
 
+      {/* No "create an account" link: web sign-up is closed, and this page is the
+          platform console's door. Store owners are told where to actually go. */}
       <div className="mt-8 border-t border-[rgba(187,201,199,0.35)] pt-6 text-center text-sm">
-        <span className="font-medium text-[var(--app-text-secondary)]">New to the platform? </span>
-        <Link
-          href={ROUTES.auth.register}
-          className="font-semibold text-[var(--app-brand)] hover:underline"
-        >
-          Create an account
-        </Link>
+        <p className="font-medium text-[var(--app-text-secondary)]">
+          This is the AuraStores platform console.
+        </p>
+        <p className="mt-1 text-xs text-[var(--app-text-faint)]">
+          Running a store? Sign in from the AuraStores mobile app instead.
+        </p>
       </div>
     </AuraAuthCard>
   );

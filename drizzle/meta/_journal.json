@@ -330,6 +330,13 @@
       "when": 1780300000007,
       "tag": "0047_branch_monthly_targets",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1780300000008,
+      "tag": "0048_admin_audit_log",
+      "breakpoints": true
     }
   ]
 }

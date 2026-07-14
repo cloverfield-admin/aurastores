@@ -1,6 +1,5 @@
 import type { SubscriptionPlanFeatures } from "@/lib/db/schema/billing.schema";
 import type { PublicPlan } from "@/lib/repositories/billing/billing.repository";
-import { ROUTES } from "@/lib/routes";
 
 /** Plans surfaced on the marketing landing, in display order (Enterprise omitted). */
 const LANDING_PLAN_ORDER = ["free", "basic", "pro"] as const;
@@ -122,9 +121,15 @@ const CTA_LABELS: Record<LandingPlanCode, string> = {
   pro: "Choose Pro",
 };
 
-function ctaHref(code: LandingPlanCode): string {
-  return code === "free" ? ROUTES.auth.register : `${ROUTES.auth.register}?plan=${code}`;
-}
+/**
+ * Every plan CTA points at the app download.
+ *
+ * These used to deep-link into web sign-up with the plan preselected
+ * (`/auth/register?plan=pro`). Web sign-up is closed — stores are created in the
+ * mobile app — so that link would have walked a paying customer into a dead end.
+ * The plan is still chosen in-app, at the same point in the flow.
+ */
+const CTA_HREF = "#download";
 
 /**
  * Shape the public plans returned by billing into the landing's Free / Basic /
@@ -155,7 +160,7 @@ export function buildLandingPlans(plans: PublicPlan[]): LandingPlan[] {
       yearlyNote: isFree ? "Free forever · no card required" : "Billed annually · 12 months upfront",
       bullets: buildBullets(plan, prev),
       ctaLabel: CTA_LABELS[code],
-      ctaHref: ctaHref(code),
+      ctaHref: CTA_HREF,
     };
   });
 }

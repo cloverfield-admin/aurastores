@@ -119,6 +119,7 @@ function createContext(): AuthContext {
     membership: { id: "membership-1", role: "owner" } as AuthContext["membership"],
     organization: { id: "org-1" } as AuthContext["organization"],
     onboarding: null,
+    isPlatformAdmin: false,
     capabilities: fullCapabilities(),
     entitlements: {
       capabilities: {

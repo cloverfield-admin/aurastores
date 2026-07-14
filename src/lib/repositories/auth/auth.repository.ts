@@ -32,6 +32,16 @@ export type AuthContext = {
    * from `findByAuthUserId` uses a non-null array.
    */
   allowedBranchIds: string[] | null;
+  /**
+   * True when the user holds an active `aurastores_admin` membership ANYWHERE.
+   *
+   * Deliberately independent of `membership.role`: `findByAuthUserId` resolves a
+   * single membership, so an admin who also owns their own store would otherwise
+   * be gated out of the platform console by whichever row happened to be default.
+   * It gates the console only — the full-capability bypass stays keyed on
+   * `membership.role`.
+   */
+  isPlatformAdmin: boolean;
 };
 
 export type RegisteredUserParams = {
@@ -51,7 +61,16 @@ export type RegisteredUserParams = {
 };
 
 export interface AuthRepository {
+  /**
+   * Resolves the caller's auth context.
+   *
+   * Returns null when there is no account. THROWS `AccountStatusError` when the
+   * account exists but is disabled/suspended — callers must distinguish the two:
+   * null redirects to sign-in, a status error redirects to the explanation page.
+   */
   findByAuthUserId(authUserId: string): Promise<AuthContext | null>;
+  /** True when the user holds an active `aurastores_admin` membership anywhere. */
+  isPlatformAdmin(userId: string): Promise<boolean>;
   createRegisteredUser(params: RegisteredUserParams): Promise<AuthContext>;
   updateLastLoginAt(authUserId: string): Promise<void>;
   syncEmailVerifiedFromAuth(authUserId: string, isEmailVerified: boolean): Promise<void>;

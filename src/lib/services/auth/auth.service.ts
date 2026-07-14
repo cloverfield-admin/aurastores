@@ -15,6 +15,15 @@ export class AuthService {
     return this.repos.auth.findByAuthUserId(authUserId);
   }
 
+  /**
+   * Gates the platform console. Membership-independent on purpose — see
+   * `AuthContext.isPlatformAdmin`: an admin who also owns a store must not be
+   * locked out of the console by whichever membership happened to be default.
+   */
+  isPlatformAdmin(userId: string) {
+    return this.repos.auth.isPlatformAdmin(userId);
+  }
+
   createRegisteredUser(params: Parameters<AuthRepository["createRegisteredUser"]>[0]) {
     return this.repos.auth.createRegisteredUser(params);
   }

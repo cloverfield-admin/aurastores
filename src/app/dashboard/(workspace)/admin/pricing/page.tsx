@@ -1,19 +1,13 @@
-import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { AdminPricingContent } from "@/components/dashboard/admin-pricing-content";
-import { requireAppContext } from "@/lib/auth/session";
+import { permanentRedirect } from "next/navigation";
 import { ROUTES } from "@/lib/routes";
 
-export const metadata: Metadata = {
-  title: "Admin · Pricing",
-  description: "Manage subscription plans and pricing.",
-};
-
-export default async function AdminPricingPage() {
-  const context = await requireAppContext();
-  if (context.membership.role !== "aurastores_admin") {
-    redirect(ROUTES.dashboard.main);
-  }
-  return <AdminPricingContent />;
+/**
+ * Pricing admin moved to the platform console at /admin/pricing.
+ *
+ * This page is kept only to catch bookmarks: it was never linked from the nav.
+ * The console's own layout re-checks that the caller is a platform admin, so the
+ * old role guard here would be redundant.
+ */
+export default function LegacyAdminPricingPage() {
+  permanentRedirect(ROUTES.admin.pricing);
 }
-

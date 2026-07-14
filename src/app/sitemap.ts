@@ -5,10 +5,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const base = getSiteUrl();
   const lastModified = new Date();
 
+  // /auth/sign-in and /auth/register are deliberately absent. Registration is
+  // closed, and sign-in is the platform console's door — it stays reachable by URL
+  // for staff, but it is not something to publish to search engines.
   const publicPaths = [
     { path: "/", priority: 1, changeFrequency: "weekly" as const },
-    { path: "/auth/sign-in", priority: 0.5, changeFrequency: "monthly" as const },
-    { path: "/auth/register", priority: 0.5, changeFrequency: "monthly" as const },
     { path: "/privacy", priority: 0.3, changeFrequency: "yearly" as const },
     { path: "/terms", priority: 0.3, changeFrequency: "yearly" as const },
     { path: "/security", priority: 0.3, changeFrequency: "yearly" as const },
