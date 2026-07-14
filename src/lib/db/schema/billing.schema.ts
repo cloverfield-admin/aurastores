@@ -274,6 +274,12 @@ export const storeWebhookEvents = pgTable(
     appUserId: varchar("app_user_id", { length: 128 }).notNull().default(""),
     rawPayload: jsonb("raw_payload").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    /**
+     * Stamped once the event has been APPLIED to the org's subscription — not when
+     * it was received. NULL means "recorded but not yet applied", which is what makes
+     * a RevenueCat retry re-apply it instead of being written off as a duplicate.
+     */
+    processedAt: timestamp("processed_at", { withTimezone: true }),
   },
   (table) => ({
     eventIdUnique: uniqueIndex("store_webhook_events_event_id_unique").on(table.eventId),
