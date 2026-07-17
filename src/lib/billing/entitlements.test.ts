@@ -10,6 +10,7 @@ describe("intersectCapabilities", () => {
       catalog: true,
       staff: true,
       pay: true,
+      expenses: true,
       organization: true,
     };
     const plan = {
@@ -19,6 +20,7 @@ describe("intersectCapabilities", () => {
       catalog: true,
       staff: false,
       pay: false,
+      expenses: true,
       organization: true,
     };
     expect(intersectCapabilities(membership, plan)).toEqual({
@@ -28,8 +30,37 @@ describe("intersectCapabilities", () => {
       catalog: true,
       staff: false,
       pay: false,
+      expenses: true,
       organization: true,
     });
+  });
+
+  it("keeps expenses independent of pay", () => {
+    // The Pro plan sells expenses without the Aura Pay wallet, so a plan granting
+    // expenses:true / pay:false must survive the intersection with both flags intact.
+    const membership = {
+      stock: true,
+      sales: true,
+      insights: true,
+      catalog: true,
+      staff: true,
+      pay: true,
+      expenses: true,
+      organization: true,
+    };
+    const proPlan = {
+      stock: true,
+      sales: true,
+      insights: true,
+      catalog: true,
+      staff: true,
+      pay: false,
+      expenses: true,
+      organization: true,
+    };
+    const result = intersectCapabilities(membership, proPlan);
+    expect(result.expenses).toBe(true);
+    expect(result.pay).toBe(false);
   });
 });
 

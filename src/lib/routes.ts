@@ -37,6 +37,17 @@ export const ROUTES = {
     pricing: "/admin/pricing",
     audit: "/admin/audit",
   },
+  /**
+   * The one tenant-facing surface on the web (owner/admin/manager).
+   *
+   * A top-level group, NOT under /dashboard: `src/proxy.ts` closes that whole tree,
+   * and this is a deliberate, narrow carve-out from "the web app is admin-only" —
+   * paying for a plan is the one job that is genuinely better on a big screen than
+   * in the mobile app. Nothing else tenant-facing belongs here.
+   */
+  organization: {
+    subscription: "/organization/subscription",
+  },
   marketing: {
     pricing: "/#pricing",
     privacy: "/privacy",

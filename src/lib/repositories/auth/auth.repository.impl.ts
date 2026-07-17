@@ -28,6 +28,7 @@ import type { SubscriptionPlanCode } from "@/lib/repositories/billing/billing.re
 import { billingRepository } from "@/lib/repositories/billing/billing.repository.impl";
 import { capabilitiesFromPlan, intersectCapabilities } from "@/lib/billing/entitlements";
 import { resolveAllowedBranchIdsFromAssignments } from "@/lib/rbac/branch-access";
+import { canManageSubscription } from "@/lib/rbac/subscription-access";
 import {
   fullCapabilities,
   isOrgWideBranchRole,
@@ -130,6 +131,7 @@ async function loadSubscriptionSlice(
           insights: true,
           pay: false,
           staff: false,
+          expenses: false,
           organization: true,
         },
         limits: {
@@ -381,6 +383,7 @@ export class AuthRepositoryImpl implements AuthRepository {
             insights: true,
             pay: false,
             staff: false,
+            expenses: false,
             organization: true,
           },
           limits: {
@@ -432,11 +435,18 @@ export class AuthRepositoryImpl implements AuthRepository {
       return ROUTES.auth.signIn;
     }
 
-    // The web app is the PLATFORM CONSOLE now. Store owners and staff run their
-    // business from the mobile app, and /dashboard is closed to everyone — so
-    // there is exactly one destination for a successful web sign-in, and exactly
-    // one for anybody else.
-    return context.isPlatformAdmin ? ROUTES.admin.root : ROUTES.auth.webAdminOnly;
+    // The web app is the PLATFORM CONSOLE. Store owners and staff run their
+    // business from the mobile app, and /dashboard is closed to everyone.
+    if (context.isPlatformAdmin) {
+      return ROUTES.admin.root;
+    }
+    // The one exception: whoever can manage the org's plan gets the subscription
+    // page, which is the only tenant-facing surface on the web. Everyone else still
+    // hits the explanation page.
+    if (canManageSubscription(context.membership.role)) {
+      return ROUTES.organization.subscription;
+    }
+    return ROUTES.auth.webAdminOnly;
   }
 
   async updateUserFullName(userId: string, fullName: string): Promise<void> {
