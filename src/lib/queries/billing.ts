@@ -15,6 +15,7 @@ export type SubscriptionPlanFeatures = {
     insights: boolean;
     pay: boolean;
     staff: boolean;
+    expenses: boolean;
     organization: boolean;
   };
   limits: {

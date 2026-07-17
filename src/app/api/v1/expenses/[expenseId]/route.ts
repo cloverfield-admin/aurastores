@@ -8,7 +8,7 @@ type RouteContext = {
 };
 
 export async function DELETE(_request: Request, context: RouteContext) {
-  const gate = await requireAppApiCapability("pay");
+  const gate = await requireAppApiCapability("expenses");
   if (!gate.ok) {
     return gate.response;
   }

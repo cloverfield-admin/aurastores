@@ -3,7 +3,12 @@
 import { getEngineAccessToken } from "@/lib/supabase/browser-client";
 
 /**
- * Client for the Go engine (`aurestores-engine`), which backs the admin console.
+ * Client for the Go engine (`aurestores-engine`).
+ *
+ * Mostly the admin console, but not exclusively: the tenant subscription page
+ * (/organization/subscription) uses it too. The name is historical — nothing here
+ * grants admin, it only forwards the caller's own bearer token, and the engine
+ * decides what that token may do. `impersonate` is the one admin-only affordance.
  *
  * Calls do not reach the engine directly. They go through the same-origin proxy at
  * `src/app/api/engine/[...path]/route.ts`, which forwards the path verbatim — the
