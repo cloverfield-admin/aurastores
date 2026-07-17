@@ -12,6 +12,7 @@ export function capabilitiesFromPlan(entitlements: PlanEntitlements): Membership
     catalog: Boolean(c.catalog),
     staff: Boolean(c.staff),
     pay: Boolean(c.pay),
+    expenses: Boolean(c.expenses),
     organization: Boolean(c.organization),
   };
 }
@@ -27,6 +28,7 @@ export function intersectCapabilities(
     catalog: membership.catalog && planCaps.catalog,
     staff: membership.staff && planCaps.staff,
     pay: membership.pay && planCaps.pay,
+    expenses: membership.expenses && planCaps.expenses,
     organization: membership.organization && planCaps.organization,
   };
 }

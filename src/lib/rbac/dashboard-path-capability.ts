@@ -27,6 +27,9 @@ export function dashboardModuleCapabilityForPath(pathname: string): MembershipCa
   if (pathname === ROUTES.dashboard.pay || pathname.startsWith(`${ROUTES.dashboard.pay}/`)) {
     return "pay";
   }
+  if (pathname === ROUTES.dashboard.expenses || pathname.startsWith(`${ROUTES.dashboard.expenses}/`)) {
+    return "expenses";
+  }
   if (
     pathname === ROUTES.dashboard.organization
     || pathname.startsWith(`${ROUTES.dashboard.organization}/`)

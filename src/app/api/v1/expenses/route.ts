@@ -21,7 +21,7 @@ function differenceInDaysInclusiveUtc(start: Date, end: Date) {
 const MAX_RANGE_DAYS = 93;
 
 export async function GET(request: Request) {
-  const gate = await requireAppApiCapability("pay");
+  const gate = await requireAppApiCapability("expenses");
   if (!gate.ok) {
     return gate.response;
   }
@@ -81,7 +81,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const gate = await requireAppApiCapability("pay");
+  const gate = await requireAppApiCapability("expenses");
   if (!gate.ok) {
     return gate.response;
   }

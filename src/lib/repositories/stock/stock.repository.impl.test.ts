@@ -129,6 +129,7 @@ function createContext(): AuthContext {
         insights: true,
         pay: true,
         staff: true,
+        expenses: true,
         organization: true,
       },
       limits: {

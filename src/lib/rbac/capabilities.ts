@@ -5,6 +5,12 @@ export const MEMBERSHIP_CAPABILITY_KEYS = [
   "catalog",
   "staff",
   "pay",
+  /**
+   * Gates the expenses module. Deliberately separate from `pay`, which it used to
+   * ride on: `pay` also unlocks the Aura Pay wallet and withdrawals, so selling
+   * expenses in Pro by flipping `pay` would hand every Pro org the withdrawal rail.
+   */
+  "expenses",
   "organization",
 ] as const;
 
@@ -19,6 +25,7 @@ const MEMBERSHIP_CAPABILITY_LABELS: Record<MembershipCapability, string> = {
   catalog: "Product catalog & categories",
   staff: "Staff management",
   pay: "Aura Pay & payments",
+  expenses: "Expenses",
   organization: "Organization management",
 };
 
@@ -35,6 +42,7 @@ export function fullCapabilities(): MembershipCapabilities {
     catalog: true,
     staff: true,
     pay: true,
+    expenses: true,
     organization: true,
   };
 }
@@ -51,6 +59,7 @@ export function defaultCapabilitiesForAppRole(role: string): MembershipCapabilit
       catalog: true,
       staff: false,
       pay: false,
+      expenses: false,
       organization: false,
     };
   }
@@ -62,6 +71,7 @@ export function defaultCapabilitiesForAppRole(role: string): MembershipCapabilit
       catalog: true,
       staff: false,
       pay: false,
+      expenses: false,
       organization: false,
     };
   }
@@ -72,6 +82,7 @@ export function defaultCapabilitiesForAppRole(role: string): MembershipCapabilit
     catalog: false,
     staff: false,
     pay: false,
+    expenses: false,
     organization: false,
   };
 }
