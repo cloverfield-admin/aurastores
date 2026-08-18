@@ -180,8 +180,11 @@ export function NetworkOverviewContent() {
                 : [
                     `COGS ${money.format(totals.totalCogsCents30d / 100)}`,
                     `Operating ${money.format(totals.totalExpensesCents30d / 100)}`,
-                    ...(totals.excessRestockingCents30d > 0
-                      ? [`Excess restocking ${money.format(totals.excessRestockingCents30d / 100)}`]
+                    // Restocking is stock bought, not cost of sales — it reaches
+                    // profit as COGS when the item sells, so it is reported
+                    // alongside the breakdown rather than inside it.
+                    ...(totals.totalRestockingCents30d > 0
+                      ? [`Restocking ${money.format(totals.totalRestockingCents30d / 100)} (not deducted)`]
                       : []),
                   ].join(" • ")}
             </p>

@@ -396,19 +396,16 @@ export class SalesRepositoryImpl implements SalesRepository {
     const branchTotalRevenueExpanded = branchDistributionExpanded.reduce((sum, row) => sum + row.amountCents, 0);
     const grossProfitBeforeExpensesCents = metrics.totalRevenueCents - cogsMetrics.totalCogsCents;
     const previousGrossProfitBeforeExpensesCents = metrics.previousRevenueCents - cogsMetrics.previousCogsCents;
-    const { excessRestockingCents, grossProfitCents } = computeGrossProfitCents({
+    const { grossProfitCents } = computeGrossProfitCents({
       revenueCents: metrics.totalRevenueCents,
       cogsCents: cogsMetrics.totalCogsCents,
       operatingExpensesCents: expenseMetrics.totalOperatingExpensesCents,
-      restockingCents: expenseMetrics.totalRestockingCents,
     });
-    const { excessRestockingCents: previousExcessRestockingCents, grossProfitCents: previousGrossProfitCents } =
-      computeGrossProfitCents({
-        revenueCents: metrics.previousRevenueCents,
-        cogsCents: cogsMetrics.previousCogsCents,
-        operatingExpensesCents: expenseMetrics.previousOperatingExpensesCents,
-        restockingCents: expenseMetrics.previousRestockingCents,
-      });
+    const { grossProfitCents: previousGrossProfitCents } = computeGrossProfitCents({
+      revenueCents: metrics.previousRevenueCents,
+      cogsCents: cogsMetrics.previousCogsCents,
+      operatingExpensesCents: expenseMetrics.previousOperatingExpensesCents,
+    });
 
     return {
       branch: {
@@ -429,8 +426,6 @@ export class SalesRepositoryImpl implements SalesRepository {
         previousExpensesCents: expenseMetrics.previousOperatingExpensesCents,
         totalRestockingCents: expenseMetrics.totalRestockingCents,
         previousRestockingCents: expenseMetrics.previousRestockingCents,
-        excessRestockingCents,
-        previousExcessRestockingCents,
         totalChargeExpensesCents: expenseMetrics.totalChargeExpensesCents,
         previousChargeExpensesCents: expenseMetrics.previousChargeExpensesCents,
         grossProfitBeforeExpensesCents,

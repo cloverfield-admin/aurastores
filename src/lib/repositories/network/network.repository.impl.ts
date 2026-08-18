@@ -412,13 +412,11 @@ export class NetworkRepositoryImpl implements NetworkRepository {
     const totalCogsCents30d = Number(cogsTotals?.totalCogsCents30d ?? 0);
     const totalExpensesCents30d = Number(expensesTotalsRows[0]?.totalOperatingExpensesCents30d ?? 0);
     const totalRestockingCents30d = Number(restockingTotalsRows[0]?.totalRestockingCents30d ?? 0);
-    const { excessRestockingCents: excessRestockingCents30d, grossProfitCents: totalGrossProfitCents30d } =
-      computeGrossProfitCents({
-        revenueCents: totalRevenueCents30d,
-        cogsCents: totalCogsCents30d,
-        operatingExpensesCents: totalExpensesCents30d,
-        restockingCents: totalRestockingCents30d,
-      });
+    const { grossProfitCents: totalGrossProfitCents30d } = computeGrossProfitCents({
+      revenueCents: totalRevenueCents30d,
+      cogsCents: totalCogsCents30d,
+      operatingExpensesCents: totalExpensesCents30d,
+    });
     const totalChargeExpensesCents30d = Number(chargeTotalsRows[0]?.totalChargeExpensesCents30d ?? 0);
     const activeStaffCount = Number(staffMetrics?.activeStaffCount ?? 0);
     const totalStaffCount = Number(staffMetrics?.totalStaffCount ?? 0);
@@ -443,7 +441,6 @@ export class NetworkRepositoryImpl implements NetworkRepository {
         revenueCents: revenueCents30d,
         cogsCents: cogsCents30d,
         operatingExpensesCents: expensesCents30d,
-        restockingCents: restockingCents30d,
       });
 
       return {
@@ -479,7 +476,6 @@ export class NetworkRepositoryImpl implements NetworkRepository {
         totalCogsCents30d,
         totalExpensesCents30d,
         totalRestockingCents30d,
-        excessRestockingCents30d,
         totalChargeExpensesCents30d,
         totalGrossProfitCents30d,
         totalLowStockSkuCount,

@@ -307,8 +307,11 @@ export function SalesPerformanceContent() {
       sub: [
         `COGS ${currencyFormatter.format((metrics?.totalCogsCents ?? 0) / 100)}`,
         `Operating ${currencyFormatter.format((metrics?.totalExpensesCents ?? 0) / 100)}`,
-        ...(metrics && metrics.excessRestockingCents > 0
-          ? [`Excess restocking ${currencyFormatter.format(metrics.excessRestockingCents / 100)}`]
+        // Restocking is stock bought, not cost of sales — it reaches profit as
+        // COGS when the item sells, so it is reported alongside the breakdown
+        // rather than inside it.
+        ...(metrics && metrics.totalRestockingCents > 0
+          ? [`Restocking ${currencyFormatter.format(metrics.totalRestockingCents / 100)} (not deducted)`]
           : []),
         `(${rangeDays}d)`,
       ].join(" • "),
