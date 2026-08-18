@@ -7,6 +7,8 @@ import { Icon } from "./phone";
 
 type Platform = "ios" | "android";
 
+const IOS_APP_STORE_URL = "https://apps.apple.com/us/app/aurastores/id6787753953";
+
 const STORE_BUTTON: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
@@ -27,16 +29,18 @@ function StoreButton({
   icon,
   kicker,
   name,
+  href,
   onClick,
 }: {
   platform: Platform;
   icon: string;
   kicker: string;
   name: string;
+  href?: string;
   onClick: (platform: Platform) => void;
 }) {
-  return (
-    <button type="button" style={STORE_BUTTON} onClick={() => onClick(platform)}>
+  const label = (
+    <>
       <Icon name={icon} size={26} color="#a9e3d6" />
       <span>
         <span style={{ display: "block", fontFamily: FONT_MONO, fontSize: 9, letterSpacing: "0.12em", color: "#8fb0a8" }}>
@@ -46,6 +50,22 @@ function StoreButton({
           {name}
         </span>
       </span>
+    </>
+  );
+
+  // A live listing links straight out; platforms we have not shipped yet keep
+  // falling through to the coming-soon dialog.
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noreferrer" style={STORE_BUTTON}>
+        {label}
+      </a>
+    );
+  }
+
+  return (
+    <button type="button" style={STORE_BUTTON} onClick={() => onClick(platform)}>
+      {label}
     </button>
   );
 }
@@ -251,6 +271,7 @@ export function DownloadCta() {
               icon="phone_iphone"
               kicker="DOWNLOAD ON THE"
               name="App Store"
+              href={IOS_APP_STORE_URL}
               onClick={setPlatform}
             />
             <StoreButton
