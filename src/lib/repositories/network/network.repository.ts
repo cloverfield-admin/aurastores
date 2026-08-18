@@ -25,7 +25,6 @@ export type NetworkDashboardData = {
     totalCogsCents30d: number;
     totalExpensesCents30d: number;
     totalRestockingCents30d: number;
-    excessRestockingCents30d: number;
     totalChargeExpensesCents30d: number;
     totalGrossProfitCents30d: number;
     totalLowStockSkuCount: number;
