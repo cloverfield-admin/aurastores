@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { OutboxOfflineSection } from "@/components/outbox/outbox-offline-section";
 import { OfflineActions } from "./offline-actions";
 
 export const metadata: Metadata = {
@@ -20,7 +19,6 @@ export default function OfflinePage() {
         <p className="mt-2 max-w-sm text-sm text-zinc-600">
           Check your connection, then try again. Cached pages may still open from your last visit.
         </p>
-        <OutboxOfflineSection />
         <OfflineActions />
       </div>
     </div>

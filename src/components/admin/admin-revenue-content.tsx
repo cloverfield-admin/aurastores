@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BarRow, KpiCard, SkeletonCard, TabButton } from "@/components/dashboard/kpi-card";
+import { BarRow, KpiCard, SkeletonCard, TabButton } from "@/components/ui/kpi-card";
 import { AdminError, AdminSection } from "@/components/admin/admin-primitives";
 import { count, humanize, money, moneyCompact, percent } from "@/components/admin/format";
 import { useAdminOverviewQuery } from "@/lib/queries/admin";
