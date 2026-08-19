@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   BillingIcon,
   BillingShell,
@@ -22,6 +22,7 @@ import {
   useBillingBranchCountQuery,
   useBillingInvoiceHistoryQuery,
   useBillingMeQuery,
+  useSetCancelAtPeriodEndMutation,
   type BillingInvoice,
 } from "@/lib/queries/web-billing";
 import { usePublicPlansQuery } from "@/lib/queries/billing";
@@ -98,6 +99,13 @@ export function BillingOverviewContent() {
   const renewsOn = formatDate(periodEnd);
   const renewsIn = daysUntil(periodEnd);
   const isActive = subscription?.status === "active" || subscription?.status === "trialing";
+  // A pending cancellation is not "expired": the store keeps everything it paid
+  // for until the period lapses, so it reads as ENDING rather than gone.
+  const endingAtPeriodEnd = Boolean(subscription?.cancel_at_period_end) && isActive;
+  const canCancel = Boolean(role && canChangePlanTier(role)) && isActive;
+
+  const setCancel = useSetCancelAtPeriodEndMutation();
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   const lastPaid = useMemo(
     () => (invoices.data ?? []).find((invoice) => invoice.status === "paid") ?? null,
@@ -177,18 +185,22 @@ export function BillingOverviewContent() {
                     CURRENT PLAN{branchLine ? ` · ${branchLine.toUpperCase()}` : ""}
                   </MonoLabel>
                   <Pill
-                    background={isActive ? C.mint : "#f3d9d6"}
-                    color={isActive ? C.dark : "#7d2b25"}
+                    background={endingAtPeriodEnd ? C.warnBg : isActive ? C.mint : "#f3d9d6"}
+                    color={endingAtPeriodEnd ? C.warn : isActive ? C.dark : "#7d2b25"}
                   >
                     <span
                       style={{
                         width: 6,
                         height: 6,
                         borderRadius: "50%",
-                        background: isActive ? C.dark : "#7d2b25",
+                        background: endingAtPeriodEnd ? C.warn : isActive ? C.dark : "#7d2b25",
                       }}
                     />
-                    {isActive ? "ACTIVE" : "EXPIRED"}
+                    {endingAtPeriodEnd
+                      ? `ENDING ${formatDateShort(periodEnd)?.toUpperCase() ?? ""}`.trim()
+                      : isActive
+                        ? "ACTIVE"
+                        : "EXPIRED"}
                   </Pill>
                 </div>
 
@@ -325,6 +337,114 @@ export function BillingOverviewContent() {
                     </button>
                   ) : null}
                 </div>
+
+                {endingAtPeriodEnd ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      flexWrap: "wrap",
+                      marginTop: 18,
+                      position: "relative",
+                      background: "rgba(255,255,255,0.07)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      borderRadius: RADIUS.control,
+                      padding: 14,
+                    }}
+                  >
+                    <BillingIcon name="event_busy" size={18} color={C.mintText} />
+                    <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: "#bcd6cf", flex: 1 }}>
+                      Your plan ends on {renewsOn ?? "your renewal date"} and this organization
+                      moves to Free. Nothing changes before then.
+                    </p>
+                    {canCancel ? (
+                      <button
+                        type="button"
+                        onClick={() => setCancel.mutate(false)}
+                        disabled={setCancel.isPending}
+                        style={{ ...MINT_BUTTON, opacity: setCancel.isPending ? 0.6 : 1 }}
+                      >
+                        <BillingIcon name="undo" size={18} />
+                        {setCancel.isPending ? "Resuming…" : "Resume subscription"}
+                      </button>
+                    ) : null}
+                  </div>
+                ) : canCancel ? (
+                  <div style={{ marginTop: 18, position: "relative" }}>
+                    {confirmingCancel ? (
+                      <div
+                        style={{
+                          background: "rgba(255,255,255,0.07)",
+                          border: "1px solid rgba(255,255,255,0.12)",
+                          borderRadius: RADIUS.control,
+                          padding: 14,
+                        }}
+                      >
+                        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55, color: "#e6f2ef" }}>
+                          You keep {subscription?.plan_name ?? "your plan"} until{" "}
+                          <strong>{renewsOn ?? "your renewal date"}</strong>, then this
+                          organization moves to Free across every branch. You can undo this any
+                          time before then.
+                        </p>
+                        <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCancel.mutate(true, { onSuccess: () => setConfirmingCancel(false) })
+                            }
+                            disabled={setCancel.isPending}
+                            style={{ ...GHOST_ON_DARK, opacity: setCancel.isPending ? 0.6 : 1 }}
+                          >
+                            {setCancel.isPending ? "Cancelling…" : "Yes, cancel at period end"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmingCancel(false)}
+                            style={{ ...MINT_BUTTON }}
+                          >
+                            Keep my plan
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingCancel(true)}
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          padding: 0,
+                          fontFamily: FONT_BODY,
+                          fontSize: 12.5,
+                          fontWeight: 600,
+                          color: "#bcd6cf",
+                          textDecoration: "underline",
+                          textUnderlineOffset: 3,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Cancel subscription
+                      </button>
+                    )}
+                  </div>
+                ) : null}
+
+                {setCancel.isError ? (
+                  <p
+                    role="alert"
+                    style={{
+                      margin: "12px 0 0",
+                      position: "relative",
+                      fontSize: 12.5,
+                      color: "#ffd9d4",
+                    }}
+                  >
+                    {setCancel.error instanceof Error
+                      ? setCancel.error.message
+                      : "That didn't go through. Try again in a moment."}
+                  </p>
+                ) : null}
               </>
             )}
           </div>

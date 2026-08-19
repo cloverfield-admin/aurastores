@@ -86,15 +86,26 @@ export function BillingCheckoutContent() {
     ? (requestedPlan as SubscriptionPlanCode)
     : (subscription?.plan_code ?? "pro");
 
-  const interval: SubscriptionInterval = VALID_INTERVALS.includes(
-    requestedInterval as SubscriptionInterval,
-  )
-    ? (requestedInterval as SubscriptionInterval)
-    : (subscription?.interval ?? "yearly");
+  const requestedIntervalValid = VALID_INTERVALS.includes(requestedInterval as SubscriptionInterval);
+  const [chosenInterval, setChosenInterval] = useState<SubscriptionInterval | null>(null);
+  // The URL seeds the choice; once the payer picks a chip, that wins. Falling
+  // back to their current interval means "Renew now" lands on like-for-like.
+  const interval: SubscriptionInterval =
+    chosenInterval ??
+    (requestedIntervalValid
+      ? (requestedInterval as SubscriptionInterval)
+      : (subscription?.interval ?? "yearly"));
 
   const plan = useMemo(
     () => plans.data?.plans.find((p) => p.code === planCode) ?? null,
     [plans.data, planCode],
+  );
+
+  // Only intervals the plans endpoint returns a price for are offered — a chip
+  // we cannot quote is a chip that would fail at the invoice.
+  const availableIntervals = useMemo(
+    () => VALID_INTERVALS.filter((key) => Boolean(plan?.prices[key]?.amountCents)),
+    [plan],
   );
 
   const priceCents = plan?.prices[interval]?.amountCents ?? null;
@@ -259,6 +270,57 @@ export function BillingCheckoutContent() {
           >
             {/* ── Payment method ─────────────────────────────────────── */}
             <Card padding={28}>
+              {availableIntervals.length > 1 ? (
+                <div style={{ marginBottom: 26 }}>
+                  <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 18 }}>
+                    How long would you like to pay for?
+                  </span>
+                  <div style={{ display: "flex", gap: 9, marginTop: 14, flexWrap: "wrap" }}>
+                    {availableIntervals.map((key) => {
+                      const selected = interval === key;
+                      const cents = plan?.prices[key]?.amountCents;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setChosenInterval(key)}
+                          aria-pressed={selected}
+                          disabled={phase !== "form"}
+                          style={{
+                            display: "inline-flex",
+                            flexDirection: "column",
+                            alignItems: "flex-start",
+                            gap: 2,
+                            border: selected
+                              ? `2px solid ${C.primary}`
+                              : `1px solid ${C.borderInput}`,
+                            background: selected ? "#f2faf8" : C.surface,
+                            borderRadius: 14,
+                            padding: selected ? "11px 17px" : "12px 18px",
+                            fontFamily: FONT_BODY,
+                            cursor: phase === "form" ? "pointer" : "default",
+                            textAlign: "left",
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: 13.5,
+                              fontWeight: selected ? 700 : 600,
+                              color: selected ? C.text : C.secondary,
+                            }}
+                          >
+                            {intervalLabel(key)}
+                          </span>
+                          <span style={{ fontSize: 12, color: selected ? C.muted : C.faint }}>
+                            {cents ? formatMoneyCompact(cents) : "—"}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
               <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 18 }}>
                 How would you like to pay?
               </span>
