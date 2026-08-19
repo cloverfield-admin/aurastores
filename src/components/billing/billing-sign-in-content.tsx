@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import {
   BARE_INPUT,
@@ -17,7 +17,13 @@ import {
   PRIMARY_BUTTON,
   RADIUS,
 } from "@/components/billing/billing-chrome";
+import { safeInternalNextPath } from "@/lib/auth/safe-redirect";
 import { ROUTES } from "@/lib/routes";
+
+/** Title-cases a plan code for the "continue to checkout" line. */
+function planLabel(code: string): string {
+  return code.charAt(0).toUpperCase() + code.slice(1);
+}
 
 type SignInResult = { redirectTo: string };
 
@@ -33,6 +39,13 @@ type ApiError = { error?: string; code?: string };
  */
 export function BillingSignInContent() {
   const router = useRouter();
+  const params = useSearchParams();
+  // Where the visitor was headed before the proxy bounced them here — a plan
+  // chosen on the landing page, typically. Constrained to /billing so a crafted
+  // ?next= cannot turn sign-in into an open redirect.
+  const requestedNext = safeInternalNextPath(params.get("next"));
+  const nextPath = requestedNext?.startsWith("/billing") ? requestedNext : null;
+  const pickedPlan = nextPath ? new URLSearchParams(nextPath.split("?")[1] ?? "").get("plan") : null;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -56,7 +69,9 @@ export function BillingSignInContent() {
         return;
       }
 
-      router.push(payload?.redirectTo ?? "/billing");
+      // The portal decides where sign-in normally lands; an explicit destination
+      // (a plan they picked) wins over that default.
+      router.push(nextPath ?? payload?.redirectTo ?? "/billing");
       router.refresh();
     } catch {
       setError("Could not reach AuraStores. Check your connection and try again.");
@@ -135,8 +150,32 @@ export function BillingSignInContent() {
               Sign in to manage your plan
             </h1>
             <p style={{ fontSize: 14, lineHeight: 1.55, color: C.secondary, margin: "10px 0 0" }}>
-              Sign in with the email and password on your AuraStores account.
+              {pickedPlan
+                ? `Sign in to continue to checkout for the ${planLabel(pickedPlan)} plan.`
+                : "Sign in with the email and password on your AuraStores account."}
             </p>
+
+            {/* There is no web sign-up: accounts are created in the app, and only
+                an owner or manager can reach billing. Saying so here saves a
+                round trip through a failed sign-in. */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                background: "#fdf6f0",
+                border: `1px solid ${C.warnBg}`,
+                borderRadius: RADIUS.control,
+                padding: "12px 13px",
+                marginTop: 16,
+              }}
+            >
+              <BillingIcon name="info" size={18} color={C.warn} style={{ flexShrink: 0 }} />
+              <p style={{ fontSize: 12.5, lineHeight: 1.5, color: "#7a4a2c", margin: 0 }}>
+                You need an <strong>existing AuraStores account</strong>, and you must be the{" "}
+                <strong>Store Owner or a Store Manager</strong>. There is no sign-up here — create
+                your store in the AuraStores app first.
+              </p>
+            </div>
 
             <form onSubmit={handleSubmit} noValidate>
               <fieldset
