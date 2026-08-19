@@ -25,7 +25,7 @@ import {
   useSetCancelAtPeriodEndMutation,
   type BillingInvoice,
 } from "@/lib/queries/web-billing";
-import { usePublicPlansQuery } from "@/lib/queries/billing";
+import { usePublicPlansQuery, type SubscriptionInterval } from "@/lib/queries/billing";
 import {
   annualSaving,
   billingRoleLabel,
@@ -79,10 +79,45 @@ export function BillingOverviewContent() {
   const subscription = me.data?.subscription ?? null;
   const orgName = me.data?.organization.name ?? null;
 
+  // What the org can actually buy, straight from the plans endpoint — the
+  // catalogue is data, not a hardcoded card. Free is where you land rather than
+  // something you buy, and Enterprise is negotiated (the engine refuses both at
+  // checkout), so neither is offered here.
+  const sellablePlans = useMemo(
+    () =>
+      (plans.data?.plans ?? []).filter(
+        (plan) => plan.code === "basic" || plan.code === "pro",
+      ),
+    [plans.data],
+  );
+
+  // Only periods something is actually priced for.
+  const intervalOptions = useMemo(() => {
+    const order: SubscriptionInterval[] = ["monthly", "quarterly", "yearly"];
+    return order.filter((key) =>
+      sellablePlans.some((plan) => Boolean(plan.prices[key]?.amountCents)),
+    );
+  }, [sellablePlans]);
+
+  const [pickedInterval, setPickedInterval] = useState<SubscriptionInterval | null>(null);
+  // Defaults to what the org is already billed on, so the comparison starts from
+  // something familiar rather than from whatever we would like to sell.
+  const shownInterval: SubscriptionInterval =
+    pickedInterval ??
+    (subscription?.interval && intervalOptions.includes(subscription.interval)
+      ? subscription.interval
+      : (intervalOptions[0] ?? "monthly"));
+
   const proPlan = useMemo(
     () => plans.data?.plans.find((plan) => plan.code === "pro") ?? null,
     [plans.data],
   );
+
+  /** Managers renew what they are on; moving tier is the owner's call. */
+  function canPickPlan(code: string): boolean {
+    if (!role) return false;
+    return code === subscription?.plan_code || canChangePlanTier(role);
+  }
 
   const currentPlanPriceCents = useMemo(() => {
     if (!subscription) return null;
@@ -449,64 +484,133 @@ export function BillingOverviewContent() {
             )}
           </div>
 
-          {/* ── Upgrade ──────────────────────────────────────────────── */}
+          {/* ── Choose a plan ────────────────────────────────────────── */}
           <Card>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 16 }}>
-                Upgrade your plan
+                Change your plan
               </span>
               <BillingIcon name="upgrade" size={19} color={C.placeholder} />
             </div>
 
-            <div
-              style={{
-                border: `1px solid ${C.borderInput}`,
-                borderRadius: 14,
-                padding: 16,
-                marginTop: 16,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-              }}
-            >
-              <div>
-                <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14.5 }}>
-                  Pro · Annual
-                </div>
-                <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>
-                  {proPlan?.prices.yearly
-                    ? `${formatMoneyCompact(proPlan.prices.yearly.amountCents)} /year`
-                    : "Annual pricing"}
-                  {saving ? ` · ${saving.monthsFree} months free` : ""}
-                </div>
+            {/* Billing period first: it reprices every card below, so choosing
+                it up front is fewer decisions than repeating it per plan. */}
+            {intervalOptions.length > 1 ? (
+              <div style={{ display: "flex", gap: 7, marginTop: 14, flexWrap: "wrap" }}>
+                {intervalOptions.map((key) => {
+                  const selected = shownInterval === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setPickedInterval(key)}
+                      aria-pressed={selected}
+                      style={{
+                        border: selected ? `2px solid ${C.primary}` : `1px solid ${C.borderInput}`,
+                        background: selected ? "#f2faf8" : C.surface,
+                        borderRadius: RADIUS.pill,
+                        padding: selected ? "6px 13px" : "7px 14px",
+                        fontFamily: FONT_BODY,
+                        fontSize: 12.5,
+                        fontWeight: selected ? 700 : 600,
+                        color: selected ? C.text : C.secondary,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {intervalLabel(key)}
+                    </button>
+                  );
+                })}
               </div>
-              {role && canChangePlanTier(role) ? (
-                <button
-                  type="button"
-                  onClick={() => goToCheckout({ plan: "pro", interval: "yearly" })}
-                  style={{
-                    border: "none",
-                    background: "transparent",
-                    fontFamily: FONT_BODY,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: C.primary,
-                    whiteSpace: "nowrap",
-                    cursor: "pointer",
-                  }}
-                >
-                  Choose →
-                </button>
-              ) : (
-                <span
-                  title="Only Store Owners can change the plan tier"
-                  style={{ fontSize: 12.5, fontWeight: 600, color: C.placeholder }}
-                >
-                  Owner only
-                </span>
-              )}
-            </div>
+            ) : null}
+
+            {sellablePlans.length === 0 ? (
+              <p style={{ fontSize: 13, color: C.muted, marginTop: 16 }}>
+                {plans.isPending ? "Loading plans…" : "No plans are available right now."}
+              </p>
+            ) : (
+              sellablePlans.map((plan) => {
+                const price = plan.prices[shownInterval]?.amountCents;
+                const isCurrent =
+                  plan.code === subscription?.plan_code && shownInterval === subscription?.interval;
+                const planSaving =
+                  shownInterval === "yearly"
+                    ? annualSaving(plan.prices.monthly?.amountCents, plan.prices.yearly?.amountCents)
+                    : null;
+                return (
+                  <div
+                    key={plan.code}
+                    style={{
+                      border: `1px solid ${isCurrent ? C.primary : C.borderInput}`,
+                      background: isCurrent ? "#f2faf8" : C.surface,
+                      borderRadius: 14,
+                      padding: 16,
+                      marginTop: 12,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                    }}
+                  >
+                    <div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <span
+                          style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 14.5 }}
+                        >
+                          {plan.name} · {intervalLabel(shownInterval)}
+                        </span>
+                        {isCurrent ? (
+                          <Pill background={C.tint} color={C.primary}>
+                            CURRENT
+                          </Pill>
+                        ) : null}
+                      </div>
+                      <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>
+                        {price ? formatMoneyCompact(price) : "Not priced"}{" "}
+                        {price ? intervalPerLabel(shownInterval) : ""}
+                        {planSaving ? ` · ${planSaving.monthsFree} months free` : ""}
+                      </div>
+                    </div>
+                    {isCurrent ? (
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: C.placeholder }}>
+                        On this plan
+                      </span>
+                    ) : !price ? null : canPickPlan(plan.code) ? (
+                      <button
+                        type="button"
+                        onClick={() => goToCheckout({ plan: plan.code, interval: shownInterval })}
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          fontFamily: FONT_BODY,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: C.primary,
+                          whiteSpace: "nowrap",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Choose →
+                      </button>
+                    ) : (
+                      <span
+                        title="Only Store Owners can move the organization to a different plan"
+                        style={{ fontSize: 12.5, fontWeight: 600, color: C.placeholder }}
+                      >
+                        Owner only
+                      </span>
+                    )}
+                  </div>
+                );
+              })
+            )}
 
             <div
               style={{
@@ -514,7 +618,7 @@ export function BillingOverviewContent() {
                 background: "#fafcfb",
                 borderRadius: 14,
                 padding: 16,
-                marginTop: 10,
+                marginTop: 12,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
