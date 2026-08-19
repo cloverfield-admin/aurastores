@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Sparkline } from "@/components/charts/sparkline";
-import { BarRow, SkeletonCard, TabButton } from "@/components/dashboard/kpi-card";
+import { BarRow, SkeletonCard, TabButton } from "@/components/ui/kpi-card";
 import { AdminError, AdminSection, AdminTable } from "@/components/admin/admin-primitives";
 import {
   count,

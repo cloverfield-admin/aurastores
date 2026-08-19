@@ -49,6 +49,7 @@ export function SiteFooter() {
             <Link href="/#ecosystem" style={FOOT_LINK}>Aura Pay</Link>
             <Link href="/#ecosystem" style={FOOT_LINK}>Aura Insights</Link>
             <Link href="/#download" style={FOOT_LINK}>Get the app</Link>
+            <Link href={ROUTES.billing.signIn} style={FOOT_LINK}>Billing portal</Link>
           </div>
         </div>
 

@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSupabaseSession } from "@/lib/supabase/middleware";
 
+const BILLING_SIGN_IN = "/billing/sign-in";
+
 // Cross-origin support for the Flutter **web** build, which is served from a
 // random localhost port and calls the API cross-origin (native iOS/Android
 // builds are not subject to CORS). Only `localhost` / `127.0.0.1` origins are
@@ -53,6 +55,31 @@ function dashboardIsClosed(request: NextRequest): NextResponse | null {
   return NextResponse.redirect(url);
 }
 
+/**
+ * `/billing/*` is the one part of the web app store operators may reach, and it
+ * is useless without a session — the plan, the invoices and the checkout all
+ * come from the engine under the caller's own token. Bounce anonymous visitors
+ * to the portal's own sign-in rather than the console's, which would refuse
+ * them anyway.
+ *
+ * This is a "are you signed in at all" gate. Whether the account is actually an
+ * owner or manager is settled by the billing sign-in route and re-checked by the
+ * engine on every request.
+ */
+function billingNeedsSignIn(request: NextRequest, signedIn: boolean): NextResponse | null {
+  const { pathname } = request.nextUrl;
+  if (!pathname.startsWith("/billing")) return null;
+  if (signedIn || pathname.startsWith(BILLING_SIGN_IN)) return null;
+  // Carry the destination through so a plan chosen on the landing page survives
+  // the sign-in bounce. Only the path and query are kept, and only from a
+  // /billing route, so this cannot be turned into an open redirect.
+  const url = request.nextUrl.clone();
+  const intended = `${pathname}${request.nextUrl.search}`;
+  url.pathname = BILLING_SIGN_IN;
+  url.search = intended === "/billing" ? "" : `?next=${encodeURIComponent(intended)}`;
+  return NextResponse.redirect(url);
+}
+
 async function handleProxy(request: NextRequest) {
   const closed = dashboardIsClosed(request);
   if (closed) return closed;
@@ -66,7 +93,11 @@ async function handleProxy(request: NextRequest) {
     return applyCors(new NextResponse(null, { status: 204 }), corsOrigin);
   }
 
-  const response = await updateSupabaseSession(request);
+  const { response, user } = await updateSupabaseSession(request);
+
+  const needsSignIn = billingNeedsSignIn(request, Boolean(user));
+  if (needsSignIn) return needsSignIn;
+
   return isApi ? applyCors(response, corsOrigin) : response;
 }
 

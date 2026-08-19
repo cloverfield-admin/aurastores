@@ -44,6 +44,13 @@ export type AuthContext = {
   isPlatformAdmin: boolean;
 };
 
+/** Who the billing portal lets in, and which organization they are paying for. */
+export type BillingMembership = {
+  role: "owner" | "manager";
+  organizationId: string;
+  organizationName: string;
+};
+
 export type RegisteredUserParams = {
   authUserId: string;
   email: string;
@@ -71,6 +78,12 @@ export interface AuthRepository {
   findByAuthUserId(authUserId: string): Promise<AuthContext | null>;
   /** True when the user holds an active `aurastores_admin` membership anywhere. */
   isPlatformAdmin(userId: string): Promise<boolean>;
+  /**
+   * The active owner/manager membership that entitles the user to the web
+   * billing portal, or null. Owners win when someone holds both, so the portal
+   * shows the higher of their roles.
+   */
+  findBillingMembership(userId: string): Promise<BillingMembership | null>;
   createRegisteredUser(params: RegisteredUserParams): Promise<AuthContext>;
   updateLastLoginAt(authUserId: string): Promise<void>;
   syncEmailVerifiedFromAuth(authUserId: string, isEmailVerified: boolean): Promise<void>;

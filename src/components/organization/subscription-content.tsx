@@ -10,10 +10,9 @@ import {
   type SubscriptionPlanCode,
 } from "@/lib/queries/billing";
 import {
-  useCancelScheduledDowngradeMutation,
   useEngineInvoiceQuery,
   useEngineSubscriptionQuery,
-  useScheduleDowngradeMutation,
+  useSetCancelAtPeriodEndMutation,
   useStartLencoCheckoutMutation,
   type EngineSubscription,
 } from "@/lib/queries/subscription";
@@ -142,14 +141,13 @@ export function SubscriptionContent() {
 
   const [interval, setInterval] = useState<SubscriptionInterval>("monthly");
   const [checkoutPlan, setCheckoutPlan] = useState<SubscriptionPlanCode | null>(null);
-  const [downgradePlan, setDowngradePlan] = useState<SubscriptionPlanCode | null>(null);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [pendingInvoiceId, setPendingInvoiceId] = useState<string | null>(null);
 
   const startCheckout = useStartLencoCheckoutMutation();
-  const scheduleDowngrade = useScheduleDowngradeMutation();
-  const cancelDowngrade = useCancelScheduledDowngradeMutation();
+  const setCancel = useSetCancelAtPeriodEndMutation();
 
   // The Lenco webhook activates the plan, not this page — so the invoice flipping
   // to `paid` is the only truthful signal that the upgrade landed.
@@ -227,33 +225,21 @@ export function SubscriptionContent() {
     }
   }
 
-  async function submitDowngrade() {
-    if (!downgradePlan) return;
+  async function changeCancellation(cancel: boolean) {
     try {
-      await scheduleDowngrade.mutateAsync({ plan_code: downgradePlan });
-      setDowngradePlan(null);
+      await setCancel.mutateAsync(cancel);
+      setConfirmingCancel(false);
       notify({
         variant: "success",
-        title: "Downgrade scheduled",
-        description: "You'll keep your current plan until the end of the period you've paid for.",
+        title: cancel ? "Subscription ending" : "Subscription resumed",
+        description: cancel
+          ? "You keep your plan until the end of the period you've paid for."
+          : "You're staying on your current plan.",
       });
     } catch (error) {
       notify({
         variant: "error",
-        title: "Couldn't schedule the change",
-        description: errorMessage(error, "Please try again."),
-      });
-    }
-  }
-
-  async function undoDowngrade() {
-    try {
-      await cancelDowngrade.mutateAsync();
-      notify({ variant: "success", title: "Downgrade cancelled", description: "You're staying on your current plan." });
-    } catch (error) {
-      notify({
-        variant: "error",
-        title: "Couldn't cancel the change",
+        title: cancel ? "Couldn't cancel" : "Couldn't resume",
         description: errorMessage(error, "Please try again."),
       });
     }
@@ -272,8 +258,13 @@ export function SubscriptionContent() {
       <CurrentPlanCard
         subscription={current}
         loading={subscription.isLoading}
-        onUndoDowngrade={() => void undoDowngrade()}
-        undoBusy={cancelDowngrade.isPending}
+        canCancel={current?.plan_code !== "free" && current?.status !== "canceled"}
+        cancelBusy={setCancel.isPending}
+        confirmingCancel={confirmingCancel}
+        onAskCancel={() => setConfirmingCancel(true)}
+        onDismissCancel={() => setConfirmingCancel(false)}
+        onConfirmCancel={() => void changeCancellation(true)}
+        onResume={() => void changeCancellation(false)}
       />
 
       {pendingInvoiceId ? (
@@ -317,7 +308,7 @@ export function SubscriptionContent() {
                 scheduledPlanCode={current?.scheduled_plan_code ?? null}
                 busy={startCheckout.isPending || Boolean(pendingInvoiceId)}
                 onUpgrade={() => openCheckout(plan.code)}
-                onDowngrade={() => setDowngradePlan(plan.code)}
+                onDowngrade={() => openCheckout(plan.code)}
               />
             ))}
           </div>
@@ -341,15 +332,6 @@ export function SubscriptionContent() {
         />
       ) : null}
 
-      {downgradePlan ? (
-        <DowngradeModal
-          planName={sellablePlans.find((p) => p.code === downgradePlan)?.name ?? downgradePlan}
-          periodEnd={formatDate(current?.current_period_end)}
-          busy={scheduleDowngrade.isPending}
-          onConfirm={() => void submitDowngrade()}
-          onCancel={() => setDowngradePlan(null)}
-        />
-      ) : null}
     </PageShell>
   );
 }
@@ -412,13 +394,23 @@ function IntervalToggle({
 function CurrentPlanCard({
   subscription,
   loading,
-  onUndoDowngrade,
-  undoBusy,
+  canCancel,
+  cancelBusy,
+  confirmingCancel,
+  onAskCancel,
+  onDismissCancel,
+  onConfirmCancel,
+  onResume,
 }: {
   subscription: EngineSubscription | null;
   loading: boolean;
-  onUndoDowngrade: () => void;
-  undoBusy: boolean;
+  canCancel: boolean;
+  cancelBusy: boolean;
+  confirmingCancel: boolean;
+  onAskCancel: () => void;
+  onDismissCancel: () => void;
+  onConfirmCancel: () => void;
+  onResume: () => void;
 }) {
   if (loading) {
     return (
@@ -457,21 +449,73 @@ function CurrentPlanCard({
         <StatusBadge status={subscription.status} />
       </div>
 
+      {/* A scheduled plan change only ever comes from the App Store or Play
+          Store now (a PRODUCT_CHANGE the store applies at its own renewal), so
+          it is reported here and undone where it was made. */}
       {subscription.scheduled_plan_code ? (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[rgba(234,179,8,0.35)] bg-[rgba(234,179,8,0.08)] p-3">
+        <div className="mt-4 rounded-lg border border-[rgba(234,179,8,0.35)] bg-[rgba(234,179,8,0.08)] p-3">
           <p className="text-xs text-[#854d0e]">
             Scheduled to move to <strong>{subscription.scheduled_plan_code}</strong>
             {periodEnd ? ` on ${periodEnd}` : " at the end of this period"}. You keep{" "}
-            {subscription.plan_name} until then.
+            {subscription.plan_name} until then. Manage this where you bought it.
           </p>
-          <button
-            type="button"
-            onClick={onUndoDowngrade}
-            disabled={undoBusy}
-            className="shrink-0 rounded-lg border border-[rgba(234,179,8,0.5)] bg-white px-3 py-1.5 text-xs font-bold text-[#854d0e] transition hover:bg-[#fffbeb] disabled:opacity-60"
-          >
-            {undoBusy ? "Cancelling…" : "Cancel change"}
-          </button>
+        </div>
+      ) : null}
+
+      {subscription.cancel_at_period_end ? (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[rgba(234,179,8,0.35)] bg-[rgba(234,179,8,0.08)] p-3">
+          <p className="text-xs text-[#854d0e]">
+            Your plan ends{periodEnd ? ` on ${periodEnd}` : " at the end of this period"} and this
+            organization moves to Free. Nothing changes before then.
+          </p>
+          {canCancel ? (
+            <button
+              type="button"
+              onClick={onResume}
+              disabled={cancelBusy}
+              className="shrink-0 rounded-lg border border-[rgba(234,179,8,0.5)] bg-white px-3 py-1.5 text-xs font-bold text-[#854d0e] transition hover:bg-[#fffbeb] disabled:opacity-60"
+            >
+              {cancelBusy ? "Resuming…" : "Resume subscription"}
+            </button>
+          ) : null}
+        </div>
+      ) : canCancel ? (
+        <div className="mt-4">
+          {confirmingCancel ? (
+            <div className="rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-subtle)] p-3">
+              <p className="text-xs text-[var(--app-text-muted)]">
+                You keep {subscription.plan_name}
+                {periodEnd ? ` until ${periodEnd}` : " until the end of this period"}, then this
+                organization moves to Free across every branch. You can undo this any time before
+                then.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={onConfirmCancel}
+                  disabled={cancelBusy}
+                  className="rounded-lg border border-[var(--app-border-ui)] px-3 py-1.5 text-xs font-bold text-[var(--app-text)] transition hover:bg-[var(--app-surface)] disabled:opacity-60"
+                >
+                  {cancelBusy ? "Cancelling…" : "Yes, cancel at period end"}
+                </button>
+                <button
+                  type="button"
+                  onClick={onDismissCancel}
+                  className="rounded-lg bg-[var(--app-brand)] px-3 py-1.5 text-xs font-bold text-white transition hover:opacity-90"
+                >
+                  Keep my plan
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onAskCancel}
+              className="text-xs font-semibold text-[var(--app-text-muted)] underline underline-offset-2"
+            >
+              Cancel subscription
+            </button>
+          )}
         </div>
       ) : null}
     </section>
@@ -726,44 +770,3 @@ function CheckoutModal({
   );
 }
 
-function DowngradeModal({
-  planName,
-  periodEnd,
-  busy,
-  onConfirm,
-  onCancel,
-}: {
-  planName: string;
-  periodEnd: string | null;
-  busy: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <Modal title={`Switch to ${planName}?`} labelledBy="downgrade-title">
-      <p className="mt-2 text-sm text-[var(--app-text-muted)]">
-        You keep your current plan and everything in it until{" "}
-        {periodEnd ? <strong>{periodEnd}</strong> : "the end of the period you've paid for"}. The
-        change happens then, and you can cancel it any time before.
-      </p>
-      <div className="mt-6 flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={busy}
-          className="rounded-lg border border-[var(--app-border-ui)] px-4 py-2 text-sm font-bold text-[var(--app-text)] transition hover:bg-[var(--app-surface-subtle)] disabled:opacity-60"
-        >
-          Keep current plan
-        </button>
-        <button
-          type="button"
-          onClick={onConfirm}
-          disabled={busy}
-          className="rounded-lg bg-[var(--app-brand)] px-4 py-2 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60"
-        >
-          {busy ? "Scheduling…" : "Schedule change"}
-        </button>
-      </div>
-    </Modal>
-  );
-}

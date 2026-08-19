@@ -19,7 +19,10 @@ export type LandingPlan = {
   yearlyNote: string;
   bullets: string[];
   ctaLabel: string;
+  /** Where a plan with nothing to buy sends you (the app download). */
   ctaHref: string;
+  /** Set on paid plans: the plan code checkout should open with. */
+  checkoutPlanCode: LandingPlanCode | null;
 };
 
 const zmw = new Intl.NumberFormat("en-US", {
@@ -122,14 +125,16 @@ const CTA_LABELS: Record<LandingPlanCode, string> = {
 };
 
 /**
- * Every plan CTA points at the app download.
+ * The free plan's CTA points at the app download: there is nothing to buy, and
+ * the store is set up in the app.
  *
  * These used to deep-link into web sign-up with the plan preselected
  * (`/auth/register?plan=pro`). Web sign-up is closed — stores are created in the
- * mobile app — so that link would have walked a paying customer into a dead end.
- * The plan is still chosen in-app, at the same point in the flow.
+ * mobile app, so a paid CTA would have walked a customer into a dead end. The
+ * billing portal changed that: a paid plan now routes to checkout with that plan
+ * and period preselected, and the store itself is still set up in the app.
  */
-const CTA_HREF = "#download";
+const DOWNLOAD_HREF = "#download";
 
 /**
  * Shape the public plans returned by billing into the landing's Free / Basic /
@@ -160,7 +165,10 @@ export function buildLandingPlans(plans: PublicPlan[]): LandingPlan[] {
       yearlyNote: isFree ? "Free forever · no card required" : "Billed annually · 12 months upfront",
       bullets: buildBullets(plan, prev),
       ctaLabel: CTA_LABELS[code],
-      ctaHref: CTA_HREF,
+      ctaHref: DOWNLOAD_HREF,
+      // Free is not something you buy; the paid tiers carry their code through
+      // to checkout so the choice made here survives the trip.
+      checkoutPlanCode: isFree ? null : code,
     };
   });
 }

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { FONT_BODY, FONT_DISPLAY } from "@/components/marketing/landing/fonts";
 import { Icon, LOGO_MARK } from "@/components/marketing/landing/phone";
+import { ROUTES } from "@/lib/routes";
 
 const NAV_LINKS: Array<{ href: string; label: string }> = [
   { href: "#ecosystem", label: "Platform" },
@@ -100,10 +101,31 @@ export function HomePageHeaderClient() {
 
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <div className="navcta" style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            {/* No auth link. The web app is the platform console now — the only way in
-                is /auth/sign-in, typed directly by staff. Advertising a login on the
-                public marketing site would invite store owners into a door that is
-                closed to them, and point everyone else at the console. */}
+            {/* The console's own sign-in stays unadvertised — it is for platform
+                staff, and pointing store owners at a door that refuses them helps
+                nobody. The billing portal is the exception: owners and managers
+                pay for their plan on the web precisely so they don't have to go
+                through Apple, so that one is signposted. */}
+            <Link
+              href={ROUTES.billing.signIn}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 7,
+                fontSize: 14.5,
+                fontWeight: 600,
+                color: "#0d5c54",
+                background: "#fff",
+                border: "1px solid #cfe0dc",
+                padding: "9px 16px",
+                borderRadius: 10,
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <Icon name="workspace_premium" size={17} />
+              Billing portal
+            </Link>
             <a
               href="#download"
               style={{

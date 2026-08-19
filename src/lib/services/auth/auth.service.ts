@@ -24,6 +24,15 @@ export class AuthService {
     return this.repos.auth.isPlatformAdmin(userId);
   }
 
+  /**
+   * Gates the web billing portal: an active owner/manager membership. Distinct
+   * from `isPlatformAdmin`, which gates the console — the two doors admit
+   * different people to different things.
+   */
+  findBillingMembership(userId: string) {
+    return this.repos.auth.findBillingMembership(userId);
+  }
+
   createRegisteredUser(params: Parameters<AuthRepository["createRegisteredUser"]>[0]) {
     return this.repos.auth.createRegisteredUser(params);
   }

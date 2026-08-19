@@ -8,7 +8,7 @@ import { AdminCompanyProfileForm } from "@/components/admin/admin-company-profil
 import { AdminSubscriptionPanel } from "@/components/admin/admin-subscription-panel";
 import { useImpersonation } from "@/components/admin/impersonation-provider";
 import { count, date, humanize, money, relative, statusClass } from "@/components/admin/format";
-import { TabButton } from "@/components/dashboard/kpi-card";
+import { TabButton } from "@/components/ui/kpi-card";
 import { useAuraFeedback } from "@/components/providers/aura-feedback-provider";
 import { EngineApiError } from "@/lib/api/engine";
 import {
