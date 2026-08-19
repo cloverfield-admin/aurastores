@@ -5,12 +5,12 @@ import type {
   CreateExpenseInput,
   ExpensesDashboardData,
   ExpensesDashboardInput,
-  ExpensesDateRange,
   ExpensesRepository,
   ExpenseType,
 } from "./expenses.repository";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
-import { startOfUtcMonth } from "@/lib/dates/utc-month-range";
+import type { StoreDayWindow } from "@/lib/dates/store-day-window";
+import { addStoreDays, resolveStoreDayWindow, storeDateKey, storeTimeZone } from "@/lib/dates/store-day-window";
 import { filterBranchesForContext } from "@/lib/rbac/branch-access";
 
 type ResolvedBranch = Pick<typeof branches.$inferSelect, "id" | "name" | "isPrimary">;
@@ -26,24 +26,6 @@ function clampPage(value: number | undefined) {
 function clampPageSize(value: number | undefined) {
   if (!value || value < 1) return DEFAULT_PAGE_SIZE;
   return Math.min(Math.floor(value), MAX_PAGE_SIZE);
-}
-
-function normalizeDate(value: string | Date) {
-  if (value instanceof Date) {
-    return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
-  }
-
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, day));
-}
-
-function startOfTodayUtc() {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-}
-
-function addDaysUtc(date: Date, days: number) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + days));
 }
 
 function pickResolvedBranch(context: AuthContext, preferredBranchId: string | undefined, availableBranches: ResolvedBranch[]) {
@@ -89,27 +71,23 @@ async function resolveBranchContext(context: AuthContext, preferredBranchId?: st
   };
 }
 
-function expenseTimestampRangeConditions(range?: ExpensesDateRange): SQL[] {
-  const endInclusive = normalizeDate(range?.end ?? startOfTodayUtc());
-  const startInclusive = normalizeDate(range?.start ?? startOfUtcMonth(endInclusive));
-  const endExclusive = addDaysUtc(endInclusive, 1);
-
+function expenseTimestampRangeConditions(window: StoreDayWindow): SQL[] {
   return [
-    sql`${expenses.expenseDate} >= ${startInclusive.toISOString()}::timestamptz`,
-    sql`${expenses.expenseDate} < ${endExclusive.toISOString()}::timestamptz`,
+    sql`${expenses.expenseDate} >= ${window.startIso}::timestamptz`,
+    sql`${expenses.expenseDate} < ${window.endExclusiveIso}::timestamptz`,
   ];
 }
 
 function dashboardConditions(
   organizationId: string,
   branchId: string,
-  range?: ExpensesDateRange,
+  window: StoreDayWindow,
   type?: ExpenseType,
 ) {
   const conditions: SQL[] = [
     eq(expenses.organizationId, organizationId),
     eq(expenses.branchId, branchId),
-    ...expenseTimestampRangeConditions(range),
+    ...expenseTimestampRangeConditions(window),
   ];
 
   if (type) {
@@ -119,25 +97,20 @@ function dashboardConditions(
   return conditions;
 }
 
-function toIsoDateUtc(date: Date) {
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(date.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
 export class ExpensesRepositoryImpl implements ExpensesRepository {
   async getDashboard(context: AuthContext, input: ExpensesDashboardInput): Promise<ExpensesDashboardData> {
     const { branch, branchOptions } = await resolveBranchContext(context, input.branchId);
     const page = clampPage(input.page);
     const pageSize = clampPageSize(input.pageSize);
     const offset = (page - 1) * pageSize;
-    const conditions = dashboardConditions(context.organization.id, branch.id, input.range, input.type);
-    const unfilteredConditions = dashboardConditions(context.organization.id, branch.id, input.range);
+    // Month-to-date over the store's calendar, not the server's — see
+    // store-day-window.
+    const timeZone = await storeTimeZone(context.organization.id, branch.id);
+    const window = resolveStoreDayWindow(input.range, timeZone, "month-to-date");
+    const conditions = dashboardConditions(context.organization.id, branch.id, window, input.type);
+    const unfilteredConditions = dashboardConditions(context.organization.id, branch.id, window);
 
-    const endInclusive = normalizeDate(input.range?.end ?? startOfTodayUtc());
-    const startInclusive = normalizeDate(input.range?.start ?? startOfUtcMonth(endInclusive));
-    const endExclusive = addDaysUtc(endInclusive, 1);
+    const { startInclusive, endExclusive } = window;
 
     const [totalRows, totalsRows, byTypeRows, dayRows, expenseRows] = await Promise.all([
       db.select({ value: count() }).from(expenses).where(and(...conditions)),
@@ -157,7 +130,9 @@ export class ExpensesRepositoryImpl implements ExpensesRepository {
         .groupBy(expenses.expenseType),
       db
         .select({
-          day: sql<string>`date_trunc('day', ${expenses.expenseDate})::timestamptz`,
+          // Text, so the day key can't drift through the driver's or the
+          // server's own timezone on the way back.
+          day: sql<string>`to_char(date_trunc('day', ${expenses.expenseDate} at time zone ${timeZone}), 'YYYY-MM-DD')`,
           expenseType: expenses.expenseType,
           amountCents: sql<number>`coalesce(sum(${expenses.amountCents}), 0)::int`,
         })
@@ -170,8 +145,8 @@ export class ExpensesRepositoryImpl implements ExpensesRepository {
             sql`${expenses.expenseDate} < ${endExclusive.toISOString()}::timestamptz`,
           ),
         )
-        .groupBy(sql`date_trunc('day', ${expenses.expenseDate})`, expenses.expenseType)
-        .orderBy(asc(sql`date_trunc('day', ${expenses.expenseDate})`)),
+        .groupBy(sql`date_trunc('day', ${expenses.expenseDate} at time zone ${timeZone})`, expenses.expenseType)
+        .orderBy(asc(sql`date_trunc('day', ${expenses.expenseDate} at time zone ${timeZone})`)),
       db
         .select({
           id: expenses.id,
@@ -203,15 +178,15 @@ export class ExpensesRepositoryImpl implements ExpensesRepository {
 
     const dayMap = new Map<string, { general: number; restocking: number; charge: number }>();
     for (const row of dayRows) {
-      const dateKey = toIsoDateUtc(new Date(row.day));
+      const dateKey = String(row.day);
       const current = dayMap.get(dateKey) ?? { general: 0, restocking: 0, charge: 0 };
       current[row.expenseType] = row.amountCents;
       dayMap.set(dateKey, current);
     }
 
     const series: ExpensesDashboardData["series"] = [];
-    for (let cursor = new Date(startInclusive); cursor < endExclusive; cursor = addDaysUtc(cursor, 1)) {
-      const dateKey = toIsoDateUtc(cursor);
+    for (let cursor = new Date(startInclusive); cursor < endExclusive; cursor = addStoreDays(cursor, 1, timeZone)) {
+      const dateKey = storeDateKey(cursor, timeZone);
       const day = dayMap.get(dateKey) ?? { general: 0, restocking: 0, charge: 0 };
       const totalCents = day.general + day.restocking + day.charge;
       series.push({

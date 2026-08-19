@@ -11,6 +11,7 @@ import {
   saleItems,
   sales,
 } from "@/lib/db/schema";
+import { addStoreDays, storeDateKey, storeTimeZone, storeToday } from "@/lib/dates/store-day-window";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 import { filterBranchesForContext } from "@/lib/rbac/branch-access";
 import type {
@@ -24,15 +25,6 @@ import type {
   InsightsRepository,
   InsightsTrendPoint,
 } from "@/lib/repositories/insights/insights.repository";
-
-function startOfTodayUtc() {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-}
-
-function toDateStringUtc(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
 
 async function listOrganizationBranches(organizationId: string) {
   return db
@@ -81,15 +73,14 @@ export class InsightsRepositoryImpl implements InsightsRepository {
 
     const branchIds = scopedBranches.map((b) => b.id);
 
-    const todayUtc = startOfTodayUtc();
-    const todayStr = toDateStringUtc(todayUtc);
+    // Days follow the scoped branch's zone, or the org's primary branch when the
+    // view spans all of them — see store-day-window.
+    const timeZone = await storeTimeZone(orgId, branchId);
+    const today = storeToday(timeZone);
+    const todayStr = storeDateKey(today, timeZone);
     const todaySql = sql.raw(`'${todayStr}'::date`);
-    const thirtyDaysAgo = new Date(todayUtc.getTime() - 30 * 86_400_000);
-    const sixtyDaysAgo = new Date(todayUtc.getTime() - 60 * 86_400_000);
-    const ninetyDaysAgo = new Date(todayUtc.getTime() - 90 * 86_400_000);
-    const thirtyDaysAgoIso = thirtyDaysAgo.toISOString();
-    const sixtyDaysAgoIso = sixtyDaysAgo.toISOString();
-    const ninetyDaysAgoIso = ninetyDaysAgo.toISOString();
+    const thirtyDaysAgoIso = addStoreDays(today, -30, timeZone).toISOString();
+    const ninetyDaysAgoIso = addStoreDays(today, -90, timeZone).toISOString();
 
     const branchSalesWhere = branchId ? [eq(sales.branchId, branchId)] : branchIds.length ? [inArray(sales.branchId, branchIds)] : [];
     const branchBatchWhere = branchId ? [eq(inventoryBatches.branchId, branchId)] : branchIds.length ? [inArray(inventoryBatches.branchId, branchIds)] : [];
@@ -233,7 +224,7 @@ export class InsightsRepositoryImpl implements InsightsRepository {
         .groupBy(inventoryBatches.branchId),
       db
         .select({
-          date: sql<string>`(${sales.createdAt} at time zone 'utc')::date::text`,
+          date: sql<string>`to_char(${sales.createdAt} at time zone ${timeZone}, 'YYYY-MM-DD')`,
           revenueCents: sql<number>`coalesce(sum(${sales.totalCents}), 0)::int`,
           salesCount: sql<number>`count(*)::int`,
         })
@@ -247,11 +238,11 @@ export class InsightsRepositoryImpl implements InsightsRepository {
             ...branchSalesWhere,
           ),
         )
-        .groupBy(sql`(${sales.createdAt} at time zone 'utc')::date`)
-        .orderBy(asc(sql`(${sales.createdAt} at time zone 'utc')::date`)),
+        .groupBy(sql`(${sales.createdAt} at time zone ${timeZone})::date`)
+        .orderBy(asc(sql`(${sales.createdAt} at time zone ${timeZone})::date`)),
       db
         .select({
-          date: sql<string>`(${inventoryTransactions.occurredAt} at time zone 'utc')::date::text`,
+          date: sql<string>`to_char(${inventoryTransactions.occurredAt} at time zone ${timeZone}, 'YYYY-MM-DD')`,
           unitsSold: sql<number>`coalesce(sum(abs(${inventoryTransactions.quantityDelta})), 0)::int`,
         })
         .from(inventoryTransactions)
@@ -266,8 +257,8 @@ export class InsightsRepositoryImpl implements InsightsRepository {
             ...branchTxnWhere,
           ),
         )
-        .groupBy(sql`(${inventoryTransactions.occurredAt} at time zone 'utc')::date`)
-        .orderBy(asc(sql`(${inventoryTransactions.occurredAt} at time zone 'utc')::date`)),
+        .groupBy(sql`(${inventoryTransactions.occurredAt} at time zone ${timeZone})::date`)
+        .orderBy(asc(sql`(${inventoryTransactions.occurredAt} at time zone ${timeZone})::date`)),
       db
         .select({
           date: sql<string>`(${inventoryBatches.expiresAt} at time zone 'utc')::date::text`,
@@ -417,9 +408,9 @@ export class InsightsRepositoryImpl implements InsightsRepository {
     );
 
     const salesTrend: InsightsTrendPoint[] = [];
+    // Walk the store's calendar days so the skeleton lines up with the buckets.
     for (let i = 0; i < 90; i += 1) {
-      const d = new Date(ninetyDaysAgo.getTime() + i * 86_400_000);
-      const iso = toDateStringUtc(d);
+      const iso = storeDateKey(addStoreDays(today, i - 90, timeZone), timeZone);
       const salesRow = salesTrendByDate.get(iso);
       salesTrend.push({
         date: iso,
@@ -430,9 +421,9 @@ export class InsightsRepositoryImpl implements InsightsRepository {
     }
 
     const inventoryHealthTrend: InsightsInventoryHealthPoint[] = [];
+    // Walk the store's calendar days so the skeleton lines up with the buckets.
     for (let i = 0; i < 90; i += 1) {
-      const d = new Date(ninetyDaysAgo.getTime() + i * 86_400_000);
-      const iso = toDateStringUtc(d);
+      const iso = storeDateKey(addStoreDays(today, i - 90, timeZone), timeZone);
       // lowStockSkuCount/healthyBatchRatio are more “current-state” than daily; we keep them stable for now.
       const lowStockSkuCountScoped = branchId
         ? lowStockByBranch.get(branchId) ?? 0
@@ -453,9 +444,9 @@ export class InsightsRepositoryImpl implements InsightsRepository {
     }
 
     const operationsTrend: InsightsOperationsPoint[] = [];
+    // Walk the store's calendar days so the skeleton lines up with the buckets.
     for (let i = 0; i < 90; i += 1) {
-      const d = new Date(ninetyDaysAgo.getTime() + i * 86_400_000);
-      const iso = toDateStringUtc(d);
+      const iso = storeDateKey(addStoreDays(today, i - 90, timeZone), timeZone);
       const salesRow = salesTrendByDate.get(iso);
       operationsTrend.push({
         date: iso,

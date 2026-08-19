@@ -15,7 +15,7 @@ import {
   users,
 } from "@/lib/db/schema";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
-import { resolveDashboardUtcRangeWindow } from "@/lib/dates/dashboard-range-window";
+import { resolveStoreDayWindow, storeDateKey, storeTimeZone, storeToday } from "@/lib/dates/store-day-window";
 import { computeGrossProfitCents } from "@/lib/finance/gross-profit";
 import type { SalesDateRange } from "@/lib/repositories/sales/sales.repository";
 import { filterBranchesForContext } from "@/lib/rbac/branch-access";
@@ -25,15 +25,6 @@ import type {
   NetworkRepository,
   OrganizationBranchesData,
 } from "@/lib/repositories/network/network.repository";
-
-function startOfTodayUtc() {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-}
-
-function toDateStringUtc(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
 
 async function listOrganizationBranches(organizationId: string) {
   const branchRows = await db
@@ -104,9 +95,13 @@ export class NetworkRepositoryImpl implements NetworkRepository {
     const orgId = context.organization.id;
     const allBranchRows = await listOrganizationBranches(orgId);
     const branchRows = filterBranchesForContext(context, allBranchRows);
-    const w = resolveDashboardUtcRangeWindow(range);
+    // Org-wide, so days follow the primary branch's zone. Branches in different
+    // zones would each want their own boundary; that needs per-branch windows,
+    // which this single-window query shape cannot express.
+    const timeZone = await storeTimeZone(orgId);
+    const w = resolveStoreDayWindow(range, timeZone, "last-30-days");
     const { startIso, endExclusiveIso, prevStartIso, prevEndExclusiveIso } = w;
-    const todaySql = sql.raw(`'${toDateStringUtc(startOfTodayUtc())}'::date`);
+    const todaySql = sql.raw(`'${storeDateKey(storeToday(timeZone), timeZone)}'::date`);
     const branchProductStockSq = db.$with("branch_product_stock").as(
       db
         .select({

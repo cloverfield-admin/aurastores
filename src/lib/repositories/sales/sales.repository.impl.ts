@@ -18,7 +18,8 @@ import {
 import type { CreateSaleInput } from "@/lib/validation/sales";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 import { assertWithinLimit } from "@/lib/billing/entitlements";
-import { startOfUtcMonth, utcMonthRangeForInstant } from "@/lib/dates/utc-month-range";
+import { utcMonthRangeForInstant } from "@/lib/dates/utc-month-range";
+import { resolveStoreDayWindow, storeTimeZone } from "@/lib/dates/store-day-window";
 import { computeGrossProfitCents } from "@/lib/finance/gross-profit";
 import { assertBranchAllowedForContext, filterBranchesForContext } from "@/lib/rbac/branch-access";
 import type {
@@ -54,10 +55,6 @@ function normalizeDate(value: string | Date) {
 function startOfTodayUtc() {
   const now = new Date();
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-}
-
-function addDaysUtc(date: Date, days: number) {
-  return new Date(date.getTime() + days * 86_400_000);
 }
 
 function differenceInDays(target: Date, base: Date) {
@@ -165,20 +162,15 @@ export class SalesRepositoryImpl implements SalesRepository {
   async getDashboard(context: AuthContext, branchId?: string, range?: SalesDateRange): Promise<SalesDashboardData> {
     const { branch, branchOptions } = await resolveBranchContext(context, branchId);
 
-    const endInclusive = normalizeDate(range?.end ?? startOfTodayUtc());
-    // Default window is month-to-date (1st of the current month → today), not a
-    // trailing 30 days.
-    const startInclusive = normalizeDate(range?.start ?? startOfUtcMonth(endInclusive));
-    const endExclusive = addDaysUtc(endInclusive, 1);
-
-    const windowMs = endExclusive.getTime() - startInclusive.getTime();
-    const previousEndExclusive = startInclusive;
-    const previousStartInclusive = new Date(previousEndExclusive.getTime() - windowMs);
-
-    const startIso = startInclusive.toISOString();
-    const endExclusiveIso = endExclusive.toISOString();
-    const prevStartIso = previousStartInclusive.toISOString();
-    const prevEndExclusiveIso = previousEndExclusive.toISOString();
+    // Days are the store's, not UTC's — see store-day-window. Default window is
+    // month-to-date (1st of the store's current month → today), not a trailing
+    // 30 days.
+    const timeZone = await storeTimeZone(context.organization.id, branch.id);
+    const { startIso, endExclusiveIso, prevStartIso, prevEndExclusiveIso } = resolveStoreDayWindow(
+      range,
+      timeZone,
+      "month-to-date",
+    );
 
     const [
       metricsRows,
@@ -308,16 +300,20 @@ export class SalesRepositoryImpl implements SalesRepository {
               sql`${sales.createdAt} >= ${prevStartIso}::timestamptz`,
             ),
           ),
+        // Bars are bucketed by the STORE's calendar day, matching the window
+        // around them. Everything below works in local wall clock (the
+        // AT TIME ZONE conversions), and the day comes back as plain text so
+        // labelling can't drift through the server's own zone.
         db.execute(sql`
           with days as (
             select generate_series(
-              date_trunc('day', ${startIso}::timestamptz),
-              date_trunc('day', ${endExclusiveIso}::timestamptz) - interval '1 day',
+              date_trunc('day', ${startIso}::timestamptz at time zone ${timeZone}),
+              date_trunc('day', ${endExclusiveIso}::timestamptz at time zone ${timeZone}) - interval '1 day',
               interval '1 day'
             ) as day
           ),
           revenue as (
-            select date_trunc('day', ${sales.createdAt}) as day,
+            select date_trunc('day', ${sales.createdAt} at time zone ${timeZone}) as day,
                    coalesce(sum(${sales.totalCents}), 0)::int as revenue_cents
             from ${sales}
             where ${sales.organizationId} = ${context.organization.id}
@@ -328,7 +324,7 @@ export class SalesRepositoryImpl implements SalesRepository {
             group by 1
           ),
           units as (
-            select date_trunc('day', ${sales.createdAt}) as day,
+            select date_trunc('day', ${sales.createdAt} at time zone ${timeZone}) as day,
                    coalesce(sum(${saleItems.quantity}), 0)::int as units_sold
             from ${saleItems}
             inner join ${sales} on ${saleItems.saleId} = ${sales.id}
@@ -339,7 +335,7 @@ export class SalesRepositoryImpl implements SalesRepository {
               and ${sales.createdAt} < ${endExclusiveIso}::timestamptz
             group by 1
           )
-          select d.day as day,
+          select to_char(d.day, 'YYYY-MM-DD') as day,
                  coalesce(r.revenue_cents, 0)::int as "revenueCents",
                  coalesce(u.units_sold, 0)::int as "unitsSold"
           from days d
@@ -368,7 +364,9 @@ export class SalesRepositoryImpl implements SalesRepository {
       previousChargeExpensesCents: 0,
     };
     const topTotal = topProductsRows.reduce((sum, row) => sum + row.amountCents, 0);
-    const dateLabelFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit" });
+    // The day arrives as YYYY-MM-DD in the store's own calendar, so it is read
+    // back as UTC — formatting it in the server's zone would shift the label.
+    const dateLabelFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit", timeZone: "UTC" });
     const trendRawUnknown: unknown = trendRows;
     const trendRaw: Array<{ day: unknown; revenueCents: unknown; unitsSold: unknown }> = Array.isArray(trendRawUnknown)
       ? (trendRawUnknown as Array<{ day: unknown; revenueCents: unknown; unitsSold: unknown }>)
@@ -381,7 +379,9 @@ export class SalesRepositoryImpl implements SalesRepository {
         : [];
 
     const trend = trendRaw.map((row) => ({
-      label: dateLabelFormatter.format(row.day instanceof Date ? row.day : new Date(String(row.day))),
+      label: dateLabelFormatter.format(
+        row.day instanceof Date ? row.day : new Date(`${String(row.day)}T00:00:00.000Z`),
+      ),
       revenueCents: Number(row.revenueCents ?? 0),
       unitsSold: Number(row.unitsSold ?? 0),
     }));
@@ -591,11 +591,9 @@ export class SalesRepositoryImpl implements SalesRepository {
     options: { branchId?: string; range?: SalesDateRange; page?: number; pageSize?: number } = {},
   ): Promise<SalesSoldItemsData> {
     const { branch, branchOptions } = await resolveBranchContext(context, options.branchId);
-    const endInclusive = normalizeDate(options.range?.end ?? startOfTodayUtc());
-    const startInclusive = normalizeDate(options.range?.start ?? endInclusive);
-    const endExclusive = addDaysUtc(endInclusive, 1);
-    const startIso = startInclusive.toISOString();
-    const endExclusiveIso = endExclusive.toISOString();
+    // Default window is the store's today, not the server's.
+    const timeZone = await storeTimeZone(context.organization.id, branch.id);
+    const { startIso, endExclusiveIso } = resolveStoreDayWindow(options.range, timeZone, "today");
     const pageSize = clampPageSize(options.pageSize, 20);
     const page = Math.max(1, Math.floor(options.page ?? 1));
     const offset = (page - 1) * pageSize;
