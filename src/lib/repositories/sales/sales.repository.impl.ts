@@ -213,13 +213,15 @@ export class SalesRepositoryImpl implements SalesRepository {
         db
           .select({
             totalCogsCents:
-              sql<number>`coalesce(sum(${saleItems.quantity} * ${inventoryBatches.unitOrderPriceCents}) filter (where ${sales.createdAt} >= ${startIso}::timestamptz and ${sales.createdAt} < ${endExclusiveIso}::timestamptz), 0)::int`,
+              sql<number>`coalesce(sum(${saleItems.quantity} * coalesce(${saleItems.unitOrderPriceCents}, ${inventoryBatches.unitOrderPriceCents}, 0)) filter (where ${sales.createdAt} >= ${startIso}::timestamptz and ${sales.createdAt} < ${endExclusiveIso}::timestamptz), 0)::int`,
             previousCogsCents:
-              sql<number>`coalesce(sum(${saleItems.quantity} * ${inventoryBatches.unitOrderPriceCents}) filter (where ${sales.createdAt} >= ${prevStartIso}::timestamptz and ${sales.createdAt} < ${prevEndExclusiveIso}::timestamptz), 0)::int`,
+              sql<number>`coalesce(sum(${saleItems.quantity} * coalesce(${saleItems.unitOrderPriceCents}, ${inventoryBatches.unitOrderPriceCents}, 0)) filter (where ${sales.createdAt} >= ${prevStartIso}::timestamptz and ${sales.createdAt} < ${prevEndExclusiveIso}::timestamptz), 0)::int`,
           })
           .from(saleItems)
           .innerJoin(sales, eq(saleItems.saleId, sales.id))
-          .innerJoin(inventoryBatches, eq(saleItems.batchId, inventoryBatches.id))
+          // Left-joined on purpose: a line whose batch was deleted still carries
+          // its own frozen cost, and must not drop out of the COGS sum.
+          .leftJoin(inventoryBatches, eq(saleItems.batchId, inventoryBatches.id))
           .where(
             and(
               eq(sales.organizationId, context.organization.id),
@@ -1026,6 +1028,9 @@ export class SalesRepositoryImpl implements SalesRepository {
           description: item.description,
           quantity: item.quantity,
           unitPriceCents: item.unitPriceCents,
+          // Frozen at sale time: COGS reads this instead of re-deriving it from
+          // the batch, so later inventory edits cannot restate past profit.
+          unitOrderPriceCents: item.unitOrderPriceCents,
           taxRateBps: item.taxRateBps,
           discountCents: 0,
           lineSubtotalCents: item.lineSubtotalCents,
