@@ -21,21 +21,23 @@ import { ROUTES } from "@/lib/routes";
  * per-company read APIs, and why nothing on it can change the store's data.
  */
 
+// Field names are the engine's, verified against internal/domain/{insights,stock}.
+// They previously omitted the _30d / _sku suffixes, so every card below read
+// undefined and rendered a hard zero.
 type InsightsOverview = {
   kpis?: {
-    revenue_cents?: number;
-    sales_count?: number;
-    gross_profit_cents?: number;
-    low_stock_count?: number;
+    revenue_cents_30d?: number;
+    sales_count_30d?: number;
+    units_sold_30d?: number;
   };
 };
 
 type StockDashboard = {
   metrics?: {
-    stock_value_cents?: number;
-    total_units?: number;
-    sku_count?: number;
-    low_stock_count?: number;
+    total_stock_value_cents?: number;
+    total_available_units?: number;
+    total_batch_count?: number;
+    low_stock_sku_count?: number;
   };
 };
 
@@ -128,27 +130,27 @@ export function AdminCompanyViewContent({ orgId }: { orgId: string }) {
           <KpiCard
             icon="payments"
             label="Revenue (30d)"
-            value={moneyCompact(insights.data.kpis?.revenue_cents ?? 0)}
-            sub={`${count(insights.data.kpis?.sales_count ?? 0)} sales`}
+            value={moneyCompact(insights.data.kpis?.revenue_cents_30d ?? 0)}
+            sub={`${count(insights.data.kpis?.sales_count_30d ?? 0)} sales`}
           />
           <KpiCard
             icon="trending_up"
-            label="Gross profit (30d)"
-            value={moneyCompact(insights.data.kpis?.gross_profit_cents ?? 0)}
-            sub="Revenue less cost of goods"
+            label="Units sold (30d)"
+            value={count(insights.data.kpis?.units_sold_30d ?? 0)}
+            sub="Across every branch in scope"
           />
           <KpiCard
             icon="inventory_2"
             label="Stock value"
-            value={moneyCompact(stock.data?.metrics?.stock_value_cents ?? 0)}
-            sub={`${count(stock.data?.metrics?.sku_count ?? 0)} SKUs`}
+            value={moneyCompact(stock.data?.metrics?.total_stock_value_cents ?? 0)}
+            sub={`${count(stock.data?.metrics?.total_batch_count ?? 0)} batches`}
           />
           <KpiCard
             icon="warning"
             label="Low stock"
-            value={count(stock.data?.metrics?.low_stock_count ?? 0)}
+            value={count(stock.data?.metrics?.low_stock_sku_count ?? 0)}
             sub="Products at or below their reorder level"
-            tone={(stock.data?.metrics?.low_stock_count ?? 0) > 0 ? "warn" : "default"}
+            tone={(stock.data?.metrics?.low_stock_sku_count ?? 0) > 0 ? "warn" : "default"}
           />
         </div>
       )}
