@@ -103,30 +103,33 @@ export function useStartLencoCheckoutMutation() {
   });
 }
 
-export function useScheduleDowngradeMutation() {
+/**
+ * Ends the subscription when the period already paid for runs out, or clears a
+ * pending cancellation.
+ *
+ * This replaced a pair of `/subscription/downgrade` mutations that called an
+ * endpoint the engine never implemented. Scheduling a move to a *cheaper paid
+ * plan* cannot work on this rail anyway: collections are once-off, so there is
+ * no renewal event to apply the change at, and the cheaper plan would not have
+ * been paid for. Moving down a tier here means buying the cheaper plan through
+ * checkout; stopping altogether means this.
+ *
+ * Owner-only, enforced by the engine. Nothing is revoked on the spot — the
+ * engine's daily sweep moves the org to Free once the period lapses.
+ */
+export function useSetCancelAtPeriodEndMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { plan_code: SubscriptionPlanCode }) =>
+    mutationFn: (cancel: boolean) =>
       adminFetch<{ subscription: EngineSubscription | null }>(
-        "/api/v1/billing/subscription/downgrade",
-        { method: "POST", body: JSON.stringify(body) },
+        "/api/v1/billing/subscription/cancel",
+        { method: cancel ? "POST" : "DELETE" },
       ).then((d) => d.subscription),
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: engineSubscriptionQueryKey });
-    },
-  });
-}
-
-export function useCancelScheduledDowngradeMutation() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () =>
-      adminFetch<{ subscription: EngineSubscription | null }>(
-        "/api/v1/billing/subscription/downgrade",
-        { method: "DELETE" },
-      ).then((d) => d.subscription),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: engineSubscriptionQueryKey });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: engineSubscriptionQueryKey }),
+        qc.invalidateQueries({ queryKey: ["billing-portal", "me"] }),
+      ]);
     },
   });
 }

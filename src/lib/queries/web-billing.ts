@@ -12,7 +12,7 @@
  * Payloads stay snake_case to match the engine's JSON tags.
  */
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { adminFetch, EngineApiError } from "@/lib/api/engine";
 import type { SubscriptionInterval, SubscriptionPlanCode } from "@/lib/queries/billing";
 
@@ -48,30 +48,9 @@ export function useBillingMeQuery() {
   });
 }
 
-/**
- * Cancels at the end of the period already paid for, or clears a pending
- * cancellation.
- *
- * Nothing is revoked on the spot: the engine only flips `cancel_at_period_end`,
- * and its daily sweep moves the org to Free once the period lapses — so this is
- * reversible right up to expiry. Owner-only, enforced by the engine.
- *
- * The refreshed subscription comes back in the response, but the `me` query is
- * invalidated rather than written into, so the page re-renders from one source.
- */
-export function useSetCancelAtPeriodEndMutation() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (cancel: boolean) =>
-      adminFetch<{ subscription: BillingMe["subscription"] }>(
-        "/api/v1/billing/subscription/cancel",
-        { method: cancel ? "POST" : "DELETE" },
-      ).then((d) => d.subscription),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: billingMeQueryKey });
-    },
-  });
-}
+// Cancellation lives with the other engine-backed subscription mutations; it is
+// re-exported so the portal keeps a single import surface.
+export { useSetCancelAtPeriodEndMutation } from "@/lib/queries/subscription";
 
 export type BillingBranch = { id: string; name: string };
 
