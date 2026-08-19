@@ -21,13 +21,14 @@ import {
   RADIUS,
 } from "@/components/billing/billing-chrome";
 import { EngineApiError } from "@/lib/api/engine";
-import { useBillingMeQuery } from "@/lib/queries/web-billing";
+import { useBillingInvoiceHistoryQuery, useBillingMeQuery } from "@/lib/queries/web-billing";
 import {
   usePublicPlansQuery,
   type SubscriptionInterval,
   type SubscriptionPlanCode,
 } from "@/lib/queries/billing";
 import {
+  useCancelInvoiceMutation,
   useEngineInvoiceQuery,
   useStartLencoCheckoutMutation,
 } from "@/lib/queries/subscription";
@@ -123,6 +124,12 @@ export function BillingCheckoutContent() {
   const [invoiceId, setInvoiceId] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  /** Set when checkout is refused because another attempt is still pending. */
+  const [blockedByPending, setBlockedByPending] = useState(false);
+  const invoiceHistory = useBillingInvoiceHistoryQuery(10);
+  const pendingInvoice =
+    (invoiceHistory.data ?? []).find((invoice) => invoice.status === "pending") ?? null;
+  const cancelInvoice = useCancelInvoiceMutation();
 
   /**
    * The phase is derived from the invoice rather than mirrored into state.
@@ -178,6 +185,7 @@ export function BillingCheckoutContent() {
       return;
     }
     setStartError(null);
+    setBlockedByPending(false);
     try {
       const result = await startCheckout.mutateAsync({
         plan_code: planCode,
@@ -191,11 +199,38 @@ export function BillingCheckoutContent() {
       setInvoiceId(result.invoice_id);
       setSubmitted(true);
     } catch (submitError) {
+      // An unfinished attempt for a DIFFERENT plan or interval is a dead end
+      // rather than a failure — only one invoice per org may be pending. Say so
+      // and offer the way out, instead of surfacing a bare conflict message the
+      // customer can do nothing about.
+      if (submitError instanceof EngineApiError && submitError.code === "invoice_pending") {
+        setBlockedByPending(true);
+        setStartError(submitError.message);
+        return;
+      }
       setStartError(
         submitError instanceof EngineApiError
           ? submitError.message
           : "We couldn't start the payment. Try again in a moment.",
       );
+    }
+  }
+
+  /**
+   * Clears the blocking attempt and immediately tries again, so "cancel the old
+   * one and pay for this one" is a single tap rather than a trip back to the
+   * overview.
+   */
+  async function handleCancelPendingAndRetry() {
+    const stuck = pendingInvoice;
+    if (!stuck) return;
+    try {
+      await cancelInvoice.mutateAsync(stuck.id);
+      setBlockedByPending(false);
+      setStartError(null);
+      await handlePay();
+    } catch {
+      setStartError("We couldn't cancel that payment. It may have just gone through — refresh to check.");
     }
   }
 
@@ -235,7 +270,10 @@ export function BillingCheckoutContent() {
         userName={me.data?.user.full_name ?? me.data?.user.email ?? null}
       />
 
-      <main style={{ maxWidth: 920, margin: "0 auto", padding: "36px 24px 56px" }}>
+      <main
+        className="aura-bill-main"
+        style={{ maxWidth: 920, margin: "0 auto", padding: "36px 24px 56px" }}
+      >
         <nav
           aria-label="Breadcrumb"
           style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.faint }}
@@ -401,7 +439,12 @@ export function BillingCheckoutContent() {
                       disabled={phase !== "form"}
                       style={BARE_INPUT}
                     />
+                    {/* Hidden on phones: with the flag, the +260 prefix and the
+                        divider already in a fixed-height row, this pill leaves
+                        the number field itself almost no width. It is a label,
+                        not information the payer needs. */}
                     <MonoLabel
+                      className="aura-bill-hide-narrow"
                       color={C.success}
                       size={10.5}
                       style={{
@@ -600,6 +643,30 @@ export function BillingCheckoutContent() {
                   >
                     {error}
                   </p>
+                ) : null}
+
+                {blockedByPending && pendingInvoice ? (
+                  <button
+                    type="button"
+                    onClick={handleCancelPendingAndRetry}
+                    disabled={cancelInvoice.isPending}
+                    style={{
+                      ...PRIMARY_BUTTON,
+                      marginTop: 12,
+                      height: 44,
+                      background: C.surface,
+                      color: C.primary,
+                      border: `1px solid ${C.primary}`,
+                      boxShadow: "none",
+                      fontSize: 13.5,
+                      opacity: cancelInvoice.isPending ? 0.6 : 1,
+                      cursor: cancelInvoice.isPending ? "default" : "pointer",
+                    }}
+                  >
+                    {cancelInvoice.isPending
+                      ? "Cancelling…"
+                      : `Cancel the ${pendingInvoice.plan_name} payment and continue`}
+                  </button>
                 ) : null}
 
                 {phase === "awaiting" ? (

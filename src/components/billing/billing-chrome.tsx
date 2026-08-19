@@ -117,14 +117,17 @@ export function MonoLabel({
   color = C.faint,
   size = 10.5,
   style,
+  className,
 }: {
   children: ReactNode;
   color?: string;
   size?: number;
   style?: CSSProperties;
+  className?: string;
 }) {
   return (
     <span
+      className={className}
       style={{
         fontFamily: FONT_MONO,
         fontSize: size,
@@ -184,6 +187,7 @@ export function Card({
 }) {
   return (
     <div
+      className="aura-bill-card"
       style={{
         background: C.surface,
         border: `1px solid ${C.border}`,
@@ -280,6 +284,47 @@ export const FIELD_LABEL: CSSProperties = {
   color: "#2f4540",
 };
 
+/**
+ * Phone layout for the whole portal.
+ *
+ * The screens are built from inline styles lifted straight from the design comp
+ * (see the note at the top of this file), which is fine until a 375px handset —
+ * and a store owner paying a mobile-money bill is on a handset far more often
+ * than at a desk. Inline styles beat class rules, so every override here needs
+ * `!important`; that is the cost of keeping the desktop rendering 1:1 with the
+ * comp rather than rewriting it into utility classes.
+ *
+ * Nothing above 560px is touched, so the desktop and tablet renderings are
+ * byte-identical to what they were.
+ */
+const RESPONSIVE_CSS = `
+@media (max-width: 560px){
+  .aura-bill-main{padding:20px 16px 40px !important}
+  .aura-bill-card{padding:18px !important}
+  .aura-bill-hero{padding:20px !important;min-height:0 !important}
+  .aura-bill-topbar{padding:10px 16px !important;gap:10px !important}
+  .aura-bill-topbar-left{gap:12px !important}
+  .aura-bill-topbar-right{flex-wrap:wrap !important;justify-content:flex-end !important;row-gap:8px !important}
+  .aura-bill-display{font-size:28px !important;line-height:1.15 !important}
+  .aura-bill-wrap{flex-wrap:wrap !important}
+  /* Actions go full width and stack: two half-width buttons at 250px are two
+     lines of wrapped text each. */
+  .aura-bill-actions{width:100% !important;flex-direction:column !important;align-items:stretch !important}
+  .aura-bill-actions > *{width:100% !important;justify-content:center !important;text-align:center !important}
+  /* The payment-history table stops being a table. Four columns inside 250px
+     scrolled sideways in a card whose header stayed put — each payment becomes
+     its own block instead, labelled from the cell's own data-label. */
+  .aura-billing-history{overflow-x:visible !important}
+  .aura-bill-history-head{display:none !important}
+  .aura-bill-history-row{grid-template-columns:1fr !important;min-width:0 !important;gap:6px !important;padding:16px !important}
+  .aura-bill-history-row > *{display:flex !important;justify-content:space-between !important;align-items:center !important;gap:12px !important}
+  .aura-bill-history-row > *::before{content:attr(data-label);font-family:${"var(--aura-bill-mono, monospace)"};font-size:10px;letter-spacing:0.1em;color:${C.muted};flex-shrink:0}
+  /* Decorative labels that would starve a real control of width. */
+  .aura-bill-hide-narrow{display:none !important}
+  /* The checkout summary's fixed right rail. */
+  .aura-checkout-grid{grid-template-columns:1fr !important}
+}`;
+
 /** Page background + base typography for every billing screen. */
 export function BillingShell({ children }: { children: ReactNode }) {
   return (
@@ -290,8 +335,12 @@ export function BillingShell({ children }: { children: ReactNode }) {
         background: C.bg,
         minHeight: "100vh",
         WebkitFontSmoothing: "antialiased",
+        // The mono face is a next/font CSS variable, so the ::before labels
+        // above can only reach it through a custom property set here.
+        ["--aura-bill-mono" as string]: FONT_MONO,
       }}
     >
+      <style>{RESPONSIVE_CSS}</style>
       {children}
     </div>
   );
@@ -335,6 +384,7 @@ export function BillingTopBar({
 
   return (
     <header
+      className="aura-bill-topbar"
       style={{
         minHeight: 62,
         background: C.surface,
@@ -347,14 +397,17 @@ export function BillingTopBar({
         flexWrap: "wrap",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+      <div className="aura-bill-topbar-left" style={{ display: "flex", alignItems: "center", gap: 24 }}>
         <BillingWordmark />
         <span style={{ width: 1, height: 24, background: C.border }} />
         <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 15 }}>
           Billing &amp; plan
         </span>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div
+        className="aura-bill-topbar-right"
+        style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}
+      >
         {roleLabel ? (
           <Pill background={C.tint} color={C.primary}>
             {roleLabel}
@@ -369,6 +422,10 @@ export function BillingTopBar({
             borderRadius: RADIUS.pill,
             padding: "5px 14px 5px 6px",
             background: C.surface,
+            // Without this a long full name pushes the sign-out button off the
+            // right edge on a phone: the chip is in a nowrap row of its own.
+            minWidth: 0,
+            maxWidth: "100%",
           }}
         >
           <span
@@ -388,7 +445,17 @@ export function BillingTopBar({
           >
             {initial}
           </span>
-          <span style={{ fontSize: 13.5, fontWeight: 600 }}>{userName ?? "Your account"}</span>
+          <span
+            style={{
+              fontSize: 13.5,
+              fontWeight: 600,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {userName ?? "Your account"}
+          </span>
         </span>
         <button
           type="button"

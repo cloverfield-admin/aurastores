@@ -25,6 +25,7 @@ import {
   useSetCancelAtPeriodEndMutation,
   type BillingInvoice,
 } from "@/lib/queries/web-billing";
+import { useCancelInvoiceMutation } from "@/lib/queries/subscription";
 import { usePublicPlansQuery, type SubscriptionInterval } from "@/lib/queries/billing";
 import {
   annualSaving,
@@ -148,6 +149,17 @@ export function BillingOverviewContent() {
     [invoices.data],
   );
 
+  /**
+   * An unfinished payment attempt, which is a dead end until it is dealt with:
+   * only one invoice per org may be pending, so while this exists the store
+   * cannot check out any other plan or interval — checkout answers 409.
+   */
+  const pendingInvoice = useMemo(
+    () => (invoices.data ?? []).find((invoice) => invoice.status === "pending") ?? null,
+    [invoices.data],
+  );
+  const cancelInvoice = useCancelInvoiceMutation();
+
   const branchLine = [orgName, branchCount.data ? `${branchCount.data} branches` : null]
     .filter(Boolean)
     .join(" · ");
@@ -167,7 +179,10 @@ export function BillingOverviewContent() {
         userName={me.data?.user.full_name ?? me.data?.user.email ?? null}
       />
 
-      <main style={{ maxWidth: 1080, margin: "0 auto", padding: "36px 32px 48px" }}>
+      <main
+        className="aura-bill-main"
+        style={{ maxWidth: 1080, margin: "0 auto", padding: "36px 32px 48px" }}
+      >
         {me.isError ? (
           <Card>
             <p style={{ margin: 0, fontSize: 14, color: C.secondary }}>
@@ -176,9 +191,22 @@ export function BillingOverviewContent() {
           </Card>
         ) : null}
 
+        {pendingInvoice ? (
+          <PendingPaymentBanner
+            invoice={pendingInvoice}
+            onRetry={() =>
+              goToCheckout({ plan: pendingInvoice.plan_code, interval: pendingInvoice.interval })
+            }
+            onCancel={() => cancelInvoice.mutate(pendingInvoice.id)}
+            canceling={cancelInvoice.isPending}
+            failed={cancelInvoice.isError}
+          />
+        ) : null}
+
         <div className="aura-billing-grid" style={{ ...GRID_2, gridTemplateColumns: "1.25fr 1fr" }}>
           {/* ── Current plan ─────────────────────────────────────────── */}
           <div
+            className="aura-bill-hero"
             style={{
               background: C.dark,
               borderRadius: RADIUS.card,
@@ -251,6 +279,7 @@ export function BillingOverviewContent() {
                   }}
                 >
                   <span
+                    className="aura-bill-display"
                     style={{
                       fontFamily: FONT_DISPLAY,
                       fontWeight: 800,
@@ -342,6 +371,7 @@ export function BillingOverviewContent() {
                 </div>
 
                 <div
+                  className="aura-bill-actions"
                   style={{
                     display: "flex",
                     gap: 12,
@@ -551,6 +581,9 @@ export function BillingOverviewContent() {
                       alignItems: "center",
                       justifyContent: "space-between",
                       gap: 12,
+                      // Without this the plan name and its "Choose →" button
+                      // fight over ~250px and both get squeezed.
+                      flexWrap: "wrap",
                     }}
                   >
                     <div>
@@ -624,6 +657,7 @@ export function BillingOverviewContent() {
                 alignItems: "center",
                 justifyContent: "space-between",
                 gap: 12,
+                flexWrap: "wrap",
               }}
             >
               <div>
@@ -695,6 +729,7 @@ export function BillingOverviewContent() {
 
           <div className="aura-billing-history">
             <div
+              className="aura-bill-history-head"
               style={{
                 display: "grid",
                 gridTemplateColumns: "1.2fr 1fr 1.2fr 0.8fr",
@@ -730,6 +765,80 @@ export function BillingOverviewContent() {
   );
 }
 
+/**
+ * The way out of a stuck payment.
+ *
+ * A Lenco collection is once-off and approved on the customer's handset. If they
+ * never approve it, no callback ever arrives and the invoice just sits there —
+ * and because only one invoice per org may be pending, every other plan and
+ * interval is refused with a 409 until it clears. This says so plainly and
+ * offers both exits: finish the payment, or drop it.
+ */
+function PendingPaymentBanner({
+  invoice,
+  onRetry,
+  onCancel,
+  canceling,
+  failed,
+}: {
+  invoice: BillingInvoice;
+  onRetry: () => void;
+  onCancel: () => void;
+  canceling: boolean;
+  failed: boolean;
+}) {
+  return (
+    <Card
+      padding={18}
+      style={{ marginBottom: 20, borderColor: C.warn, background: C.warnBg }}
+    >
+      <div
+        className="aura-bill-wrap"
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}
+      >
+        <div style={{ display: "flex", gap: 11, minWidth: 0 }}>
+          <BillingIcon name="schedule" size={19} color={C.warn} style={{ flexShrink: 0 }} />
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>
+              {invoice.plan_name} · {intervalLabel(invoice.interval)} payment not finished
+            </p>
+            <p style={{ margin: "3px 0 0", fontSize: 12.5, color: C.secondary, lineHeight: 1.5 }}>
+              {formatMoney(invoice.amount_cents, invoice.currency)} is waiting to be approved on
+              your phone. You can&apos;t start a different plan until this one is finished or
+              cancelled.
+            </p>
+            {failed ? (
+              <p style={{ margin: "6px 0 0", fontSize: 12.5, color: "#7d2b25" }}>
+                We couldn&apos;t cancel that payment. It may have just gone through — refresh to
+                check.
+              </p>
+            ) : null}
+          </div>
+        </div>
+        <div className="aura-bill-actions" style={{ display: "flex", gap: 9, flexShrink: 0 }}>
+          <button type="button" onClick={onRetry} style={{ ...MINT_BUTTON, background: C.dark, color: "#fff" }}>
+            Finish payment
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={canceling}
+            style={{
+              ...GHOST_ON_DARK,
+              borderColor: C.border,
+              color: C.secondary,
+              cursor: canceling ? "default" : "pointer",
+              opacity: canceling ? 0.6 : 1,
+            }}
+          >
+            {canceling ? "Cancelling…" : "Cancel payment"}
+          </button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function HistoryRow({ invoice, last }: { invoice: BillingInvoice; last: boolean }) {
   const paid = invoice.status === "paid";
   const date = formatDate(invoice.paid_at ?? invoice.created_at);
@@ -746,8 +855,11 @@ function HistoryRow({ invoice, last }: { invoice: BillingInvoice; last: boolean 
     : invoice.payment_method === "mobile_money"
       ? [`Mobile money`, tail].filter(Boolean).join(" ")
       : (tail ?? invoice.identifier.slice(0, 12));
+  // The data-label on each cell is what the column header becomes below 560px,
+  // where the row stops being a table row and turns into a labelled block.
   return (
     <div
+      className="aura-bill-history-row"
       style={{
         display: "grid",
         gridTemplateColumns: "1.2fr 1fr 1.2fr 0.8fr",
@@ -759,11 +871,12 @@ function HistoryRow({ invoice, last }: { invoice: BillingInvoice; last: boolean 
         minWidth: 640,
       }}
     >
-      <span>{date ?? "—"}</span>
-      <span>
+      <span data-label="DATE">{date ?? "—"}</span>
+      <span data-label="PLAN">
         {invoice.plan_name} · {intervalLabel(invoice.interval)}
       </span>
       <span
+        data-label="METHOD"
         style={{ display: "inline-flex", alignItems: "center", gap: 7, color: paid ? C.text : C.muted }}
       >
         {paid ? null : (
@@ -781,7 +894,9 @@ function HistoryRow({ invoice, last }: { invoice: BillingInvoice; last: boolean 
         ) : null}
         <span style={{ fontFamily: FONT_MONO, fontSize: 12 }}>{methodLabel}</span>
       </span>
-      <span style={{ fontWeight: 600 }}>{formatMoney(invoice.amount_cents, invoice.currency)}</span>
+      <span data-label="AMOUNT" style={{ fontWeight: 600 }}>
+        {formatMoney(invoice.amount_cents, invoice.currency)}
+      </span>
     </div>
   );
 }

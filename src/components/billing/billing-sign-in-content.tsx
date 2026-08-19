@@ -92,6 +92,7 @@ export function BillingSignInContent() {
           overflow: "hidden",
           padding: "56px 24px",
         }}
+        className="aura-bill-main"
       >
         <div
           aria-hidden
@@ -111,6 +112,7 @@ export function BillingSignInContent() {
           </div>
 
           <div
+            className="aura-bill-card"
             style={{
               background: C.surface,
               border: `1px solid ${C.border}`,
