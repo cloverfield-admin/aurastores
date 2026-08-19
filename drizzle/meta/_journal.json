@@ -365,6 +365,13 @@
       "when": 1780300000012,
       "tag": "0052_sale_items_capture_unit_cost",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1780300000013,
+      "tag": "0053_enterprise_not_self_service",
+      "breakpoints": true
     }
   ]
 }
