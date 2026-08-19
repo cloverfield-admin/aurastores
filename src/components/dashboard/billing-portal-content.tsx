@@ -106,9 +106,18 @@ export function BillingPortalContent() {
   const subscriptionStatus = me.data?.subscription?.status ?? "active";
   const introTrialEligible = Boolean(me.data?.subscription?.introPaidTrialEligible);
   const trialEndsAt = me.data?.subscription?.currentPeriodEnd;
+  // Date.now() during render is impure: two renders in the same pass can
+  // disagree, the server and the client disagree on hydration, and React
+  // Compiler is free to memoize a render and keep serving a stale count. Sample
+  // the clock once on mount instead — the countdown only changes across days,
+  // and the banner below already handles a null while the first pass settles.
+  const [nowMs, setNowMs] = useState<number | null>(null);
+  useEffect(() => {
+    setNowMs(Date.now());
+  }, []);
   const trialDaysRemaining =
-    subscriptionStatus === "trialing" && trialEndsAt
-      ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86400000))
+    subscriptionStatus === "trialing" && trialEndsAt && nowMs !== null
+      ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - nowMs) / 86400000))
       : null;
 
   const [planCode, setPlanCode] = useState<SubscriptionPlanCode>(currentPlanCode);
