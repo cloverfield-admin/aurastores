@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { BillingSignInContent } from "@/components/billing/billing-sign-in-content";
 
 export const metadata: Metadata = {
@@ -7,6 +8,14 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+/**
+ * `useSearchParams` (for the `?next=` destination) opts the client component
+ * into request-time rendering, so the boundary is required.
+ */
 export default function BillingSignInPage() {
-  return <BillingSignInContent />;
+  return (
+    <Suspense fallback={null}>
+      <BillingSignInContent />
+    </Suspense>
+  );
 }

@@ -94,7 +94,13 @@ function PlanCard({ plan, annual }: { plan: LandingPlan; annual: boolean }) {
       </div>
 
       <Link
-        href={plan.ctaHref}
+        href={
+          plan.checkoutPlanCode
+            ? // showAnnual, not the raw toggle: a plan without a yearly price shows
+              // its monthly figure, and checkout must open on what was quoted.
+              `/billing/checkout?plan=${plan.checkoutPlanCode}&interval=${showAnnual ? "yearly" : "monthly"}`
+            : plan.ctaHref
+        }
         style={{
           display: "block",
           textAlign: "center",

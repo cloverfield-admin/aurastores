@@ -70,9 +70,13 @@ function billingNeedsSignIn(request: NextRequest, signedIn: boolean): NextRespon
   const { pathname } = request.nextUrl;
   if (!pathname.startsWith("/billing")) return null;
   if (signedIn || pathname.startsWith(BILLING_SIGN_IN)) return null;
+  // Carry the destination through so a plan chosen on the landing page survives
+  // the sign-in bounce. Only the path and query are kept, and only from a
+  // /billing route, so this cannot be turned into an open redirect.
   const url = request.nextUrl.clone();
+  const intended = `${pathname}${request.nextUrl.search}`;
   url.pathname = BILLING_SIGN_IN;
-  url.search = "";
+  url.search = intended === "/billing" ? "" : `?next=${encodeURIComponent(intended)}`;
   return NextResponse.redirect(url);
 }
 
