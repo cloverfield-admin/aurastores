@@ -1,6 +1,12 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { useState, type CSSProperties, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+
+import { apiUrl } from "@/lib/api/version";
+import { createQueryIdbPersister } from "@/lib/query-idb-persister";
+import { ROUTES } from "@/lib/routes";
 
 /**
  * Shared shell for the web billing portal.
@@ -300,6 +306,33 @@ export function BillingTopBar({
   userName: string | null;
 }) {
   const initial = (userName ?? "").trim().charAt(0).toUpperCase() || "•";
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [signingOut, setSigningOut] = useState(false);
+
+  /**
+   * Signs out and leaves nothing behind.
+   *
+   * The cached plan, invoices and org name are somebody's billing details, and
+   * this portal is the one part of the web app a store owner uses — often on a
+   * shared machine. So the in-memory cache is cleared and the persisted copy
+   * removed, not just the cookie dropped.
+   */
+  async function handleSignOut() {
+    setSigningOut(true);
+    try {
+      await fetch(apiUrl("/auth/sign-out"), { method: "POST" }).catch(() => null);
+      await queryClient.cancelQueries();
+      queryClient.clear();
+      await Promise.resolve(createQueryIdbPersister().removeClient()).catch(() => null);
+    } finally {
+      // Back to the portal's own door, not the console's — that one refuses
+      // store owners outright.
+      router.push(ROUTES.billing.signIn);
+      router.refresh();
+    }
+  }
+
   return (
     <header
       style={{
@@ -357,6 +390,32 @@ export function BillingTopBar({
           </span>
           <span style={{ fontSize: 13.5, fontWeight: 600 }}>{userName ?? "Your account"}</span>
         </span>
+        <button
+          type="button"
+          onClick={handleSignOut}
+          disabled={signingOut}
+          aria-label="Sign out"
+          title="Sign out"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 7,
+            border: `1px solid ${C.border}`,
+            background: C.surface,
+            borderRadius: RADIUS.pill,
+            padding: "7px 14px",
+            fontFamily: FONT_BODY,
+            fontSize: 13,
+            fontWeight: 600,
+            color: C.secondary,
+            cursor: signingOut ? "default" : "pointer",
+            opacity: signingOut ? 0.6 : 1,
+            whiteSpace: "nowrap",
+          }}
+        >
+          <BillingIcon name="logout" size={17} color={C.muted} />
+          {signingOut ? "Signing out…" : "Sign out"}
+        </button>
       </div>
     </header>
   );
