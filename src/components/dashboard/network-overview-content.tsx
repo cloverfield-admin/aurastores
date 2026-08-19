@@ -169,7 +169,7 @@ export function NetworkOverviewContent() {
               </span>
             </div>
             <p className="mt-4 text-base font-normal uppercase tracking-[0.1em] text-[var(--app-text-secondary)]">
-              Network Gross Profit
+              Network Net Profit
             </p>
             <p className="mt-1 font-[family-name:var(--font-manrope)] text-3xl font-bold text-[var(--app-text)]">
               {networkQuery.isPending || !totals ? "—" : money.format(totals.totalGrossProfitCents30d / 100)}

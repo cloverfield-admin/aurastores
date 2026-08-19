@@ -302,7 +302,10 @@ export function SalesPerformanceContent() {
       icon: "payments",
     },
     {
-      label: "Gross Profit",
+      // grossProfitCents is net of operating expenses, so "Net Profit" is what
+      // it actually is — and what the mobile app has always called it. The true
+      // gross figure is grossProfitBeforeExpensesCents.
+      label: "Net Profit",
       value: currencyFormatter.format((metrics?.grossProfitCents ?? 0) / 100),
       sub: [
         `COGS ${currencyFormatter.format((metrics?.totalCogsCents ?? 0) / 100)}`,
