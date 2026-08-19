@@ -13,17 +13,17 @@ import {
   walletAccounts,
   walletLedgerEntries,
 } from "@/lib/db/schema";
-import { startOfUtcMonth } from "@/lib/dates/utc-month-range";
 import { calculateDisbursementFee } from "@/lib/lipila/fees";
 import { buildLipilaReference, maskAccountNumber } from "@/lib/lipila/utils";
 import { processLipilaPaymentCallback } from "@/lib/lipila/payment-processing";
+import type { StoreDayWindow } from "@/lib/dates/store-day-window";
+import { resolveStoreDayWindow, storeTimeZone } from "@/lib/dates/store-day-window";
 import type { AuthContext } from "@/lib/repositories/auth/auth.repository";
 import { filterBranchesForContext } from "@/lib/rbac/branch-access";
 import type {
   ActivateWalletInput,
   PayDashboardData,
   PayDashboardInput,
-  PayDateRange,
   PayPaymentMethod,
   PayRepository,
   PayTransactionDetailData,
@@ -46,24 +46,6 @@ function clampPage(value: number | undefined) {
 function clampPageSize(value: number | undefined) {
   if (!value || value < 1) return DEFAULT_PAGE_SIZE;
   return Math.min(Math.floor(value), MAX_PAGE_SIZE);
-}
-
-function normalizeDate(value: string | Date) {
-  if (value instanceof Date) {
-    return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
-  }
-
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, day));
-}
-
-function startOfTodayUtc() {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-}
-
-function addDaysUtc(date: Date, days: number) {
-  return new Date(date.getTime() + days * 86_400_000);
 }
 
 async function loadBranchesForOrg(organizationId: string) {
@@ -131,29 +113,24 @@ function serializeWallet(wallet: typeof walletAccounts.$inferSelect): NonNullabl
   };
 }
 
-function paymentTimestampRangeConditions(range?: PayDateRange): SQL[] {
-  const endInclusive = normalizeDate(range?.end ?? startOfTodayUtc());
-  // Default window is month-to-date (1st of the current month → today).
-  const startInclusive = normalizeDate(range?.start ?? startOfUtcMonth(endInclusive));
-  const endExclusive = addDaysUtc(endInclusive, 1);
-
+function paymentTimestampRangeConditions(window: StoreDayWindow): SQL[] {
   return [
-    sql`coalesce(${payments.paidAt}, ${payments.createdAt}) >= ${startInclusive.toISOString()}::timestamptz`,
-    sql`coalesce(${payments.paidAt}, ${payments.createdAt}) < ${endExclusive.toISOString()}::timestamptz`,
+    sql`coalesce(${payments.paidAt}, ${payments.createdAt}) >= ${window.startIso}::timestamptz`,
+    sql`coalesce(${payments.paidAt}, ${payments.createdAt}) < ${window.endExclusiveIso}::timestamptz`,
   ];
 }
 
 function dashboardConditions(
   organizationId: string,
   branchId: string,
-  range?: PayDateRange,
+  window: StoreDayWindow,
   method?: PayPaymentMethod,
 ) {
   const conditions: SQL[] = [
     eq(payments.organizationId, organizationId),
     eq(payments.branchId, branchId),
     eq(sales.status, "completed"),
-    ...paymentTimestampRangeConditions(range),
+    ...paymentTimestampRangeConditions(window),
   ];
 
   if (method) {
@@ -169,8 +146,12 @@ export class PayRepositoryImpl implements PayRepository {
     const page = clampPage(input.page);
     const pageSize = clampPageSize(input.pageSize);
     const offset = (page - 1) * pageSize;
-    const conditions = dashboardConditions(context.organization.id, branch.id, input.range, input.method);
-    const unfilteredConditions = dashboardConditions(context.organization.id, branch.id, input.range);
+    // Month-to-date over the store's calendar, not the server's — see
+    // store-day-window.
+    const timeZone = await storeTimeZone(context.organization.id, branch.id);
+    const window = resolveStoreDayWindow(input.range, timeZone, "month-to-date");
+    const conditions = dashboardConditions(context.organization.id, branch.id, window, input.method);
+    const unfilteredConditions = dashboardConditions(context.organization.id, branch.id, window);
 
     const walletPromise = db.query.walletAccounts.findFirst({
       where: and(
