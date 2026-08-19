@@ -164,11 +164,13 @@ export class NetworkRepositoryImpl implements NetworkRepository {
       db
         .select({
           totalCogsCents30d:
-            sql<number>`coalesce(sum(${saleItems.quantity} * ${inventoryBatches.unitOrderPriceCents}) filter (where ${sales.createdAt} >= ${startIso}::timestamptz and ${sales.createdAt} < ${endExclusiveIso}::timestamptz), 0)::int`,
+            sql<number>`coalesce(sum(${saleItems.quantity} * coalesce(${saleItems.unitOrderPriceCents}, ${inventoryBatches.unitOrderPriceCents}, 0)) filter (where ${sales.createdAt} >= ${startIso}::timestamptz and ${sales.createdAt} < ${endExclusiveIso}::timestamptz), 0)::int`,
         })
         .from(saleItems)
         .innerJoin(sales, eq(saleItems.saleId, sales.id))
-        .innerJoin(inventoryBatches, eq(saleItems.batchId, inventoryBatches.id))
+        // Left-joined on purpose: a line whose batch was deleted still carries
+        // its own frozen cost, and must not drop out of the COGS sum.
+        .leftJoin(inventoryBatches, eq(saleItems.batchId, inventoryBatches.id))
         .where(
           and(
             eq(sales.organizationId, orgId),
@@ -263,11 +265,13 @@ export class NetworkRepositoryImpl implements NetworkRepository {
         .select({
           branchId: sales.branchId,
           cogsCents30d:
-            sql<number>`coalesce(sum(${saleItems.quantity} * ${inventoryBatches.unitOrderPriceCents}) filter (where ${sales.createdAt} >= ${startIso}::timestamptz and ${sales.createdAt} < ${endExclusiveIso}::timestamptz), 0)::int`,
+            sql<number>`coalesce(sum(${saleItems.quantity} * coalesce(${saleItems.unitOrderPriceCents}, ${inventoryBatches.unitOrderPriceCents}, 0)) filter (where ${sales.createdAt} >= ${startIso}::timestamptz and ${sales.createdAt} < ${endExclusiveIso}::timestamptz), 0)::int`,
         })
         .from(saleItems)
         .innerJoin(sales, eq(saleItems.saleId, sales.id))
-        .innerJoin(inventoryBatches, eq(saleItems.batchId, inventoryBatches.id))
+        // Left-joined on purpose: a line whose batch was deleted still carries
+        // its own frozen cost, and must not drop out of the COGS sum.
+        .leftJoin(inventoryBatches, eq(saleItems.batchId, inventoryBatches.id))
         .where(
           and(
             eq(sales.organizationId, orgId),

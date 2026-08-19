@@ -196,6 +196,11 @@ export const saleItems = pgTable(
     description: text("description").notNull(),
     quantity: integer("quantity").notNull(),
     unitPriceCents: integer("unit_price_cents").notNull(),
+    // Unit cost of the stock consumed, frozen at sale time. COGS reads this
+    // rather than re-deriving it from `batchId`, so editing or deleting a batch
+    // can no longer rewrite the profit of sales already made. Null only on rows
+    // written before this column existed; readers fall back to the batch.
+    unitOrderPriceCents: integer("unit_order_price_cents"),
     taxRateBps: integer("tax_rate_bps").notNull().default(0),
     discountCents: integer("discount_cents").notNull().default(0),
     lineSubtotalCents: integer("line_subtotal_cents").notNull(),
