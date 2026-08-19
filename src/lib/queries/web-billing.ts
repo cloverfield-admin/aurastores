@@ -119,6 +119,10 @@ export type BillingInvoice = {
   due_at: string | null;
   paid_at: string | null;
   created_at: string;
+  /** How it was paid. Null on invoices raised before the engine recorded this. */
+  payment_method: string | null;
+  payment_operator: string | null;
+  payment_account_masked: string | null;
 };
 
 export const billingInvoicesQueryKey = ["billing-portal", "invoices"] as const;

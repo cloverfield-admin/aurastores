@@ -152,6 +152,14 @@ export const subscriptionInvoices = pgTable(
     /** Our internal identifier used with Lipila callbacks. */
     identifier: varchar("identifier", { length: 128 }).notNull(),
     status: subscriptionInvoiceStatusEnum("status").notNull().default("pending"),
+    /**
+     * How the invoice was paid, captured when the collection is started (the
+     * checkout already resolves both). Null on invoices raised before these
+     * columns existed — the history table renders nothing rather than guessing.
+     */
+    paymentMethod: varchar("payment_method", { length: 16 }),
+    paymentOperator: varchar("payment_operator", { length: 16 }),
+    paymentAccountMasked: varchar("payment_account_masked", { length: 32 }),
     dueAt: timestamp("due_at", { withTimezone: true }),
     paidAt: timestamp("paid_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
