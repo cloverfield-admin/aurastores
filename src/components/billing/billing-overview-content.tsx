@@ -40,6 +40,7 @@ import {
   intervalPerLabel,
   isBillingRole,
   maskTail,
+  MOMO_NETWORKS,
 } from "@/lib/billing/web-portal";
 
 const GRID_2 = { display: "grid", gap: 20, alignItems: "start" } as const;
@@ -705,7 +706,7 @@ export function BillingOverviewContent() {
             >
               <MonoLabel size={10} style={{ letterSpacing: "0.1em" }}>DATE</MonoLabel>
               <MonoLabel size={10} style={{ letterSpacing: "0.1em" }}>PLAN</MonoLabel>
-              <MonoLabel size={10} style={{ letterSpacing: "0.1em" }}>REFERENCE</MonoLabel>
+              <MonoLabel size={10} style={{ letterSpacing: "0.1em" }}>METHOD</MonoLabel>
               <MonoLabel size={10} style={{ letterSpacing: "0.1em" }}>AMOUNT</MonoLabel>
             </div>
 
@@ -732,6 +733,19 @@ export function BillingOverviewContent() {
 function HistoryRow({ invoice, last }: { invoice: BillingInvoice; last: boolean }) {
   const paid = invoice.status === "paid";
   const date = formatDate(invoice.paid_at ?? invoice.created_at);
+
+  // The engine records the instrument when it starts a collection. Invoices
+  // raised before it did fall back to the reference, which is at least
+  // something the payer can quote to support — never an invented network.
+  const network = MOMO_NETWORKS.find((n) => n.key === invoice.payment_operator) ?? null;
+  const tail = invoice.payment_account_masked
+    ? `··· ${invoice.payment_account_masked}`
+    : maskTail(invoice.identifier);
+  const methodLabel = network
+    ? [network.label, tail].filter(Boolean).join(" ")
+    : invoice.payment_method === "mobile_money"
+      ? [`Mobile money`, tail].filter(Boolean).join(" ")
+      : (tail ?? invoice.identifier.slice(0, 12));
   return (
     <div
       style={{
@@ -760,9 +774,12 @@ function HistoryRow({ invoice, last }: { invoice: BillingInvoice; last: boolean 
             {invoice.status.toUpperCase()}
           </Pill>
         )}
-        <span style={{ fontFamily: FONT_MONO, fontSize: 12 }}>
-          {maskTail(invoice.identifier) ?? invoice.identifier.slice(0, 12)}
-        </span>
+        {network ? (
+          <span
+            style={{ width: 8, height: 8, borderRadius: "50%", background: network.dot, flexShrink: 0 }}
+          />
+        ) : null}
+        <span style={{ fontFamily: FONT_MONO, fontSize: 12 }}>{methodLabel}</span>
       </span>
       <span style={{ fontWeight: 600 }}>{formatMoney(invoice.amount_cents, invoice.currency)}</span>
     </div>
