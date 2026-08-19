@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   branchStaffAssignments,
@@ -23,7 +23,12 @@ import { ROUTES } from "@/lib/routes";
 import { uniqueSlug } from "@/lib/utils/slug";
 import { DEFAULT_USER_PREFERENCES } from "@/lib/validation/me";
 import type { UserPreferences } from "@/lib/db/schema";
-import type { AuthContext, AuthRepository, RegisteredUserParams } from "@/lib/repositories/auth/auth.repository";
+import type {
+  AuthContext,
+  AuthRepository,
+  BillingMembership,
+  RegisteredUserParams,
+} from "@/lib/repositories/auth/auth.repository";
 import type { SubscriptionPlanCode } from "@/lib/repositories/billing/billing.repository";
 import { billingRepository } from "@/lib/repositories/billing/billing.repository.impl";
 import { capabilitiesFromPlan, intersectCapabilities } from "@/lib/billing/entitlements";
@@ -196,6 +201,35 @@ export class AuthRepositoryImpl implements AuthRepository {
       columns: { id: true },
     });
     return Boolean(row);
+  }
+
+  async findBillingMembership(userId: string): Promise<BillingMembership | null> {
+    // Owner first, so someone who is both sees (and gets) the higher role.
+    const rows = await db
+      .select({
+        role: organizationMemberships.role,
+        organizationId: organizations.id,
+        organizationName: organizations.displayName,
+      })
+      .from(organizationMemberships)
+      .innerJoin(organizations, eq(organizations.id, organizationMemberships.organizationId))
+      .where(
+        and(
+          eq(organizationMemberships.userId, userId),
+          eq(organizationMemberships.status, "active"),
+          inArray(organizationMemberships.role, ["owner", "manager"]),
+        ),
+      )
+      .orderBy(sql`case when ${organizationMemberships.role} = 'owner' then 0 else 1 end`)
+      .limit(1);
+
+    const row = rows[0];
+    if (!row) return null;
+    return {
+      role: row.role === "owner" ? "owner" : "manager",
+      organizationId: row.organizationId,
+      organizationName: row.organizationName,
+    };
   }
 
   async findByAuthUserId(authUserId: string): Promise<AuthContext | null> {

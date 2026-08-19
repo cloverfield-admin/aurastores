@@ -10,6 +10,13 @@ function requestHeadersWithPathname(request: NextRequest) {
   return headers;
 }
 
+/**
+ * Refreshes the Supabase session cookie and reports who the request belongs to.
+ *
+ * The user is returned as well as the response because the proxy gates
+ * `/billing/*` on being signed in, and re-reading the session there would mean a
+ * second round-trip on every request.
+ */
 export async function updateSupabaseSession(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -39,7 +46,9 @@ export async function updateSupabaseSession(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  return response;
+  return { response, user };
 }
