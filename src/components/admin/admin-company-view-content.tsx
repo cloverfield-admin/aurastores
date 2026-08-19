@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AdminError, AdminSection, AdminTable } from "@/components/admin/admin-primitives";
 import { useImpersonation } from "@/components/admin/impersonation-provider";
 import { count, dateTime, money, moneyCompact } from "@/components/admin/format";
-import { KpiCard, SkeletonCard } from "@/components/dashboard/kpi-card";
+import { KpiCard, SkeletonCard } from "@/components/ui/kpi-card";
 import { adminFetch } from "@/lib/api/engine";
 import { adminKeys } from "@/lib/queries/admin";
 import { ROUTES } from "@/lib/routes";

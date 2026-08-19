@@ -10,8 +10,6 @@ import { useState, type ReactNode } from "react";
 import { createQueryIdbPersister } from "@/lib/query-idb-persister";
 import { shouldPersistQueryKey } from "@/lib/query-cache-whitelist";
 import { OfflineBanner } from "@/components/providers/offline-banner";
-import { OutboxQueuedBanner } from "@/components/providers/outbox-queued-banner";
-import { OutboxSyncProvider } from "@/components/providers/outbox-sync-provider";
 
 const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const CACHE_BUSTER =
@@ -92,8 +90,7 @@ export function AppQueryProvider({ children }: { children: ReactNode }) {
       }}
     >
       <OfflineBanner />
-      <OutboxQueuedBanner />
-      <OutboxSyncProvider>{children}</OutboxSyncProvider>
+      {children}
     </PersistQueryClientProvider>
   );
 }
