@@ -87,6 +87,16 @@ export const ROUTES = {
       review: "/dashboard/onboarding/review",
     },
   },
+  /**
+   * The web billing portal — the one surface a Store Owner or Store Manager may
+   * reach on the web. Distinct from `billingPortal` below, which is the (closed)
+   * dashboard's own billing screen.
+   */
+  billing: {
+    root: "/billing",
+    signIn: "/billing/sign-in",
+    checkout: "/billing/checkout",
+  },
   demoSuccess: "/dashboard/demo/success",
   settings: "/dashboard/settings",
   billingPortal: "/dashboard/settings/billing",
