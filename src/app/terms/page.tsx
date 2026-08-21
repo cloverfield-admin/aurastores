@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   twitter: { title: pageTitle, description: pageDescription },
 };
 
-const LAST_UPDATED = "8 July 2026";
+const LAST_UPDATED = "21 August 2026";
 
 const SECTIONS: LegalSection[] = [
   {
@@ -105,11 +105,12 @@ const SECTIONS: LegalSection[] = [
       <>
         <ul>
           <li>
-            <strong>Plans and pricing.</strong> Subscription plans are priced in Zambian Kwacha (ZMW) as
-            shown on our <Link href={ROUTES.marketing.pricing}>pricing page</Link>{" "}
-            at the time you subscribe.
-            Prices may change; we&rsquo;ll give you at least 30 days&rsquo; notice before a change affects
-            your renewal.
+            <strong>Plans and pricing.</strong> On the web, subscription plans are priced in Zambian
+            Kwacha (ZMW) as shown on our <Link href={ROUTES.marketing.pricing}>pricing page</Link>{" "}
+            at the time you subscribe. In-app purchases are priced by the app store in your store
+            account&rsquo;s currency, and the price and billing period are shown on the purchase screen
+            before you confirm. Prices may change; we&rsquo;ll give you at least 30 days&rsquo; notice
+            before a change affects your renewal.
           </li>
           <li>
             <strong>Trials.</strong> New stores receive an introductory trial of premium features, and your
@@ -117,13 +118,28 @@ const SECTIONS: LegalSection[] = [
             store — we may withhold them where we see abuse.
           </li>
           <li>
-            <strong>Payment.</strong> Subscriptions are billed through our payment provider by mobile money
-            or card. You authorize recurring charges for your plan until you cancel.
+            <strong>Payment.</strong> How you&rsquo;re billed depends on where you subscribe. On the web,
+            subscriptions are billed through our payment provider by mobile money or card, and you authorize
+            recurring charges for your plan until you cancel. In our iOS and Android apps, subscriptions are
+            sold as in-app purchases and billed by Apple or Google &mdash; see below.
+          </li>
+          <li>
+            <strong>In-app purchases (Apple App Store and Google Play).</strong> Subscriptions bought inside
+            the AuraStores mobile apps are auto-renewable subscriptions processed by the app store, not by
+            us. Payment is charged to your Apple ID or Google Play account when you confirm the purchase.
+            The subscription renews automatically for the same period &mdash; monthly or yearly, as shown on
+            the purchase screen &mdash; unless auto-renew is turned off at least 24 hours before the end of
+            the current period, and your account is charged for the renewal within the 24 hours before that
+            period ends. You can manage your subscription and turn off auto-renew in your Apple ID or Google
+            Play account settings; we can&rsquo;t cancel or refund an app store subscription on your behalf.
+            If you take a free trial, any unused portion is forfeited when you buy a subscription covering
+            the same period. Refunds for these purchases are handled by Apple or Google under their terms.
           </li>
           <li>
             <strong>Renewals and cancellation.</strong> Plans renew automatically at the end of each billing
-            period. You can cancel anytime in settings; cancellation takes effect at the end of the current
-            period, and amounts already paid are non-refundable except where the law says otherwise.
+            period. Cancel a web subscription anytime in settings, or an app store subscription in your Apple
+            ID or Google Play account settings; cancellation takes effect at the end of the current period,
+            and amounts already paid are non-refundable except where the law says otherwise.
           </li>
           <li>
             <strong>Failed payments.</strong>{" "}
