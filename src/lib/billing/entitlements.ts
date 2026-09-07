@@ -13,6 +13,12 @@ export function capabilitiesFromPlan(entitlements: PlanEntitlements): Membership
     staff: Boolean(c.staff),
     pay: Boolean(c.pay),
     expenses: Boolean(c.expenses),
+    /**
+     * Never sold, so no plan row lists it — and intersecting it with the plan
+     * would switch revenue off for everyone, the owner included. Whether a
+     * member may see the money is the owner's call, not an upsell.
+     */
+    financials: true,
     organization: Boolean(c.organization),
   };
 }
@@ -28,6 +34,7 @@ export function intersectCapabilities(
     catalog: membership.catalog && planCaps.catalog,
     staff: membership.staff && planCaps.staff,
     pay: membership.pay && planCaps.pay,
+    financials: membership.financials && planCaps.financials,
     expenses: membership.expenses && planCaps.expenses,
     organization: membership.organization && planCaps.organization,
   };

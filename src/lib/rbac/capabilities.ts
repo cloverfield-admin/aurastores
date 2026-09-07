@@ -11,6 +11,15 @@ export const MEMBERSHIP_CAPABILITY_KEYS = [
    * expenses in Pro by flipping `pay` would hand every Pro org the withdrawal rail.
    */
   "expenses",
+  /**
+   * Gates seeing how the business is PERFORMING — revenue, COGS, margin, profit
+   * — as opposed to doing the work that generates it.
+   *
+   * Split out of `sales`, which conflated ringing up a sale with reading the
+   * store's financial position. A cashier needs the till; showing them COGS
+   * hands out supplier pricing and per-item margin.
+   */
+  "financials",
   "organization",
 ] as const;
 
@@ -26,6 +35,7 @@ const MEMBERSHIP_CAPABILITY_LABELS: Record<MembershipCapability, string> = {
   staff: "Staff management",
   pay: "Aura Pay & payments",
   expenses: "Expenses",
+  financials: "Revenue, cost & profit figures",
   organization: "Organization management",
 };
 
@@ -43,6 +53,7 @@ export function fullCapabilities(): MembershipCapabilities {
     staff: true,
     pay: true,
     expenses: true,
+    financials: true,
     organization: true,
   };
 }
@@ -51,7 +62,8 @@ export function defaultCapabilitiesForAppRole(role: string): MembershipCapabilit
   if (role === "owner" || role === "admin" || role === "aurastores_admin") {
     return fullCapabilities();
   }
-  if (role === "pharmacist" || role === "manager") {
+  if (role === "manager") {
+    /** Runs a branch and is answerable for its numbers. */
     return {
       stock: true,
       sales: true,
@@ -60,10 +72,27 @@ export function defaultCapabilitiesForAppRole(role: string): MembershipCapabilit
       staff: false,
       pay: false,
       expenses: false,
+      financials: true,
+      organization: false,
+    };
+  }
+  if (role === "pharmacist") {
+    /** Clinical and dispensing: sells and manages stock, but the store's margin
+     * is not their job — same reasoning as the cashier. */
+    return {
+      stock: true,
+      sales: true,
+      insights: true,
+      catalog: true,
+      staff: false,
+      pay: false,
+      expenses: false,
+      financials: false,
       organization: false,
     };
   }
   if (role === "analyst") {
+    /** Exists to read the numbers; holds no operational capability at all. */
     return {
       stock: false,
       sales: false,
@@ -72,9 +101,11 @@ export function defaultCapabilitiesForAppRole(role: string): MembershipCapabilit
       staff: false,
       pay: false,
       expenses: false,
+      financials: true,
       organization: false,
     };
   }
+  /** Cashier and any unknown role: the till, not the books. */
   return {
     stock: true,
     sales: true,
@@ -83,6 +114,7 @@ export function defaultCapabilitiesForAppRole(role: string): MembershipCapabilit
     staff: false,
     pay: false,
     expenses: false,
+    financials: false,
     organization: false,
   };
 }

@@ -11,6 +11,7 @@ describe("intersectCapabilities", () => {
       staff: true,
       pay: true,
       expenses: true,
+      financials: true,
       organization: true,
     };
     const plan = {
@@ -21,6 +22,7 @@ describe("intersectCapabilities", () => {
       staff: false,
       pay: false,
       expenses: true,
+      financials: true,
       organization: true,
     };
     expect(intersectCapabilities(membership, plan)).toEqual({
@@ -31,6 +33,7 @@ describe("intersectCapabilities", () => {
       staff: false,
       pay: false,
       expenses: true,
+      financials: true,
       organization: true,
     });
   });
@@ -46,6 +49,7 @@ describe("intersectCapabilities", () => {
       staff: true,
       pay: true,
       expenses: true,
+      financials: true,
       organization: true,
     };
     const proPlan = {
@@ -56,6 +60,7 @@ describe("intersectCapabilities", () => {
       staff: true,
       pay: false,
       expenses: true,
+      financials: true,
       organization: true,
     };
     const result = intersectCapabilities(membership, proPlan);
