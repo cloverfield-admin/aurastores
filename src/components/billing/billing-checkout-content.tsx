@@ -21,9 +21,11 @@ import {
   RADIUS,
 } from "@/components/billing/billing-chrome";
 import { EngineApiError } from "@/lib/api/engine";
+import { planContents } from "@/lib/billing/plan-comparison";
 import { useBillingInvoiceHistoryQuery, useBillingMeQuery } from "@/lib/queries/web-billing";
 import {
   usePublicPlansQuery,
+  type PublicPlan,
   type SubscriptionInterval,
   type SubscriptionPlanCode,
 } from "@/lib/queries/billing";
@@ -706,11 +708,72 @@ export function BillingCheckoutContent() {
                   </span>
                 </div>
               </Card>
+
+              {/* What the money actually buys. Checkout used to show a price
+                  and nothing else, so the last screen before paying was the
+                  one place that never said what the plan included. */}
+              {plan ? <PlanContentsCard plan={plan} planName={plan.name} /> : null}
             </div>
           </div>
         )}
       </main>
     </BillingShell>
+  );
+}
+
+/**
+ * The selected plan's contents, beside the price. Both lists are shown: what is
+ * included and what is not, because "not included" is the half a customer is
+ * actually trying to confirm before paying.
+ */
+function PlanContentsCard({ plan, planName }: { plan: PublicPlan; planName: string }) {
+  const { included, excluded, limits } = planContents(plan);
+
+  return (
+    <Card padding={26} style={{ marginTop: 16 }}>
+      <MonoLabel>WHAT {planName.toUpperCase()} INCLUDES</MonoLabel>
+
+      <ul style={{ listStyle: "none", margin: "14px 0 0", padding: 0, display: "grid", gap: 9 }}>
+        {included.map((label) => (
+          <li key={label} style={{ display: "flex", alignItems: "flex-start", gap: 9, fontSize: 13.5 }}>
+            <BillingIcon name="check_circle" size={17} color={C.primary} />
+            <span style={{ color: C.text }}>{label}</span>
+          </li>
+        ))}
+        {excluded.map((label) => (
+          <li key={label} style={{ display: "flex", alignItems: "flex-start", gap: 9, fontSize: 13.5 }}>
+            <BillingIcon name="remove" size={17} color={C.placeholder} />
+            <span style={{ color: C.faint, textDecoration: "line-through" }}>{label}</span>
+          </li>
+        ))}
+      </ul>
+
+      <div style={{ height: 1, background: C.borderFaint, margin: "16px 0" }} />
+
+      <MonoLabel>LIMITS</MonoLabel>
+      <dl style={{ margin: "12px 0 0", display: "grid", gap: 8 }}>
+        {limits.map(({ label, value }) => (
+          <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+            <dt style={{ fontSize: 13.5, color: C.muted }}>{label}</dt>
+            <dd style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: C.text }}>{value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <Link
+        href="/#pricing"
+        style={{
+          display: "inline-block",
+          marginTop: 16,
+          fontSize: 13,
+          color: C.primary,
+          fontWeight: 600,
+          textDecoration: "none",
+        }}
+      >
+        Compare all plans →
+      </Link>
+    </Card>
   );
 }
 

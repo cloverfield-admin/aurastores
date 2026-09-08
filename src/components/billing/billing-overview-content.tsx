@@ -26,7 +26,8 @@ import {
   type BillingInvoice,
 } from "@/lib/queries/web-billing";
 import { useCancelInvoiceMutation } from "@/lib/queries/subscription";
-import { usePublicPlansQuery, type SubscriptionInterval } from "@/lib/queries/billing";
+import { usePublicPlansQuery, type PublicPlan, type SubscriptionInterval } from "@/lib/queries/billing";
+import { planDelta } from "@/lib/billing/plan-comparison";
 import {
   annualSaving,
   billingRoleLabel,
@@ -116,6 +117,11 @@ export function BillingOverviewContent() {
   );
 
   /** Managers renew what they are on; moving tier is the owner's call. */
+  const currentPlan = useMemo(
+    () => plans.data?.plans.find((p) => p.code === subscription?.plan_code) ?? null,
+    [plans.data, subscription?.plan_code],
+  );
+
   function canPickPlan(code: string): boolean {
     if (!role) return false;
     return code === subscription?.plan_code || canChangePlanTier(role);
@@ -611,6 +617,10 @@ export function BillingOverviewContent() {
                         {price ? intervalPerLabel(shownInterval) : ""}
                         {planSaving ? ` · ${planSaving.monthsFree} months free` : ""}
                       </div>
+                      {/* What the change actually does. A name and a price alone
+                          asks someone to decide on an upgrade without saying
+                          what the upgrade is. */}
+                      {!isCurrent ? <PlanDeltaLine plan={plan} current={currentPlan} /> : null}
                     </div>
                     {isCurrent ? (
                       <span style={{ fontSize: 12.5, fontWeight: 600, color: C.placeholder }}>
@@ -897,6 +907,31 @@ function HistoryRow({ invoice, last }: { invoice: BillingInvoice; last: boolean 
       <span data-label="AMOUNT" style={{ fontWeight: 600 }}>
         {formatMoney(invoice.amount_cents, invoice.currency)}
       </span>
+    </div>
+  );
+}
+
+/**
+ * One muted line naming the modules a plan adds (or, on a downgrade, gives up)
+ * relative to the current one. Nothing to say means nothing rendered.
+ */
+function PlanDeltaLine({
+  plan,
+  current,
+}: {
+  plan: PublicPlan;
+  current: PublicPlan | null;
+}) {
+  const { adds, removes } = planDelta(plan, current);
+  if (adds.length === 0 && removes.length === 0) return null;
+
+  return (
+    <div style={{ fontSize: 12.5, color: C.faint, marginTop: 4, lineHeight: 1.45 }}>
+      {adds.length > 0 ? <span>Adds {adds.join(", ")}</span> : null}
+      {adds.length > 0 && removes.length > 0 ? <span> · </span> : null}
+      {removes.length > 0 ? (
+        <span style={{ color: C.danger }}>Gives up {removes.join(", ")}</span>
+      ) : null}
     </div>
   );
 }
