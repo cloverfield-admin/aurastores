@@ -1,4 +1,5 @@
 import type { SubscriptionPlanFeatures } from "@/lib/db/schema/billing.schema";
+import { CAPABILITIES } from "@/lib/billing/plan-comparison";
 import { annualSaving, monthsLabel } from "@/lib/billing/web-portal";
 import type { PublicPlan } from "@/lib/repositories/billing/billing.repository";
 
@@ -40,17 +41,15 @@ function formatPrice(amountCents: number): string {
   return zmw.format(amountCents / 100);
 }
 
+/**
+ * One description of a plan, shared with the comparison table. This used to be
+ * a local list that left out `catalog` and `expenses`, so the cards could never
+ * mention two modules customers pay for.
+ */
 const CAPABILITY_LABELS: Array<{
   key: keyof SubscriptionPlanFeatures["capabilities"];
   label: string;
-}> = [
-  { key: "stock", label: "Aura Stock" },
-  { key: "sales", label: "Sales tracking" },
-  { key: "insights", label: "Aura Insights" },
-  { key: "pay", label: "Aura Pay" },
-  { key: "staff", label: "Staff management" },
-  { key: "organization", label: "Organization controls" },
-];
+}> = CAPABILITIES.map(({ key, label }) => ({ key, label }));
 
 type Limits = SubscriptionPlanFeatures["limits"];
 

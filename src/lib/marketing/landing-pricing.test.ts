@@ -40,3 +40,22 @@ describe("buildLandingPlans annual saving", () => {
     expect(free.yearlyNote).toBe("Free forever · no card required");
   });
 });
+
+describe("buildLandingPlans bullets", () => {
+  // The cards' own capability list omitted these two, so a Pro card never
+  // said "Expenses" and no card ever mentioned the catalogue.
+  it("can now name catalog and expenses", () => {
+    const free = plan("free", "Free", 1, 0, 0);
+    const pro = {
+      ...plan("pro", "Pro", 3, 50_000, 500_000),
+      features: {
+        capabilities: { stock: true, sales: true, catalog: true, insights: true, pay: true, staff: true, expenses: true, organization: true },
+        limits: { products: null, salesTransactions: null, categories: null, staffUsers: 15, branches: 15 },
+      },
+    } as PublicPlan;
+
+    const [freeCard, proCard] = buildLandingPlans([free, pro]);
+    expect(freeCard.bullets).toContain("Products & categories");
+    expect(proCard.bullets).toContain("Expenses");
+  });
+});
