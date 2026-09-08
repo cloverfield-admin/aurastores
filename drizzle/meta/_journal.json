@@ -400,6 +400,13 @@
       "when": 1780300000017,
       "tag": "0057_pay_pro_and_up",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1780300000018,
+      "tag": "0058_free_tier_usable",
+      "breakpoints": true
     }
   ]
 }

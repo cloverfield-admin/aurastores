@@ -142,9 +142,10 @@ async function loadSubscriptionSlice(
           organization: true,
         },
         limits: {
-          products: 10,
-          salesTransactions: 10,
-          categories: 10,
+          // A usable small shop (drizzle/0058): the 10/10/10 caps were a demo.
+          products: 50,
+          salesTransactions: 100,
+          categories: 20,
           staffUsers: 1,
           branches: 1,
         },
@@ -425,9 +426,10 @@ export class AuthRepositoryImpl implements AuthRepository {
             organization: true,
           },
           limits: {
-            products: 10,
-            salesTransactions: 10,
-            categories: 10,
+            // A usable small shop (drizzle/0058): the 10/10/10 caps were a demo.
+            products: 50,
+            salesTransactions: 100,
+            categories: 20,
             staffUsers: 1,
             branches: 1,
           },
