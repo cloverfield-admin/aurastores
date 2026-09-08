@@ -393,6 +393,13 @@
       "when": 1780300000016,
       "tag": "0056_insights_pro_only",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1780300000017,
+      "tag": "0057_pay_pro_and_up",
+      "breakpoints": true
     }
   ]
 }
