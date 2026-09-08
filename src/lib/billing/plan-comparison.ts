@@ -56,7 +56,12 @@ export type PlanComparison = {
  * The landing's own list omitted `catalog` and `expenses`, so two things a
  * customer pays for were invisible on the page selling them.
  */
-const CAPABILITIES: Array<{ key: CapabilityKey; label: string; hint: string }> = [
+/**
+ * Exported so the landing cards read the SAME list the comparison table does.
+ * The cards used to keep their own copy, which omitted `catalog` and `expenses`
+ * — two things a customer pays for were invisible on the page selling them.
+ */
+export const CAPABILITIES: Array<{ key: CapabilityKey; label: string; hint: string }> = [
   {
     key: "stock",
     label: "Aura Stock",
