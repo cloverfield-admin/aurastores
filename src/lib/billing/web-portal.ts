@@ -143,6 +143,14 @@ export function intervalPerLabel(interval: IntervalKey | string): string {
  *
  * Display only: the amount charged is whatever the engine quotes on the invoice.
  */
+/**
+ * "1 month" / "2 months" — one place, because three surfaces used to hard-code
+ * the plural and a one-month saving would have read "1 months free".
+ */
+export function monthsLabel(n: number): string {
+  return n === 1 ? "1 month" : `${n} months`;
+}
+
 export function annualSaving(
   monthlyCents: number | undefined,
   yearlyCents: number | undefined,

@@ -1,4 +1,5 @@
 import type { SubscriptionPlanFeatures } from "@/lib/db/schema/billing.schema";
+import { annualSaving, monthsLabel } from "@/lib/billing/web-portal";
 import type { PublicPlan } from "@/lib/repositories/billing/billing.repository";
 
 /** Plans surfaced on the marketing landing, in display order (Enterprise omitted). */
@@ -14,6 +15,8 @@ export type LandingPlan = {
   /** Pre-formatted prices, e.g. "ZMW 500". `yearly` is null when no yearly price exists. */
   monthlyPrice: string;
   yearlyPrice: string | null;
+  /** Whole months the annual price saves against 12 × monthly; null when none. */
+  yearlyMonthsFree: number | null;
   /** Fine print under the price, per billing interval. */
   monthlyNote: string;
   yearlyNote: string;
@@ -153,6 +156,7 @@ export function buildLandingPlans(plans: PublicPlan[]): LandingPlan[] {
     const monthly = plan.prices.monthly;
     const yearly = plan.prices.yearly;
     const isFree = code === "free";
+    const saving = annualSaving(monthly?.amountCents, yearly?.amountCents);
 
     return {
       code,
@@ -161,8 +165,15 @@ export function buildLandingPlans(plans: PublicPlan[]): LandingPlan[] {
       featured: code === "pro",
       monthlyPrice: monthly ? formatPrice(monthly.amountCents) : "Custom",
       yearlyPrice: yearly ? formatPrice(yearly.amountCents) : null,
+      yearlyMonthsFree: saving?.monthsFree ?? null,
       monthlyNote: isFree ? "Free forever · no card required" : "Billed monthly · cancel anytime",
-      yearlyNote: isFree ? "Free forever · no card required" : "Billed annually · 12 months upfront",
+      // Say what annual actually buys. "12 months upfront" was the only honest
+      // line while yearly cost exactly 12 × monthly; now it saves something.
+      yearlyNote: isFree
+        ? "Free forever · no card required"
+        : saving
+          ? `Billed annually · ${monthsLabel(saving.monthsFree)} free`
+          : "Billed annually · 12 months upfront",
       bullets: buildBullets(plan, prev),
       ctaLabel: CTA_LABELS[code],
       ctaHref: DOWNLOAD_HREF,

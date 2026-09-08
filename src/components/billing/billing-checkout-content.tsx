@@ -35,16 +35,17 @@ import {
   useStartLencoCheckoutMutation,
 } from "@/lib/queries/subscription";
 import {
+  BILLING_CURRENCY,
+  MOMO_NETWORKS,
   annualSaving,
   billingRoleLabel,
-  BILLING_CURRENCY,
   canChangePlanTier,
   formatDate,
   formatMoneyCompact,
   formatMsisdnInput,
   intervalLabel,
   isBillingRole,
-  MOMO_NETWORKS,
+  monthsLabel,
   networkForMsisdn,
   networkLabel,
   normalizeZambianMsisdn,
@@ -597,7 +598,7 @@ export function BillingCheckoutContent() {
                       }}
                     >
                       <BillingIcon name="redeem" size={16} color={C.success} />
-                      Annual discount · {saving.monthsFree} months free
+                      Annual discount · {monthsLabel(saving.monthsFree)} free
                     </span>
                     <span style={{ fontSize: 13.5, fontWeight: 600, color: C.success }}>
                       − {formatMoneyCompact(saving.amountCents)}

@@ -6,7 +6,8 @@ import type { SubscriptionPlanCode } from "@/lib/repositories/billing/billing.re
  * Used for public pricing, auth entitlements (`/me`), and anywhere else that reads plan JSON from the DB.
  */
 const MONTHLY_SALES_PUBLIC_FALLBACK: Partial<Record<SubscriptionPlanCode, number>> = {
-  free: 10,
+  // Free is a usable small-shop tier (drizzle/0058), not a demo.
+  free: 100,
   basic: 1000,
 };
 
