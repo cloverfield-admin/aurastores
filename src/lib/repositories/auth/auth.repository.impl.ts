@@ -133,7 +133,9 @@ async function loadSubscriptionSlice(
           stock: true,
           sales: true,
           catalog: true,
-          insights: true,
+          // Forecasting is Pro and up (drizzle/0056). The home dashboard rides
+          // on `financials`, which is membership-only and never a plan key.
+          insights: false,
           pay: false,
           staff: false,
           expenses: false,
@@ -414,7 +416,9 @@ export class AuthRepositoryImpl implements AuthRepository {
             stock: true,
             sales: true,
             catalog: true,
-            insights: true,
+            // Forecasting is Pro and up (drizzle/0056). The home dashboard rides
+            // on `financials`, which is membership-only and never a plan key.
+            insights: false,
             pay: false,
             staff: false,
             expenses: false,

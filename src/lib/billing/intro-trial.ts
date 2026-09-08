@@ -4,10 +4,13 @@ export const INTRO_TRIAL_DAYS = 7;
 
 /**
  * Plan trialled for stores that didn't pick a paid plan at signup (i.e. free
- * signups — the mobile app collects no plan choice). `pro` is the lowest tier
- * that includes `insights`, which powers the home dashboard, so every new store
- * gets a working full-featured app during the trial window before settling back
- * to whatever plan they're actually on.
+ * signups — the mobile app collects no plan choice). `pro` is the top self-serve
+ * tier, so a new store sees the whole product for a week before settling back to
+ * whatever plan it's actually on.
+ *
+ * (This was once justified as "the lowest tier including `insights`, which powers
+ * the home dashboard". The dashboard is gated on `financials` now, which every
+ * plan holds — the trial is purely a taste of Pro, not a workaround.)
  */
 export const DEFAULT_INTRO_TRIAL_PLAN_CODE: SubscriptionPlanCode = "pro";
 

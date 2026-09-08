@@ -386,6 +386,13 @@
       "when": 1780300000015,
       "tag": "0055_expenses_capability_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1780300000016,
+      "tag": "0056_insights_pro_only",
+      "breakpoints": true
     }
   ]
 }
