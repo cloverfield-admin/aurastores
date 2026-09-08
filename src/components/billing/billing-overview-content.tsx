@@ -29,9 +29,10 @@ import { useCancelInvoiceMutation } from "@/lib/queries/subscription";
 import { usePublicPlansQuery, type PublicPlan, type SubscriptionInterval } from "@/lib/queries/billing";
 import { planDelta } from "@/lib/billing/plan-comparison";
 import {
+  BILLING_CURRENCY,
+  MOMO_NETWORKS,
   annualSaving,
   billingRoleLabel,
-  BILLING_CURRENCY,
   canChangePlanTier,
   daysUntil,
   formatDate,
@@ -42,7 +43,7 @@ import {
   intervalPerLabel,
   isBillingRole,
   maskTail,
-  MOMO_NETWORKS,
+  monthsLabel,
 } from "@/lib/billing/web-portal";
 
 const GRID_2 = { display: "grid", gap: 20, alignItems: "start" } as const;
@@ -405,7 +406,7 @@ export function BillingOverviewContent() {
                       onClick={() => goToCheckout({ plan: "pro", interval: "yearly" })}
                       style={GHOST_ON_DARK}
                     >
-                      Switch to annual · save {saving.monthsFree} months
+                      Switch to annual · save {monthsLabel(saving.monthsFree)}
                     </button>
                   ) : null}
                 </div>
@@ -615,7 +616,7 @@ export function BillingOverviewContent() {
                       <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>
                         {price ? formatMoneyCompact(price) : "Not priced"}{" "}
                         {price ? intervalPerLabel(shownInterval) : ""}
-                        {planSaving ? ` · ${planSaving.monthsFree} months free` : ""}
+                        {planSaving ? ` · ${monthsLabel(planSaving.monthsFree)} free` : ""}
                       </div>
                       {/* What the change actually does. A name and a price alone
                           asks someone to decide on an upgrade without saying

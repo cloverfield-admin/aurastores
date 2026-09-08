@@ -407,6 +407,13 @@
       "when": 1780300000018,
       "tag": "0058_free_tier_usable",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1780300000019,
+      "tag": "0059_annual_two_months_free",
+      "breakpoints": true
     }
   ]
 }

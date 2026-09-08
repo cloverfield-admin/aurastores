@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   annualSaving,
+  monthsLabel,
   billingRoleLabel,
   canChangePlanTier,
   daysUntil,
@@ -126,5 +127,14 @@ describe("presentation helpers", () => {
     expect(maskTail("260977842210")).toBe("··· 2210");
     expect(maskTail("abc")).toBeNull();
     expect(maskTail(null)).toBeNull();
+  });
+});
+
+describe("monthsLabel", () => {
+  // Three surfaces hard-coded "months"; a one-month saving would have read
+  // "1 months free".
+  it("singular at one, plural otherwise", () => {
+    expect(monthsLabel(1)).toBe("1 month");
+    expect(monthsLabel(2)).toBe("2 months");
   });
 });

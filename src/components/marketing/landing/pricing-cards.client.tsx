@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { CSSProperties } from "react";
+import { monthsLabel } from "@/lib/billing/web-portal";
 import type { LandingPlan } from "@/lib/marketing/landing-pricing";
 import { FONT_BODY, FONT_DISPLAY, FONT_MONO } from "./fonts";
 import { Icon } from "./phone";
@@ -144,6 +145,8 @@ function PlanCard({ plan, annual }: { plan: LandingPlan; annual: boolean }) {
 export function PricingCards({ plans }: { plans: LandingPlan[] }) {
   const [annual, setAnnual] = useState(false);
   const hasYearly = plans.some((plan) => plan.yearlyPrice != null);
+  // The toggle names the saving, so "Annual" is a reason rather than a label.
+  const monthsFree = Math.max(0, ...plans.map((plan) => plan.yearlyMonthsFree ?? 0));
 
   return (
     <>
@@ -175,6 +178,23 @@ export function PricingCards({ plans }: { plans: LandingPlan[] }) {
               style={annual ? TOGGLE_ACTIVE : TOGGLE_INACTIVE}
             >
               Annual
+              {monthsFree > 0 ? (
+                <span
+                  style={{
+                    marginLeft: 8,
+                    fontFamily: FONT_MONO,
+                    fontSize: 10.5,
+                    letterSpacing: "0.08em",
+                    padding: "3px 8px",
+                    borderRadius: 100,
+                    background: annual ? "rgba(169,227,214,0.25)" : "#a9e3d6",
+                    color: annual ? "#fff" : "#07322e",
+                    fontWeight: 600,
+                  }}
+                >
+                  {monthsLabel(monthsFree).toUpperCase()} FREE
+                </span>
+              ) : null}
             </button>
           </div>
         </div>
