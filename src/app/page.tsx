@@ -14,8 +14,10 @@ import {
 import { FONT_DISPLAY, FONT_MONO } from "@/components/marketing/landing/fonts";
 import { Icon } from "@/components/marketing/landing/phone";
 import { SiteFooter } from "@/components/marketing/site-footer";
+import { PlanComparisonTable } from "@/components/marketing/landing/plan-comparison-table";
 import { PricingCards } from "@/components/marketing/landing/pricing-cards.client";
 import { Reveal } from "@/components/marketing/landing/reveal.client";
+import { buildPlanComparison } from "@/lib/billing/plan-comparison";
 import { buildLandingPlans } from "@/lib/marketing/landing-pricing";
 import { services } from "@/lib/di";
 import { getSiteUrl } from "@/lib/site-url";
@@ -150,6 +152,9 @@ function TrustPoint({ icon, title, body, divider }: { icon: string; title: strin
 export default async function HomePage() {
   const plans = await services.billing.listPublicPlans("ZMW");
   const landingPlans = buildLandingPlans(plans);
+  // The cards sell three tiers in six bullets each; this is the long form, and
+  // it includes Enterprise, which the cards leave out entirely.
+  const planComparison = buildPlanComparison(plans);
 
   return (
     <div className="aura-landing-v2">
@@ -779,6 +784,10 @@ export default async function HomePage() {
           </Reveal>
 
           <PricingCards plans={landingPlans} />
+
+          <Reveal>
+            <PlanComparisonTable comparison={planComparison} />
+          </Reveal>
 
           <p style={{ textAlign: "center", fontFamily: FONT_MONO, fontSize: 12, color: "#7d918c", marginTop: 24 }}>
             Basic &amp; Pro: 7-day free trial on your first paid plan, then regular billing.
