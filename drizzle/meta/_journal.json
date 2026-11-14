@@ -414,6 +414,13 @@
       "when": 1780300000019,
       "tag": "0059_annual_two_months_free",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1780300000020,
+      "tag": "0060_expense_paid_with",
+      "breakpoints": true
     }
   ]
 }

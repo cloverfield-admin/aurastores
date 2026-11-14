@@ -1,6 +1,7 @@
 import { index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 import { organizations } from "./account.schema";
 import { branches } from "./branch.schema";
+import { paymentMethodEnum } from "./sales.schema";
 
 export const expenseTypeEnum = pgEnum("expense_type", ["general", "restocking", "charge"]);
 
@@ -26,6 +27,8 @@ export const expenses = pgTable(
     description: text("description").notNull(),
     expenseDate: timestamp("expense_date", { withTimezone: true }).notNull(),
     sourceRef: varchar("source_ref", { length: 128 }),
+    // How the expense was paid; null for manual rows entered before 0060.
+    paidWith: paymentMethodEnum("paid_with"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
